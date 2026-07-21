@@ -2,24 +2,20 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, 
-viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Fret &amp; Grain — Tuner</title>
+<link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link 
-href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" 
-rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
     --wood-dark:#1b1510;
-    --wood-mid:#241c14;
-    --wood-panel:#2a2117;
     --brass:#c9a24d;
     --brass-bright:#e6c169;
     --cream:#efe4c9;
     --cream-dim:#a99b7c;
-    --flat:#b1543a;
-    --sharp:#b1543a;
+    --flat-sharp:#b1543a;
+    --close:#d1a53d;
     --in-tune:#7a9a6a;
     --hairline:rgba(201,162,77,0.18);
   }
@@ -29,176 +25,85 @@ rel="stylesheet">
     margin:0;
     min-height:100dvh;
     background:
-      radial-gradient(ellipse at 50% -10%, rgba(201,162,77,0.08), 
-transparent 55%),
-      repeating-linear-gradient(100deg, rgba(255,255,255,0.012) 0px, 
-rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px),
+      radial-gradient(ellipse at 50% -10%, rgba(201,162,77,0.08), transparent 55%),
       linear-gradient(180deg, var(--wood-dark), #14100c 85%);
     color:var(--cream);
     font-family:'Inter', system-ui, sans-serif;
     display:flex;
     flex-direction:column;
     align-items:center;
-    padding:env(safe-area-inset-top,20px) 20px 
-calc(env(safe-area-inset-bottom,20px) + 20px);
+    padding:20px;
     overflow-x:hidden;
     user-select:none;
   }
-
   header{
-    width:100%;
-    max-width:420px;
-    display:flex;
-    align-items:baseline;
-    justify-content:space-between;
+    width:100%; max-width:420px;
+    display:flex; align-items:baseline; justify-content:space-between;
     padding:14px 2px 22px;
     border-bottom:1px solid var(--hairline);
     margin-bottom:22px;
   }
-  .logo{
-    font-family:'Fraunces', serif;
-    font-weight:700;
-    font-size:22px;
-    letter-spacing:0.2px;
-  }
-  .logo span{color:var(--brass);font-style:italic;font-weight:600;}
-  .tuning-label{
-    font-size:12px;
-    letter-spacing:0.12em;
-    text-transform:uppercase;
-    color:var(--cream-dim);
-  }
-
-  main{width:100%; max-width:420px; display:flex; flex-direction:column; 
-align-items:center; gap:26px;}
-
-  /* string pegs */
-  .pegs{
-    display:flex;
-    gap:10px;
-    flex-wrap:wrap;
-    justify-content:center;
-  }
+  .logo{ font-family:'Fraunces', serif; font-weight:700; font-size:22px; }
+  .logo span{ color:var(--brass); font-style:italic; font-weight:600; }
+  .tuning-label{ font-size:12px; letter-spacing:0.12em; text-transform:uppercase; color:var(--cream-dim); }
+  main{ width:100%; max-width:420px; display:flex; flex-direction:column; align-items:center; gap:30px; }
+  .pegs{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
   .peg{
-    width:46px; height:46px;
-    border-radius:50%;
+    width:46px; height:46px; border-radius:50%;
     display:flex; align-items:center; justify-content:center;
-    font-family:'Fraunces', serif;
-    font-weight:600;
-    font-size:16px;
+    font-family:'Fraunces', serif; font-weight:600; font-size:16px;
     color:var(--cream-dim);
     background:radial-gradient(circle at 32% 28%, #362a1c, #1e1710 72%);
     border:1px solid var(--hairline);
     transition:all .25s ease;
-    position:relative;
   }
   .peg.active{
     color:#1b1510;
-    background:radial-gradient(circle at 32% 28%, var(--brass-bright), 
-var(--brass) 75%);
+    background:radial-gradient(circle at 32% 28%, var(--brass-bright), var(--brass) 75%);
     border-color:var(--brass-bright);
     box-shadow:0 0 18px rgba(201,162,77,0.45);
     transform:scale(1.08);
   }
-  .peg.locked{ box-shadow:0 0 18px rgba(122,154,106,0.55); 
-background:radial-gradient(circle at 32% 28%, #a9c497, var(--in-tune) 
-75%);}
-
-  /* gauge */
-  .gauge-wrap{ position:relative; width:300px; height:180px; }
-  svg{ width:100%; height:100%; overflow:visible; }
-  .arc-bg{ fill:none; stroke:rgba(239,228,201,0.08); stroke-width:2; }
-  .tick{ stroke:var(--cream-dim); stroke-width:1.5; opacity:0.5;}
-  .tick.center{ stroke:var(--brass); opacity:1; stroke-width:2.5;}
-  .needle{
-    transform-origin:150px 158px;
-    transition:transform .12s cubic-bezier(.2,.8,.2,1);
+  .peg.locked{ box-shadow:0 0 18px rgba(122,154,106,0.55); background:radial-gradient(circle at 32% 28%, #a9c497, var(--in-tune) 75%); }
+  .gauge-wrap{ width:100%; max-width:320px; display:flex; flex-direction:column; align-items:center; gap:22px; }
+  .track-outer{ position:relative; width:100%; height:64px; }
+  .track-line{ position:absolute; top:50%; left:0; right:0; height:2px; background:rgba(239,228,201,0.1); transform:translateY(-50%); }
+  .track-ticks{ position:absolute; top:50%; left:0; right:0; display:flex; justify-content:space-between; transform:translateY(-50%); pointer-events:none; }
+  .track-ticks span{ width:1px; height:14px; background:rgba(239,228,201,0.18); }
+  .track-ticks span.center{ width:2px; height:26px; background:var(--brass); opacity:0.8; }
+  .ball{
+    position:absolute; top:50%; left:50%;
+    width:34px; height:34px; margin:-17px 0 0 -17px;
+    border-radius:50%;
+    background:var(--flat-sharp);
+    box-shadow:0 0 0 6px rgba(177,84,58,0.15), 0 4px 14px rgba(0,0,0,0.4);
+    transition:background .18s ease, box-shadow .18s ease, transform .08s linear;
+    will-change:transform;
   }
-  .needle-line{ stroke:var(--brass-bright); stroke-width:3; 
-stroke-linecap:round; filter:drop-shadow(0 0 6px rgba(230,193,105,0.6));}
-  .needle.locked .needle-line{ stroke:var(--in-tune); filter:drop-shadow(0 
-0 8px rgba(122,154,106,0.7));}
-  .needle-hub{ fill:var(--brass); }
-  .needle.locked .needle-hub{ fill:var(--in-tune); }
-
-  .note-readout{
-    position:absolute;
-    bottom:8px; left:0; right:0;
-    text-align:center;
-  }
-  .note-name{
-    font-family:'Fraunces', serif;
-    font-weight:700;
-    font-size:64px;
-    line-height:1;
-    letter-spacing:-1px;
-    color:var(--cream);
-    transition:color .2s ease;
-  }
-  .note-name.locked{ color:var(--in-tune); }
-  .cents-readout{
-    font-family:'JetBrains Mono', monospace;
-    font-size:13px;
-    color:var(--cream-dim);
-    margin-top:6px;
-    letter-spacing:0.02em;
-  }
-
-  .status-row{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    font-family:'JetBrains Mono', monospace;
-    font-size:12px;
-    color:var(--cream-dim);
-    min-height:18px;
-  }
-  .dot{width:6px; height:6px; border-radius:50%; 
-background:var(--cream-dim);}
-  .dot.live{ background:var(--brass-bright); box-shadow:0 0 6px 
-var(--brass-bright); animation:pulse 1.4s infinite;}
+  .ball.zone-yellow{ background:var(--close); box-shadow:0 0 0 6px rgba(209,165,61,0.18), 0 4px 14px rgba(0,0,0,0.4); }
+  .ball.zone-green{ background:var(--in-tune); box-shadow:0 0 0 8px rgba(122,154,106,0.22), 0 4px 18px rgba(0,0,0,0.4); }
+  .direction-label{ position:absolute; top:50%; transform:translateY(-50%); font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.1em; color:var(--cream-dim); text-transform:uppercase; }
+  .direction-label.flat{ left:0; }
+  .direction-label.sharp{ right:0; }
+  .note-readout{ text-align:center; }
+  .note-name{ font-family:'Fraunces', serif; font-weight:700; font-size:64px; line-height:1; letter-spacing:-1px; color:var(--cream); transition:color .2s ease; }
+  .note-name.zone-green{ color:var(--in-tune); }
+  .cents-readout{ font-family:'JetBrains Mono', monospace; font-size:13px; color:var(--cream-dim); margin-top:6px; }
+  .status-row{ display:flex; align-items:center; gap:8px; font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--cream-dim); min-height:18px; }
+  .dot{ width:6px; height:6px; border-radius:50%; background:var(--cream-dim); }
+  .dot.live{ background:var(--brass-bright); box-shadow:0 0 6px var(--brass-bright); animation:pulse 1.4s infinite; }
   @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.35;} }
-
   .mic-btn{
-    margin-top:6px;
-    width:100%;
-    max-width:280px;
-    padding:16px;
-    border-radius:999px;
-    border:1px solid var(--brass);
-    background:transparent;
-    color:var(--brass-bright);
-    font-family:'Inter', sans-serif;
-    font-weight:600;
-    font-size:15px;
-    letter-spacing:0.02em;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:10px;
-    cursor:pointer;
-    transition:all .2s ease;
+    margin-top:6px; width:100%; max-width:280px; padding:16px;
+    border-radius:999px; border:1px solid var(--brass); background:transparent;
+    color:var(--brass-bright); font-family:'Inter', sans-serif; font-weight:600; font-size:15px;
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    cursor:pointer; transition:all .2s ease;
   }
   .mic-btn:active{ transform:scale(0.97); }
-  .mic-btn.listening{
-    background:var(--brass);
-    color:#1b1510;
-    box-shadow:0 4px 24px rgba(201,162,77,0.3);
-  }
-
-  footer{
-    margin-top:auto;
-    padding-top:30px;
-    font-size:11px;
-    color:rgba(169,155,124,0.5);
-    text-align:center;
-    max-width:320px;
-    line-height:1.5;
-  }
-
-  @media (prefers-reduced-motion: reduce){
-    .needle, .dot.live{ transition:none; animation:none; }
-  }
+  .mic-btn.listening{ background:var(--brass); color:#1b1510; box-shadow:0 4px 24px rgba(201,162,77,0.3); }
+  footer{ margin-top:auto; padding-top:30px; font-size:11px; color:rgba(169,155,124,0.5); text-align:center; max-width:320px; line-height:1.5; }
+  @media (prefers-reduced-motion: reduce){ .ball, .dot.live{ transition:none; animation:none; } }
 </style>
 </head>
 <body>
@@ -212,21 +117,16 @@ var(--brass-bright); animation:pulse 1.4s infinite;}
   <div class="pegs" id="pegs"></div>
 
   <div class="gauge-wrap">
-    <svg viewBox="0 0 300 180">
-      <!-- background arc -->
-      <path class="arc-bg" d="M 30 158 A 120 120 0 0 1 270 158" />
-      <!-- tick marks every 10 cents from -50 to 50 -->
-      <g id="ticks"></g>
-      <!-- needle -->
-      <g class="needle" id="needle">
-        <line class="needle-line" x1="150" y1="158" x2="150" y2="52" />
-        <circle class="needle-hub" cx="150" cy="158" r="6" />
-      </g>
-    </svg>
+    <div class="track-outer">
+      <div class="direction-label flat">Flat</div>
+      <div class="track-line"></div>
+      <div class="track-ticks" id="ticks"></div>
+      <div class="ball" id="ball"></div>
+      <div class="direction-label sharp">Sharp</div>
+    </div>
     <div class="note-readout">
       <div class="note-name" id="noteName">–</div>
-      <div class="cents-readout" id="centsReadout">play a string to 
-begin</div>
+      <div class="cents-readout" id="centsReadout">play a string to begin</div>
     </div>
   </div>
 
@@ -241,202 +141,184 @@ begin</div>
 </main>
 
 <footer>
-  Autocorrelation pitch detection, runs entirely on-device. No audio is 
-recorded or sent anywhere.
+  Autocorrelation pitch detection, runs entirely on-device. No audio is recorded or sent anywhere.
 </footer>
 
 <script>
 (function(){
-  const STRINGS = [
+  var STRINGS = [
     {note:'E2', freq:82.41, label:'E'},
     {note:'A2', freq:110.00, label:'A'},
     {note:'D3', freq:146.83, label:'D'},
     {note:'G3', freq:196.00, label:'G'},
     {note:'B3', freq:246.94, label:'B'},
-    {note:'E4', freq:329.63, label:'E'},
+    {note:'E4', freq:329.63, label:'E'}
   ];
-  const NOTE_NAMES = 
-['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  var NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 
-  const pegsEl = document.getElementById('pegs');
-  const needleEl = document.getElementById('needle');
-  const noteNameEl = document.getElementById('noteName');
-  const centsEl = document.getElementById('centsReadout');
-  const statusDot = document.getElementById('statusDot');
-  const statusText = document.getElementById('statusText');
-  const micBtn = document.getElementById('micBtn');
-  const ticksEl = document.getElementById('ticks');
+  var pegsEl = document.getElementById('pegs');
+  var ball = document.getElementById('ball');
+  var noteNameEl = document.getElementById('noteName');
+  var centsEl = document.getElementById('centsReadout');
+  var statusDot = document.getElementById('statusDot');
+  var statusText = document.getElementById('statusText');
+  var micBtn = document.getElementById('micBtn');
+  var ticksEl = document.getElementById('ticks');
 
-  // build peg row (low to high, left to right, mirroring the screenshot's 
-E-B-G-D-A-E top-to-bottom -> here left-to-right low->high)
-  STRINGS.forEach((s, i) => {
-    const el = document.createElement('div');
+  STRINGS.forEach(function(s){
+    var el = document.createElement('div');
     el.className = 'peg';
     el.textContent = s.label;
-    el.dataset.index = i;
     pegsEl.appendChild(el);
   });
-  const pegEls = Array.from(pegsEl.children);
+  var pegEls = Array.prototype.slice.call(pegsEl.children);
 
-  // build tick marks on the arc (-50 to +50 cents, every 10)
-  const cx = 150, cy = 158, rOuter = 120, rInner = 108;
-  for(let c=-50; c<=50; c+=10){
-    const angle = (c/50) * 80 * (Math.PI/180); // spread ~ -80..80 deg 
-from vertical
-    const a = angle - Math.PI/2; // rotate so 0 is up... we'll compute via 
-needle rotation instead, ticks fixed
-    const theta = (Math.PI) - ( (c+50)/100 ) * Math.PI; // 0cents at top
-    const x1 = cx + rOuter*Math.cos(theta);
-    const y1 = cy - rOuter*Math.sin(theta);
-    const x2 = cx + rInner*Math.cos(theta);
-    const y2 = cy - rInner*Math.sin(theta);
-    const line = 
-document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('x1',x1); line.setAttribute('y1',y1);
-    line.setAttribute('x2',x2); line.setAttribute('y2',y2);
-    line.setAttribute('class', c===0 ? 'tick center' : 'tick');
-    ticksEl.appendChild(line);
+  for(var c=-50; c<=50; c+=10){
+    var tick = document.createElement('span');
+    if(c===0) tick.className = 'center';
+    ticksEl.appendChild(tick);
   }
 
-  let audioCtx, analyser, mediaStream, rafId;
-  let listening = false;
+  var audioCtx, analyser, mediaStream, rafId;
+  var listening = false;
 
   function freqToNote(freq){
-    const midi = 69 + 12 * Math.log2(freq/440);
-    const rounded = Math.round(midi);
-    const cents = Math.round((midi - rounded) * 100);
-    const name = NOTE_NAMES[((rounded % 12)+12)%12];
-    const octave = Math.floor(rounded/12) - 1;
-    return {name, octave, cents, midi:rounded};
+    var midi = 69 + 12 * Math.log2(freq/440);
+    var rounded = Math.round(midi);
+    var cents = Math.round((midi - rounded) * 100);
+    var name = NOTE_NAMES[((rounded % 12)+12)%12];
+    return {name:name, cents:cents};
   }
 
   function closestString(freq){
-    let best = null, bestDiff = Infinity;
-    STRINGS.forEach((s,i) => {
-      const diff = Math.abs(freq - s.freq);
-      // also check octave-shifted matches so a slightly-off low E doesn't 
-confuse
+    var best = null, bestDiff = Infinity;
+    STRINGS.forEach(function(s,i){
+      var diff = Math.abs(freq - s.freq);
       if(diff < bestDiff){ bestDiff = diff; best = i; }
     });
     return best;
   }
 
-  // Autocorrelation-based pitch detection (ACF2+ style)
   function autoCorrelate(buf, sampleRate){
-    const SIZE = buf.length;
-    let rms = 0;
-    for(let i=0;i<SIZE;i++){ rms += buf[i]*buf[i]; }
+    var SIZE = buf.length;
+    var rms = 0;
+    for(var i=0;i<SIZE;i++){ rms += buf[i]*buf[i]; }
     rms = Math.sqrt(rms/SIZE);
-    if(rms < 0.01) return -1; // too quiet
+    if(rms < 0.01) return -1;
 
-    let r1=0, r2=SIZE-1, thres=0.2;
-    for(let i=0;i<SIZE/2;i++){ if(Math.abs(buf[i])<thres){ r1=i; break; } 
-}
-    for(let i=1;i<SIZE/2;i++){ if(Math.abs(buf[SIZE-i])<thres){ r2=SIZE-i; 
-break; } }
+    var r1=0, r2=SIZE-1, thres=0.2;
+    for(var i2=0;i2<SIZE/2;i2++){ if(Math.abs(buf[i2])<thres){ r1=i2; break; } }
+    for(var i3=1;i3<SIZE/2;i3++){ if(Math.abs(buf[SIZE-i3])<thres){ r2=SIZE-i3; break; } }
 
-    const trimmed = buf.slice(r1, r2);
-    const n = trimmed.length;
-    const c = new Array(n).fill(0);
-    for(let lag=0; lag<n; lag++){
-      for(let i=0; i<n-lag; i++){
-        c[lag] += trimmed[i]*trimmed[i+lag];
+    var trimmed = buf.slice(r1, r2);
+    var n = trimmed.length;
+    var c2 = new Array(n).fill(0);
+    for(var lag=0; lag<n; lag++){
+      for(var j=0; j<n-lag; j++){
+        c2[lag] += trimmed[j]*trimmed[j+lag];
       }
     }
-    let d=0; while(c[d]>c[d+1]) d++;
-    let maxval=-1, maxpos=-1;
-    for(let i=d;i<n;i++){
-      if(c[i]>maxval){ maxval=c[i]; maxpos=i; }
+    var d=0; while(c2[d]>c2[d+1]) d++;
+    var maxval=-1, maxpos=-1;
+    for(var k=d;k<n;k++){
+      if(c2[k]>maxval){ maxval=c2[k]; maxpos=k; }
     }
-    let T0 = maxpos;
-    // parabolic interpolation
-    const x1=c[T0-1]||0, x2=c[T0], x3=c[T0+1]||0;
-    const a=(x1+x3-2*x2)/2, b=(x3-x1)/2;
+    var T0 = maxpos;
+    var x1=c2[T0-1]||0, x2=c2[T0], x3=c2[T0+1]||0;
+    var a=(x1+x3-2*x2)/2, b=(x3-x1)/2;
     if(a) T0 = T0 - b/(2*a);
     if(T0<=0) return -1;
     return sampleRate/T0;
   }
 
-  function updateDisplay(freq){
-    if(freq < 30 || freq > 1200 || !isFinite(freq)){
-      // no clear pitch
-      centsEl.textContent = 'listening…';
-      return;
-    }
-    const {name, cents} = freqToNote(freq);
-    const strIdx = closestString(freq);
-
-    pegEls.forEach((p,i)=>{
-      p.classList.toggle('active', i===strIdx && Math.abs(cents) < 40);
-      p.classList.toggle('locked', i===strIdx && Math.abs(cents) <= 4);
-    });
-
-    const inTune = Math.abs(cents) <= 4;
-    noteNameEl.textContent = name;
-    noteNameEl.classList.toggle('locked', inTune);
-    needleEl.classList.toggle('locked', inTune);
-
-    const clamped = Math.max(-50, Math.min(50, cents));
-    const deg = (clamped/50) * 45; // +-45 degree swing
-    needleEl.style.transform = `rotate(${deg}deg)`;
-
-    centsEl.textContent = `${freq.toFixed(1)} Hz  ·  
-${cents>0?'+':''}${cents}¢`;
+  function getHalfRange(){
+    return (ball.parentElement.clientWidth / 2) - 20;
   }
 
-  async function startListening(){
-    try{
-      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: {
-        echoCancellation:false, noiseSuppression:false, 
-autoGainControl:false
-      }});
-    } catch(err){
-      statusText.textContent = 'mic permission denied';
+  function updateDisplay(freq){
+    if(freq < 30 || freq > 1200 || !isFinite(freq)){
+      centsEl.textContent = 'listening...';
       return;
     }
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    await audioCtx.resume();
-    const source = audioCtx.createMediaStreamSource(mediaStream);
-    analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 2048;
-    source.connect(analyser);
+    var r = freqToNote(freq);
+    var name = r.name, cents = r.cents;
+    var strIdx = closestString(freq);
+    var absCents = Math.abs(cents);
 
-    const buf = new Float32Array(analyser.fftSize);
-    listening = true;
-    statusDot.classList.add('live');
-    statusText.textContent = 'listening';
-    micBtn.classList.add('listening');
-    micBtn.querySelector('span').textContent = 'Stop Tuning';
+    pegEls.forEach(function(p,i){
+      p.classList.toggle('active', i===strIdx && absCents < 40);
+      p.classList.toggle('locked', i===strIdx && absCents <= 5);
+    });
 
-    function loop(){
-      if(!listening) return;
-      analyser.getFloatTimeDomainData(buf);
-      const freq = autoCorrelate(buf, audioCtx.sampleRate);
-      updateDisplay(freq);
-      rafId = requestAnimationFrame(loop);
-    }
-    loop();
+    var zone = 'red';
+    if(absCents <= 5) zone = 'green';
+    else if(absCents <= 20) zone = 'yellow';
+
+    ball.classList.remove('zone-yellow','zone-green');
+    if(zone==='yellow') ball.classList.add('zone-yellow');
+    if(zone==='green') ball.classList.add('zone-green');
+    noteNameEl.classList.toggle('zone-green', zone==='green');
+
+    var clamped = Math.max(-50, Math.min(50, cents));
+    var halfRange = getHalfRange();
+    var px = (clamped/50) * halfRange;
+    ball.style.transform = 'translateX(' + px + 'px)';
+
+    noteNameEl.textContent = name;
+    centsEl.textContent = freq.toFixed(1) + ' Hz  -  ' + (cents>0?'+':'') + cents + ' cents';
+  }
+
+  function startListening(){
+    navigator.mediaDevices.getUserMedia({ audio: {
+      echoCancellation:false, noiseSuppression:false, autoGainControl:false
+    }}).then(function(stream){
+      mediaStream = stream;
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      return audioCtx.resume();
+    }).then(function(){
+      var source = audioCtx.createMediaStreamSource(mediaStream);
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 2048;
+      source.connect(analyser);
+
+      var buf = new Float32Array(analyser.fftSize);
+      listening = true;
+      statusDot.classList.add('live');
+      statusText.textContent = 'listening';
+      micBtn.classList.add('listening');
+      micBtn.querySelector('span').textContent = 'Stop Tuning';
+
+      function loop(){
+        if(!listening) return;
+        analyser.getFloatTimeDomainData(buf);
+        var freq = autoCorrelate(buf, audioCtx.sampleRate);
+        updateDisplay(freq);
+        rafId = requestAnimationFrame(loop);
+      }
+      loop();
+    }).catch(function(err){
+      statusText.textContent = 'mic permission denied';
+    });
   }
 
   function stopListening(){
     listening = false;
     if(rafId) cancelAnimationFrame(rafId);
-    if(mediaStream) mediaStream.getTracks().forEach(t=>t.stop());
+    if(mediaStream) mediaStream.getTracks().forEach(function(t){ t.stop(); });
     if(audioCtx) audioCtx.close();
     statusDot.classList.remove('live');
     statusText.textContent = 'microphone off';
     micBtn.classList.remove('listening');
     micBtn.querySelector('span').textContent = 'Start Tuning';
-    noteNameEl.textContent = '–';
-    noteNameEl.classList.remove('locked');
+    noteNameEl.textContent = '-';
+    noteNameEl.classList.remove('zone-green');
     centsEl.textContent = 'play a string to begin';
-    needleEl.style.transform = 'rotate(0deg)';
-    needleEl.classList.remove('locked');
-    pegEls.forEach(p=>{ p.classList.remove('active'); 
-p.classList.remove('locked'); });
+    ball.style.transform = 'translateX(0px)';
+    ball.classList.remove('zone-yellow','zone-green');
+    pegEls.forEach(function(p){ p.classList.remove('active'); p.classList.remove('locked'); });
   }
 
-  micBtn.addEventListener('click', () => {
+  micBtn.addEventListener('click', function(){
     if(listening) stopListening(); else startListening();
   });
 })();
