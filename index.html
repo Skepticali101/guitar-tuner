@@ -80,7 +80,7 @@
     border-radius:50%;
     background:var(--flat-sharp);
     box-shadow:0 0 0 6px rgba(177,84,58,0.15), 0 4px 14px rgba(0,0,0,0.4);
-    transition:background .18s ease, box-shadow .18s ease, transform .09s linear;
+    transition:background .15s ease, box-shadow .15s ease, transform .05s linear;
     will-change:transform;
   }
   .ball.zone-yellow{ background:var(--close); box-shadow:0 0 0 6px rgba(209,165,61,0.18), 0 4px 14px rgba(0,0,0,0.4); }
@@ -191,20 +191,36 @@
   var audioCtx, analyser, mediaStream, rafId;
   var listening = false;
   var wakeLock = null;
-  var smoothedFreq = null;
+  // Rolling median-of-3 filter instead of exponential smoothing. Exponential
+  // smoothing (blend X% old + Y% new every frame) systematically LAGS behind a
+  // continuously moving target -- exactly what happens while turning a tuning
+  // peg, since pitch is ramping, not jumping. A median filter still rejects
+  // single-frame noise spikes but tracks a moving pitch immediately, since it's
+  // just picking the middle of the last few real readings rather than blending
+  // toward them.
+  var freqHistory = [];
+  var HISTORY_LEN = 3;
+  var RESET_JUMP_RATIO = 0.08; // new pluck / string change -- clear history so median doesn't lag the reset either
 
-  // If a new reading differs from the current smoothed value by more than this
-  // fraction, treat it as a new note (string change / big pitch jump) and snap
-  // to it instantly instead of slowly blending toward it -- this is what was
-  // causing the "stuck for a moment" feeling.
-  var JUMP_THRESHOLD_RATIO = 0.03; // ~3% frequency change, roughly half a semitone
+  function medianFilter(freq){
+    if(freqHistory.length > 0){
+      var last = freqHistory[freqHistory.length - 1];
+      if(Math.abs(freq - last) / last > RESET_JUMP_RATIO){
+        freqHistory = []; // big jump: start fresh instead of averaging across the discontinuity
+      }
+    }
+    freqHistory.push(freq);
+    if(freqHistory.length > HISTORY_LEN) freqHistory.shift();
+    var sorted = freqHistory.slice().sort(function(a,b){ return a-b; });
+    return sorted[Math.floor(sorted.length/2)];
+  }
 
   var inTuneSince = null;
   var chimeFiredForThisHold = false;
   var HOLD_MS = 200;
 
   var lastDetectTime = 0;
-  var DETECT_INTERVAL = 40; // ms, ~25 updates/sec
+  var DETECT_INTERVAL = 20; // ms, ~50 updates/sec -- correlation cost is low enough to support this now
 
   // --- tone playback ---
   var toneCtx;
@@ -341,25 +357,17 @@
   function updateDisplay(freq, now){
     if(freq < 30 || freq > 1200 || !isFinite(freq)){
       centsEl.textContent = 'listening...';
+      freqHistory = [];
       inTuneSince = null;
       chimeFiredForThisHold = false;
       return;
     }
 
-    if(smoothedFreq === null){
-      smoothedFreq = freq;
-    } else {
-      var jumpRatio = Math.abs(freq - smoothedFreq) / smoothedFreq;
-      if(jumpRatio > JUMP_THRESHOLD_RATIO){
-        smoothedFreq = freq; // big jump: snap instantly, don't crawl toward it
-      } else {
-        smoothedFreq = smoothedFreq * 0.6 + freq * 0.4; // small jitter: light smoothing
-      }
-    }
+    var displayFreq = medianFilter(freq);
 
-    var r = freqToNote(smoothedFreq);
+    var r = freqToNote(displayFreq);
     var name = r.name, cents = r.cents;
-    var strIdx = closestString(smoothedFreq);
+    var strIdx = closestString(displayFreq);
     var absCents = Math.abs(cents);
 
     pegEls.forEach(function(p,i){
@@ -395,7 +403,7 @@
     ball.style.transform = 'translateX(' + px + 'px)';
 
     noteNameEl.textContent = name;
-    centsEl.textContent = smoothedFreq.toFixed(1) + ' Hz  -  ' + (cents>0?'+':'') + cents + ' cents';
+    centsEl.textContent = displayFreq.toFixed(1) + ' Hz  -  ' + (cents>0?'+':'') + cents + ' cents';
   }
 
   function requestWakeLock(){
@@ -434,7 +442,7 @@
 
       var buf = new Float32Array(analyser.fftSize);
       listening = true;
-      smoothedFreq = null;
+      freqHistory = [];
       inTuneSince = null;
       chimeFiredForThisHold = false;
       statusDot.classList.add('live');
