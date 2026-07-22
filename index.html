@@ -192,7 +192,12 @@
   var listening = false;
   var wakeLock = null;
   var smoothedFreq = null;
-  var wasInTune = false;
+
+  // --- in-tune chime hold-timer state ---
+  var inTuneSince = null;          // timestamp (ms) when the ball first entered the green zone, or null if not currently in it
+  var chimeFiredForThisHold = false; // ensures only one chime per continuous in-tune hold
+  var HOLD_MS = 200;                // must stay in green, uninterrupted, for this long before the chime fires
+
   var lastDetectTime = 0;
   var DETECT_INTERVAL = 40; // ms, ~25 updates/sec keeps it responsive without hammering CPU
 
@@ -271,10 +276,9 @@
     var maxLag = Math.min(SIZE - 2, Math.ceil(sampleRate / MIN_FREQ));
     if(maxLag <= minLag) return -1;
 
-    // cap correlation window length so the inner loop stays cheap regardless of fftSize
     var corrLen = Math.min(SIZE - maxLag, 1536);
 
-    var bestLag = -1, bestCorr = -Infinity, prevCorr = 0, nextCorr = 0;
+    var bestLag = -1, bestCorr = -Infinity;
     var corrs = new Float32Array(maxLag - minLag + 1);
     for(var lag = minLag; lag <= maxLag; lag++){
       var sum = 0;
@@ -284,9 +288,7 @@
       corrs[lag - minLag] = sum;
       if(sum > bestCorr){ bestCorr = sum; bestLag = lag; }
     }
-    if(bestLag <= minLag || bestLag >= maxLag) {
-      if(bestLag < 0) return -1;
-    }
+    if(bestLag < 0) return -1;
 
     var idx = bestLag - minLag;
     var x1 = corrs[idx-1] || bestCorr;
@@ -304,13 +306,15 @@
     return (ball.parentElement.clientWidth / 2) - 20;
   }
 
-  function updateDisplay(freq){
+  function updateDisplay(freq, now){
     if(freq < 30 || freq > 1200 || !isFinite(freq)){
       centsEl.textContent = 'listening...';
+      // silence / no clear pitch breaks any in-progress hold
+      inTuneSince = null;
+      chimeFiredForThisHold = false;
       return;
     }
 
-    // light smoothing so single noisy frames don't yank the ball around
     smoothedFreq = (smoothedFreq === null) ? freq : (smoothedFreq * 0.65 + freq * 0.35);
 
     var r = freqToNote(smoothedFreq);
@@ -332,10 +336,19 @@
     if(zone==='green') ball.classList.add('zone-green');
     noteNameEl.classList.toggle('zone-green', zone==='green');
 
-    if(zone === 'green' && !wasInTune){
-      playInTuneChime();
+    // --- hold-timer logic for the in-tune chime ---
+    if(zone === 'green'){
+      if(inTuneSince === null){
+        inTuneSince = now;             // just entered the zone, start the clock
+        chimeFiredForThisHold = false;
+      } else if(!chimeFiredForThisHold && (now - inTuneSince) >= HOLD_MS){
+        playInTuneChime();
+        chimeFiredForThisHold = true;  // don't fire again until it leaves and re-enters the zone
+      }
+    } else {
+      inTuneSince = null;
+      chimeFiredForThisHold = false;
     }
-    wasInTune = (zone === 'green');
 
     var clamped = Math.max(-50, Math.min(50, cents));
     var halfRange = getHalfRange();
@@ -383,7 +396,8 @@
       var buf = new Float32Array(analyser.fftSize);
       listening = true;
       smoothedFreq = null;
-      wasInTune = false;
+      inTuneSince = null;
+      chimeFiredForThisHold = false;
       statusDot.classList.add('live');
       statusText.textContent = 'listening';
       micBtn.classList.add('listening');
@@ -396,7 +410,7 @@
           lastDetectTime = timestamp;
           analyser.getFloatTimeDomainData(buf);
           var freq = autoCorrelate(buf, audioCtx.sampleRate);
-          updateDisplay(freq);
+          updateDisplay(freq, timestamp);
         }
         rafId = requestAnimationFrame(loop);
       }
@@ -412,6 +426,8 @@
     if(mediaStream) mediaStream.getTracks().forEach(function(t){ t.stop(); });
     if(audioCtx) audioCtx.close();
     releaseWakeLock();
+    inTuneSince = null;
+    chimeFiredForThisHold = false;
     statusDot.classList.remove('live');
     statusText.textContent = 'microphone off';
     micBtn.classList.remove('listening');
