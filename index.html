@@ -193,55 +193,85 @@
   var wakeLock = null;
   var smoothedFreq = null;
 
-  // --- in-tune chime hold-timer state ---
-  var inTuneSince = null;          // timestamp (ms) when the ball first entered the green zone, or null if not currently in it
-  var chimeFiredForThisHold = false; // ensures only one chime per continuous in-tune hold
-  var HOLD_MS = 200;                // must stay in green, uninterrupted, for this long before the chime fires
+  // If a new reading differs from the current smoothed value by more than this
+  // fraction, treat it as a new note (string change / big pitch jump) and snap
+  // to it instantly instead of slowly blending toward it -- this is what was
+  // causing the "stuck for a moment" feeling.
+  var JUMP_THRESHOLD_RATIO = 0.03; // ~3% frequency change, roughly half a semitone
+
+  var inTuneSince = null;
+  var chimeFiredForThisHold = false;
+  var HOLD_MS = 200;
 
   var lastDetectTime = 0;
-  var DETECT_INTERVAL = 40; // ms, ~25 updates/sec keeps it responsive without hammering CPU
+  var DETECT_INTERVAL = 40; // ms, ~25 updates/sec
 
-  // --- reference / confirmation tone playback (separate lightweight context) ---
+  // --- tone playback ---
   var toneCtx;
   function getToneCtx(){
     if(!toneCtx) toneCtx = new (window.AudioContext || window.webkitAudioContext)();
     if(toneCtx.state === 'suspended') toneCtx.resume();
     return toneCtx;
   }
+
+  // Low guitar frequencies (E2=82Hz, A2=110Hz) are often inaudible on small phone
+  // speakers even at full volume -- the driver just can't move enough air at that
+  // frequency. Fix: use a triangle wave (has audible upper harmonics a phone
+  // speaker CAN reproduce) and layer a quiet octave-up companion tone so the pitch
+  // is still clearly perceptible even when the fundamental itself is weak.
   function playReferenceTone(freq, pegEl){
     var ctx = getToneCtx();
+    var now = ctx.currentTime;
+    var dur = 1.4;
+
     var osc = ctx.createOscillator();
     var gain = ctx.createGain();
-    osc.type = 'sine';
+    osc.type = 'triangle';
     osc.frequency.value = freq;
-    var now = ctx.currentTime;
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.28, now + 0.04);
-    gain.gain.linearRampToValueAtTime(0.28, now + 1.3);
-    gain.gain.linearRampToValueAtTime(0, now + 1.5);
+    gain.gain.linearRampToValueAtTime(0.5, now + 0.04);
+    gain.gain.linearRampToValueAtTime(0.5, now + dur - 0.15);
+    gain.gain.linearRampToValueAtTime(0, now + dur);
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start(now);
-    osc.stop(now + 1.55);
+    osc.stop(now + dur + 0.05);
+
+    // quiet octave-up companion -- reinforces perceived pitch on speakers that
+    // struggle with the low fundamental, without changing which note it sounds like
+    var osc2 = ctx.createOscillator();
+    var gain2 = ctx.createGain();
+    osc2.type = 'triangle';
+    osc2.frequency.value = freq * 2;
+    gain2.gain.setValueAtTime(0, now);
+    gain2.gain.linearRampToValueAtTime(0.18, now + 0.04);
+    gain2.gain.linearRampToValueAtTime(0.18, now + dur - 0.15);
+    gain2.gain.linearRampToValueAtTime(0, now + dur);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(now);
+    osc2.stop(now + dur + 0.05);
+
     if(pegEl){
       pegEl.classList.add('playing');
-      setTimeout(function(){ pegEl.classList.remove('playing'); }, 1500);
+      setTimeout(function(){ pegEl.classList.remove('playing'); }, dur*1000);
     }
   }
+
   function playInTuneChime(){
     var ctx = getToneCtx();
     var osc = ctx.createOscillator();
     var gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = 1046.5; // C6, bright confirmation ping
+    osc.type = 'triangle';
+    osc.frequency.value = 1046.5; // C6, already well within small-speaker range
     var now = ctx.currentTime;
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.18, now + 0.02);
-    gain.gain.linearRampToValueAtTime(0, now + 0.22);
+    gain.gain.linearRampToValueAtTime(0.32, now + 0.02);
+    gain.gain.linearRampToValueAtTime(0, now + 0.24);
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start(now);
-    osc.stop(now + 0.25);
+    osc.stop(now + 0.27);
   }
 
   function freqToNote(freq){
@@ -261,28 +291,30 @@
     return best;
   }
 
-  // Autocorrelation restricted to the guitar's practical frequency range (70-450Hz),
-  // which is the main performance fix -- previously this scanned the entire buffer's
-  // possible lags every frame, which is far more math than the instrument needs.
+  // Autocorrelation restricted to guitar range (70-450Hz) with a downsampled
+  // correlation pass (stride of 2) to roughly halve the multiply-add work per
+  // detection frame -- this is the main lever against stutter/lockup on
+  // lower-powered phones, on top of the existing lag-range restriction.
   var MIN_FREQ = 70, MAX_FREQ = 450;
+  var STRIDE = 2;
   function autoCorrelate(buf, sampleRate){
     var SIZE = buf.length;
     var rms = 0;
-    for(var i=0;i<SIZE;i++){ rms += buf[i]*buf[i]; }
-    rms = Math.sqrt(rms/SIZE);
+    for(var i=0;i<SIZE;i+=STRIDE){ rms += buf[i]*buf[i]; }
+    rms = Math.sqrt(rms/(SIZE/STRIDE));
     if(rms < 0.01) return -1;
 
     var minLag = Math.max(2, Math.floor(sampleRate / MAX_FREQ));
     var maxLag = Math.min(SIZE - 2, Math.ceil(sampleRate / MIN_FREQ));
     if(maxLag <= minLag) return -1;
 
-    var corrLen = Math.min(SIZE - maxLag, 1536);
+    var corrLen = Math.min(SIZE - maxLag, 1200);
 
     var bestLag = -1, bestCorr = -Infinity;
     var corrs = new Float32Array(maxLag - minLag + 1);
     for(var lag = minLag; lag <= maxLag; lag++){
       var sum = 0;
-      for(var j = 0; j < corrLen; j++){
+      for(var j = 0; j < corrLen; j += STRIDE){
         sum += buf[j] * buf[j+lag];
       }
       corrs[lag - minLag] = sum;
@@ -309,13 +341,21 @@
   function updateDisplay(freq, now){
     if(freq < 30 || freq > 1200 || !isFinite(freq)){
       centsEl.textContent = 'listening...';
-      // silence / no clear pitch breaks any in-progress hold
       inTuneSince = null;
       chimeFiredForThisHold = false;
       return;
     }
 
-    smoothedFreq = (smoothedFreq === null) ? freq : (smoothedFreq * 0.65 + freq * 0.35);
+    if(smoothedFreq === null){
+      smoothedFreq = freq;
+    } else {
+      var jumpRatio = Math.abs(freq - smoothedFreq) / smoothedFreq;
+      if(jumpRatio > JUMP_THRESHOLD_RATIO){
+        smoothedFreq = freq; // big jump: snap instantly, don't crawl toward it
+      } else {
+        smoothedFreq = smoothedFreq * 0.6 + freq * 0.4; // small jitter: light smoothing
+      }
+    }
 
     var r = freqToNote(smoothedFreq);
     var name = r.name, cents = r.cents;
@@ -336,14 +376,13 @@
     if(zone==='green') ball.classList.add('zone-green');
     noteNameEl.classList.toggle('zone-green', zone==='green');
 
-    // --- hold-timer logic for the in-tune chime ---
     if(zone === 'green'){
       if(inTuneSince === null){
-        inTuneSince = now;             // just entered the zone, start the clock
+        inTuneSince = now;
         chimeFiredForThisHold = false;
       } else if(!chimeFiredForThisHold && (now - inTuneSince) >= HOLD_MS){
         playInTuneChime();
-        chimeFiredForThisHold = true;  // don't fire again until it leaves and re-enters the zone
+        chimeFiredForThisHold = true;
       }
     } else {
       inTuneSince = null;
@@ -363,7 +402,7 @@
     if('wakeLock' in navigator){
       navigator.wakeLock.request('screen').then(function(lock){
         wakeLock = lock;
-      }).catch(function(){ /* unsupported or denied, fail silently */ });
+      }).catch(function(){});
     }
   }
   function releaseWakeLock(){
