@@ -3,28 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Tu-Nerd — Tuner</title>
+<title>Frequency Target Replicator</title>
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=VT323&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=VT323&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --shell:#d9c9a3;
-    --shell-dark:#c4b088;
-    --shell-shadow:#a08f68;
-    --panel-dark:#2b2620;
-    --label-paper:#f3ead2;
-    --ink:#3a2f22;
-    --lcd-bg:#1c2b1e;
-    --lcd-glow:#8fe37a;
-    --lcd-glow-dim:#4a7a45;
-    --tape-red:#c1452f;
-    --tape-red-dark:#8f2f1e;
-    --tape-teal:#2f6d63;
-    --metal:#9a9186;
-    --metal-light:#c7bfb2;
-    --close:#d1a53d;
-    --hairline:rgba(58,47,34,0.18);
+    --panel:#232226;
+    --panel-mid:#19181b;
+    --panel-dark:#0e0d0f;
+    --meter-bg:#0c0a0d;
+    --amber:#e8952e;
+    --amber-dim:#8a5f28;
+    --live-white:#e8e2d0;
+    --off:#c1372a;
+    --off-dark:#7d2419;
+    --near:#e8952e;
+    --locked:#5c8a4a;
+    --locked-dark:#3a5c2e;
+    --press-yellow:#f0c419;
+    --ink:#2a2430;
+    --fg:#e6e2da;
+    --plaque:#d8cdd9;
+    --cap:#3a383e;
+    --cap-dark:#232228;
+    --hairline:rgba(230,226,218,0.14);
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{height:100%;}
@@ -32,10 +35,12 @@
     margin:0;
     min-height:100dvh;
     background:
-      radial-gradient(ellipse at 50% -10%, rgba(255,255,255,0.15), transparent 55%),
-      repeating-linear-gradient(115deg, rgba(0,0,0,0.015) 0px, rgba(0,0,0,0.015) 1px, transparent 1px, transparent 4px),
-      linear-gradient(180deg, var(--shell), var(--shell-dark) 85%);
-    color:var(--ink);
+      radial-gradient(ellipse 60% 40% at 20% 15%, rgba(255,255,255,0.18), transparent 60%),
+      radial-gradient(ellipse 50% 35% at 85% 70%, rgba(0,0,0,0.10), transparent 60%),
+      radial-gradient(ellipse 70% 50% at 60% 95%, rgba(255,255,255,0.08), transparent 55%),
+      repeating-linear-gradient(115deg, rgba(0,0,0,0.025) 0px, rgba(0,0,0,0.025) 1px, transparent 1px, transparent 4px),
+      linear-gradient(180deg, var(--panel), var(--panel-dark) 92%);
+    color:var(--fg);
     font-family:'Inter', system-ui, sans-serif;
     display:flex;
     flex-direction:column;
@@ -45,153 +50,162 @@
     user-select:none;
   }
 
-  /* header styled like a hand-labeled cassette sticker, taped on slightly askew */
+  /* header: weathered plaque, centered single-line title */
   header{
     width:100%; max-width:420px;
-    background:var(--label-paper);
-    border:1px solid rgba(58,47,34,0.25);
-    border-radius:6px;
-    padding:14px 18px;
+    background:
+      radial-gradient(ellipse 70% 60% at 25% 20%, rgba(255,255,255,0.35), transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 80%, rgba(0,0,0,0.06), transparent 60%),
+      var(--plaque);
+    border:1px solid rgba(42,36,48,0.28);
+    border-radius:4px;
+    padding:16px 20px;
     margin-bottom:26px;
-    transform:rotate(-1.2deg);
-    box-shadow:0 3px 0 rgba(58,47,34,0.12), 0 6px 14px rgba(0,0,0,0.18);
-    display:flex; align-items:center; justify-content:space-between;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.5), 0 2px 0 rgba(42,36,48,0.15), 0 4px 10px rgba(0,0,0,0.15);
     position:relative;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
   }
-  header::before{
-    content:'';
-    position:absolute; left:14px; right:14px; top:8px;
-    height:1px;
-    background:repeating-linear-gradient(90deg, rgba(58,47,34,0.25) 0 6px, transparent 6px 12px);
+  header::before, header::after{
+    content:''; position:absolute; top:8px; width:5px; height:5px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #fff, #8a8085 75%);
+    box-shadow:0 1px 1px rgba(0,0,0,0.3);
   }
-  header::after{
-    content:'';
-    position:absolute; left:14px; right:14px; bottom:8px;
-    height:1px;
-    background:repeating-linear-gradient(90deg, rgba(58,47,34,0.25) 0 6px, transparent 6px 12px);
-  }
+  header::before{ left:8px; }
+  header::after{ right:8px; }
   .logo{
-    font-family:'Permanent Marker', cursive;
-    font-weight:400;
-    font-size:26px;
-    color:var(--tape-red);
-    letter-spacing:0.5px;
-    padding-top:2px;
+    font-family:'Oswald', sans-serif;
+    font-weight:700;
+    font-size:clamp(15px, 4.6vw, 19px);
+    letter-spacing:0.01em;
+    text-transform:uppercase;
+    color:var(--ink);
+    line-height:1.15;
+    white-space:nowrap;
   }
-  .logo span{ color:var(--tape-teal); }
+  .logo span{ color:var(--off); }
   .tuning-label{
     font-family:'JetBrains Mono', monospace;
-    font-size:11px;
+    font-size:10px;
     letter-spacing:0.1em;
     text-transform:uppercase;
     color:var(--ink);
-    opacity:0.65;
-    text-align:right;
+    opacity:0.55;
+    margin-top:5px;
   }
 
   main{ width:100%; max-width:420px; display:flex; flex-direction:column; align-items:center; gap:28px; }
 
-  /* string buttons -- little cassette reels */
-  .pegs{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+  /* string buttons -- Neve/SSL channel-strip style square buttons */
+  .pegs{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
   .peg{
-    width:48px; height:48px; border-radius:50%;
+    width:44px; height:50px; border-radius:5px;
     display:flex; align-items:center; justify-content:center;
     font-family:'JetBrains Mono', monospace; font-weight:700; font-size:15px;
-    color:var(--panel-dark);
-    background:
-      radial-gradient(circle at center, var(--panel-dark) 0 6px, transparent 6.5px),
-      radial-gradient(circle at 32% 28%, var(--metal-light), var(--metal) 78%);
-    border:1px solid rgba(58,47,34,0.3);
-    box-shadow:0 2px 0 rgba(58,47,34,0.25), inset 0 1px 1px rgba(255,255,255,0.4);
-    transition:all .2s ease;
+    color:var(--plaque);
+    background:linear-gradient(180deg, var(--cap), var(--cap-dark));
+    border:1px solid rgba(42,36,48,0.4);
+    box-shadow:
+      inset 0 1px 1px rgba(255,255,255,0.35),
+      inset 0 -3px 4px rgba(0,0,0,0.25),
+      0 2px 0 rgba(42,36,48,0.35);
+    transition:all .15s ease;
     cursor:pointer;
   }
-  .peg:active{ transform:scale(0.94) translateY(1px); box-shadow:0 1px 0 rgba(58,47,34,0.25); }
+  .peg:active{
+    transform:translateY(1px);
+    box-shadow:inset 0 1px 3px rgba(0,0,0,0.4), 0 0 14px 2px rgba(240,196,25,0.75), 0 1px 0 rgba(42,36,48,0.35);
+  }
   .peg.active{
-    background:
-      radial-gradient(circle at center, var(--panel-dark) 0 6px, transparent 6.5px),
-      radial-gradient(circle at 32% 28%, #e8a05a, var(--tape-red) 78%);
-    color:#fff5e8;
-    box-shadow:0 0 0 3px rgba(193,69,47,0.25), 0 2px 0 rgba(58,47,34,0.25);
-    transform:scale(1.08);
+    background:linear-gradient(180deg, #f0b878, var(--amber));
+    color:#2a1c08;
+    box-shadow:
+      inset 0 1px 1px rgba(255,255,255,0.4),
+      inset 0 -3px 4px rgba(0,0,0,0.2),
+      0 0 10px rgba(232,149,46,0.5), 0 2px 0 rgba(42,36,48,0.35);
   }
   .peg.locked{
-    background:
-      radial-gradient(circle at center, var(--panel-dark) 0 6px, transparent 6.5px),
-      radial-gradient(circle at 32% 28%, #a8d89a, var(--tape-teal) 78%);
-    box-shadow:0 0 0 3px rgba(47,109,99,0.3), 0 2px 0 rgba(58,47,34,0.25);
+    background:linear-gradient(180deg, #9fc98a, var(--locked));
+    color:#12250c;
+    box-shadow:
+      inset 0 1px 1px rgba(255,255,255,0.4),
+      inset 0 -3px 4px rgba(0,0,0,0.2),
+      0 0 10px rgba(92,138,74,0.5), 0 2px 0 rgba(42,36,48,0.35);
   }
-  .peg.playing{ box-shadow:0 0 0 3px var(--tape-red), 0 2px 0 rgba(58,47,34,0.25); }
+  .peg.playing{
+    box-shadow:inset 0 1px 1px rgba(255,255,255,0.4), 0 0 16px 3px rgba(240,196,25,0.65), 0 0 0 2px var(--press-yellow), 0 2px 0 rgba(42,36,48,0.35);
+  }
 
-  .hint{ font-size:11px; color:var(--ink); opacity:0.55; text-align:center; font-style:italic; }
+  .hint{ font-size:11px; color:var(--fg); opacity:0.55; text-align:center; font-family:'JetBrains Mono', monospace; text-transform:uppercase; letter-spacing:0.06em; }
 
   .gauge-wrap{ width:100%; max-width:320px; display:flex; flex-direction:column; align-items:center; gap:22px; }
 
-  /* LCD tape-counter style readout, recessed into the shell */
+  /* amber digital readout, like a vintage frequency counter */
   .readout-numbers{
     width:100%;
-    background:var(--lcd-bg);
-    border-radius:8px;
+    background:var(--meter-bg);
+    border-radius:6px;
     padding:14px 18px;
     display:flex;
     flex-direction:column;
     gap:6px;
-    box-shadow:inset 0 2px 6px rgba(0,0,0,0.6), inset 0 -1px 0 rgba(255,255,255,0.05), 0 2px 0 rgba(58,47,34,0.3);
-    border:1px solid rgba(0,0,0,0.4);
+    box-shadow:inset 0 2px 6px rgba(0,0,0,0.7), inset 0 -1px 0 rgba(255,255,255,0.04), 0 2px 0 rgba(42,36,48,0.3);
+    border:1px solid rgba(0,0,0,0.5);
   }
   .num-row{ display:flex; align-items:baseline; justify-content:space-between; }
-  .num-row + .num-row{ padding-top:6px; border-top:1px dashed rgba(143,227,122,0.15); }
+  .num-row + .num-row{ padding-top:6px; border-top:1px dashed rgba(232,149,46,0.12); }
   .num-label{
     font-family:'JetBrains Mono', monospace;
     font-size:10px;
     letter-spacing:0.15em;
     text-transform:uppercase;
-    color:var(--lcd-glow-dim);
+    color:var(--amber-dim);
   }
   .num-value{
     font-family:'VT323', monospace;
     font-size:26px;
     letter-spacing:0.03em;
-    color:var(--lcd-glow);
-    text-shadow:0 0 6px rgba(143,227,122,0.55);
+    color:var(--amber);
+    text-shadow:0 0 7px rgba(232,149,46,0.6);
   }
-  .num-row.live .num-value{ color:#e8e8a0; text-shadow:0 0 6px rgba(232,232,160,0.5); }
+  .num-row.live .num-value{ color:var(--live-white); text-shadow:0 0 6px rgba(232,226,208,0.4); }
 
-  /* tuning window -- looks like the little position window on a tape deck */
+  @keyframes floatY{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-2px); } }
+  @keyframes flashTarget{ 0%,100%{ opacity:1; } 25%,75%{ opacity:0.12; } 50%{ opacity:1; } }
+  #targetValue{ display:inline-block; animation: floatY 2.6s ease-in-out infinite; }
+  #targetValue.flash{ animation: floatY 2.6s ease-in-out infinite, flashTarget .38s ease-in-out 3; }
+
+  /* tuning window */
   .track-outer{
     position:relative; width:100%; height:64px;
-    background:var(--lcd-bg);
-    border-radius:8px;
-    border:1px solid rgba(0,0,0,0.4);
-    box-shadow:inset 0 2px 6px rgba(0,0,0,0.6), 0 2px 0 rgba(58,47,34,0.3);
+    background:var(--meter-bg);
+    border-radius:6px;
+    border:1px solid rgba(0,0,0,0.5);
+    box-shadow:inset 0 2px 6px rgba(0,0,0,0.7), 0 2px 0 rgba(42,36,48,0.3);
   }
-  .track-line{ position:absolute; top:50%; left:14px; right:14px; height:1px; background:rgba(143,227,122,0.15); transform:translateY(-50%); }
+  .track-line{ position:absolute; top:50%; left:14px; right:14px; height:1px; background:rgba(232,149,46,0.12); transform:translateY(-50%); }
   .track-ticks{ position:absolute; top:50%; left:14px; right:14px; display:flex; justify-content:space-between; transform:translateY(-50%); pointer-events:none; }
-  .track-ticks span{ width:1px; height:12px; background:rgba(143,227,122,0.2); }
-  .track-ticks span.center{ width:2px; height:22px; background:var(--lcd-glow-dim); }
+  .track-ticks span{ width:1px; height:12px; background:rgba(232,149,46,0.18); }
+  .track-ticks span.center{ width:2px; height:22px; background:var(--amber-dim); }
   .ball{
     position:absolute; top:50%; left:50%;
     width:30px; height:30px;
     margin:-15px 0 0 -15px;
     border-radius:50%;
-    background:radial-gradient(circle at 35% 30%, #e08a70, var(--tape-red-dark) 75%);
-    box-shadow:0 0 8px rgba(193,69,47,0.5), 0 2px 3px rgba(0,0,0,0.4);
+    background:radial-gradient(circle at 35% 30%, #e8776a, var(--off-dark) 75%);
+    box-shadow:0 0 8px rgba(193,55,42,0.55), 0 2px 3px rgba(0,0,0,0.4);
     transition:background .15s ease, box-shadow .15s ease, transform .04s linear;
     will-change:transform;
   }
-  .ball::after{
-    content:'';
-    position:absolute; inset:9px;
-    border-radius:50%;
-    background:var(--lcd-bg);
-    opacity:0.85;
-  }
-  .ball.zone-yellow{ background:radial-gradient(circle at 35% 30%, #f0d178, var(--close) 75%); box-shadow:0 0 10px rgba(209,165,61,0.55), 0 2px 3px rgba(0,0,0,0.4); }
-  .ball.zone-green{ background:radial-gradient(circle at 35% 30%, #b8e8a0, var(--tape-teal) 75%); box-shadow:0 0 12px rgba(47,109,99,0.6), 0 2px 3px rgba(0,0,0,0.4); }
+  .ball::after{ content:''; position:absolute; inset:9px; border-radius:50%; background:var(--meter-bg); opacity:0.85; }
+  .ball.zone-yellow{ background:radial-gradient(circle at 35% 30%, #f5c477, var(--near) 75%); box-shadow:0 0 10px rgba(232,149,46,0.55), 0 2px 3px rgba(0,0,0,0.4); }
+  .ball.zone-green{ background:radial-gradient(circle at 35% 30%, #a3d68f, var(--locked) 75%); box-shadow:0 0 12px rgba(92,138,74,0.6), 0 2px 3px rgba(0,0,0,0.4); }
   .direction-label{
     position:absolute; top:6px;
     font-family:'JetBrains Mono', monospace; font-size:9px; letter-spacing:0.12em;
-    color:var(--lcd-glow-dim); text-transform:uppercase;
+    color:var(--amber-dim); text-transform:uppercase;
   }
   .direction-label.flat{ left:14px; }
   .direction-label.sharp{ right:14px; }
@@ -202,35 +216,34 @@
     font-weight:400;
     font-size:76px;
     line-height:1;
-    color:var(--ink);
+    color:var(--fg);
     transition:color .2s ease;
   }
-  .note-name.zone-green{ color:var(--tape-teal); }
-  .cents-readout{ font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--ink); opacity:0.6; margin-top:4px; }
+  .note-name.zone-green{ color:var(--locked); }
+  .cents-readout{ font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--fg); opacity:0.55; margin-top:4px; }
 
   .status-row{
     display:flex; align-items:center; gap:8px;
     font-family:'JetBrains Mono', monospace; font-size:11px;
-    color:var(--ink); opacity:0.6;
+    color:var(--fg); opacity:0.55;
     min-height:18px;
     text-transform:uppercase; letter-spacing:0.08em;
   }
-  .dot{ width:6px; height:6px; border-radius:50%; background:var(--ink); opacity:0.4; }
-  .dot.live{ background:var(--tape-red); opacity:1; box-shadow:0 0 6px rgba(193,69,47,0.7); animation:pulse 1.4s infinite; }
+  .dot{ width:6px; height:6px; border-radius:50%; background:var(--fg); opacity:0.4; }
+  .dot.live{ background:var(--off); opacity:1; box-shadow:0 0 6px rgba(193,55,42,0.7); animation:pulse 1.4s infinite; }
   @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.35;} }
 
-  /* chunky transport-style PLAY/STOP button */
   .mic-btn{
     margin-top:4px; width:100%; max-width:280px; padding:16px;
-    border-radius:12px;
-    border:1px solid rgba(58,47,34,0.3);
-    background:linear-gradient(180deg, var(--metal-light), var(--metal));
-    color:var(--panel-dark);
-    font-family:'JetBrains Mono', monospace; font-weight:700; font-size:14px;
+    border-radius:10px;
+    border:1px solid rgba(42,36,48,0.3);
+    background:linear-gradient(180deg, var(--cap), var(--cap-dark));
+    color:var(--plaque);
+    font-family:'Oswald', sans-serif; font-weight:600; font-size:14px;
     letter-spacing:0.08em; text-transform:uppercase;
     display:flex; align-items:center; justify-content:center; gap:10px;
     cursor:pointer;
-    box-shadow:0 3px 0 rgba(58,47,34,0.35), inset 0 1px 1px rgba(255,255,255,0.5);
+    box-shadow:0 3px 0 rgba(42,36,48,0.35), inset 0 1px 1px rgba(255,255,255,0.4);
     transition:all .12s ease;
   }
   .mic-btn::before{
@@ -238,36 +251,36 @@
     width:0; height:0;
     border-top:7px solid transparent;
     border-bottom:7px solid transparent;
-    border-left:11px solid var(--panel-dark);
+    border-left:11px solid var(--plaque);
   }
-  .mic-btn:active{ transform:translateY(2px); box-shadow:0 1px 0 rgba(58,47,34,0.35); }
+  .mic-btn:active{ transform:translateY(2px); box-shadow:0 1px 0 rgba(42,36,48,0.35); }
   .mic-btn.listening{
-    background:linear-gradient(180deg, #e08a76, var(--tape-red));
-    color:#fff5e8;
-    box-shadow:0 3px 0 var(--tape-red-dark), inset 0 1px 1px rgba(255,255,255,0.3);
+    background:linear-gradient(180deg, #e8776a, var(--off));
+    color:#fff5ef;
+    box-shadow:0 3px 0 var(--off-dark), inset 0 1px 1px rgba(255,255,255,0.3);
   }
   .mic-btn.listening::before{
     border:none;
     width:11px; height:11px;
-    background:#fff5e8;
+    background:#fff5ef;
     border-radius:2px;
   }
 
-  .engine-note{ font-size:10px; color:var(--ink); opacity:0.4; text-align:center; font-family:'JetBrains Mono', monospace; }
+  .engine-note{ font-size:10px; color:var(--fg); opacity:0.45; text-align:center; font-family:'JetBrains Mono', monospace; }
   footer{
     margin-top:auto; padding-top:24px;
-    font-size:10px; color:var(--ink); opacity:0.45;
+    font-size:10px; color:var(--fg); opacity:0.45;
     text-align:center; max-width:320px; line-height:1.6;
     font-family:'JetBrains Mono', monospace;
     text-transform:uppercase; letter-spacing:0.06em;
   }
-  @media (prefers-reduced-motion: reduce){ .ball, .dot.live{ transition:none; animation:none; } }
+  @media (prefers-reduced-motion: reduce){ .ball, .dot.live, #targetValue{ transition:none; animation:none; } }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">Tu<span>-</span>Nerd</div>
+  <div class="logo">Frequency Target <span>Replicator</span></div>
   <div class="tuning-label">Standard · 6-String</div>
 </header>
 
@@ -312,7 +325,7 @@
 </main>
 
 <footer>
-  Side A · YIN pitch detection on a dedicated audio thread. 100% on-device — nothing recorded, nothing sent anywhere.
+  Model FTR-1 · YIN pitch detection on a dedicated audio thread · 100% on-device, nothing recorded or transmitted
 </footer>
 
 <script>
@@ -427,6 +440,20 @@
   var outOfGreenSince = null;
   var GRACE_MS = 250;       // a brief flicker out of the green zone doesn't reset the whole countdown
 
+  // Target readout flashes a quick burst whenever a NEW string is acquired
+  // (idle float animation runs continuously via CSS regardless)
+  var lastTargetStrIdx = null;
+  var flashTimeoutId = null;
+  function flashTarget(){
+    targetValueEl.classList.remove('flash');
+    void targetValueEl.offsetWidth; // restart the CSS animation even if already mid-flash
+    targetValueEl.classList.add('flash');
+    if(flashTimeoutId) clearTimeout(flashTimeoutId);
+    flashTimeoutId = setTimeout(function(){
+      targetValueEl.classList.remove('flash');
+    }, 1300);
+  }
+
   // --- tone playback (separate lightweight context, always main-thread, fine since it's not time-critical detection) ---
   var toneCtx;
   function getToneCtx(){
@@ -438,6 +465,17 @@
     var ctx = getToneCtx();
     var now = ctx.currentTime;
     var dur = 1.4;
+
+    // The lower the string, the harder a phone speaker struggles with the
+    // fundamental -- so scale how present the octave-up companion tone is
+    // based on how low this particular string sits. E2/A2/D3 get a much
+    // stronger octave blend; G3/B3/E4 are already audible on their own.
+    var octaveGain;
+    if(freq < 100) octaveGain = 0.42;       // E2
+    else if(freq < 130) octaveGain = 0.36;  // A2
+    else if(freq < 170) octaveGain = 0.28;  // D3
+    else octaveGain = 0.14;                 // G3, B3, E4
+
     var osc = ctx.createOscillator();
     var gain = ctx.createGain();
     osc.type = 'triangle';
@@ -454,8 +492,8 @@
     osc2.type = 'triangle';
     osc2.frequency.value = freq * 2;
     gain2.gain.setValueAtTime(0, now);
-    gain2.gain.linearRampToValueAtTime(0.18, now + 0.04);
-    gain2.gain.linearRampToValueAtTime(0.18, now + dur - 0.15);
+    gain2.gain.linearRampToValueAtTime(octaveGain, now + 0.04);
+    gain2.gain.linearRampToValueAtTime(octaveGain, now + dur - 0.15);
     gain2.gain.linearRampToValueAtTime(0, now + dur);
     osc2.connect(gain2); gain2.connect(ctx.destination);
     osc2.start(now); osc2.stop(now + dur + 0.05);
@@ -519,6 +557,7 @@
       chimeFiredForThisHold = false;
       outOfGreenSince = null;
       lastValidReadingAt = null;
+      lastTargetStrIdx = null;
       return;
     }
     lastValidReadingAt = now;
@@ -544,6 +583,10 @@
 
     if(strIdx !== null){
       targetValueEl.textContent = STRINGS[strIdx].label + ' string \u00b7 ' + STRINGS[strIdx].freq.toFixed(2) + ' Hz';
+      if(strIdx !== lastTargetStrIdx){
+        flashTarget();
+        lastTargetStrIdx = strIdx;
+      }
     }
     liveValueEl.textContent = trueFreq.toFixed(2) + ' Hz';
 
@@ -773,6 +816,7 @@
       chimeFiredForThisHold = false;
       outOfGreenSince = null;
       lastValidReadingAt = null;
+      lastTargetStrIdx = null;
       targetPx = 0;
       currentPx = 0;
       statusDot.classList.add('live');
@@ -822,6 +866,9 @@
     chimeFiredForThisHold = false;
     outOfGreenSince = null;
     lastValidReadingAt = null;
+    lastTargetStrIdx = null;
+    if(flashTimeoutId){ clearTimeout(flashTimeoutId); flashTimeoutId = null; }
+    targetValueEl.classList.remove('flash');
     targetPx = 0;
     currentPx = 0;
     statusDot.classList.remove('live');
