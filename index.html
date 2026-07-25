@@ -51,17 +51,22 @@
   }
 
   /* header: weathered plaque, centered single-line title */
+  /* recessed engraved nameplate -- same brushed-metal material as the shell,
+     not a separate bright card, so it reads as part of the unit rather than
+     a banner sitting on top of it */
   header{
     width:100%; max-width:420px;
     background:
-      radial-gradient(ellipse 70% 60% at 25% 20%, rgba(255,255,255,0.35), transparent 60%),
-      radial-gradient(ellipse 60% 50% at 80% 80%, rgba(0,0,0,0.06), transparent 60%),
-      var(--plaque);
-    border:1px solid rgba(42,36,48,0.28);
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 3px),
+      linear-gradient(180deg, var(--panel), var(--panel-dark));
+    border:1px solid rgba(0,0,0,0.5);
     border-radius:4px;
     padding:16px 20px;
     margin-bottom:26px;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,0.5), 0 2px 0 rgba(42,36,48,0.15), 0 4px 10px rgba(0,0,0,0.15);
+    box-shadow:
+      inset 0 2px 5px rgba(0,0,0,0.55),
+      inset 0 -1px 0 rgba(255,255,255,0.04),
+      0 1px 0 rgba(255,255,255,0.03);
     position:relative;
     display:flex;
     flex-direction:column;
@@ -69,31 +74,32 @@
     text-align:center;
   }
   header::before, header::after{
-    content:''; position:absolute; top:8px; width:5px; height:5px; border-radius:50%;
-    background:radial-gradient(circle at 35% 30%, #fff, #8a8085 75%);
-    box-shadow:0 1px 1px rgba(0,0,0,0.3);
+    content:''; position:absolute; top:9px; width:4px; height:4px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #6a6870, #232228 75%);
+    box-shadow:inset 0 1px 1px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.06);
   }
-  header::before{ left:8px; }
-  header::after{ right:8px; }
+  header::before{ left:9px; }
+  header::after{ right:9px; }
   .logo{
     font-family:'Oswald', sans-serif;
     font-weight:700;
     font-size:clamp(15px, 4.6vw, 19px);
-    letter-spacing:0.01em;
+    letter-spacing:0.06em;
     text-transform:uppercase;
-    color:var(--ink);
+    color:var(--fg);
+    text-shadow:0 1px 0 rgba(0,0,0,0.7), 0 -1px 0 rgba(255,255,255,0.06);
     line-height:1.15;
     white-space:nowrap;
   }
-  .logo span{ color:var(--off); }
+  .logo span{ color:var(--amber); text-shadow:0 0 8px rgba(232,149,46,0.4), 0 1px 0 rgba(0,0,0,0.7); }
   .tuning-label{
     font-family:'JetBrains Mono', monospace;
     font-size:10px;
-    letter-spacing:0.1em;
+    letter-spacing:0.14em;
     text-transform:uppercase;
-    color:var(--ink);
-    opacity:0.55;
-    margin-top:5px;
+    color:var(--fg);
+    opacity:0.4;
+    margin-top:6px;
   }
 
   main{ width:100%; max-width:420px; display:flex; flex-direction:column; align-items:center; gap:28px; }
