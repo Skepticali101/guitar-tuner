@@ -80,7 +80,7 @@
     border-radius:50%;
     background:var(--flat-sharp);
     box-shadow:0 0 0 6px rgba(177,84,58,0.15), 0 4px 14px rgba(0,0,0,0.4);
-    transition:background .15s ease, box-shadow .15s ease, transform .05s linear;
+    transition:background .15s ease, box-shadow .15s ease, transform .04s linear;
     will-change:transform;
   }
   .ball.zone-yellow{ background:var(--close); box-shadow:0 0 0 6px rgba(209,165,61,0.18), 0 4px 14px rgba(0,0,0,0.4); }
@@ -106,6 +106,7 @@
   .mic-btn:active{ transform:scale(0.97); }
   .mic-btn.listening{ background:var(--brass); color:#1b1510; box-shadow:0 4px 24px rgba(201,162,77,0.3); }
   .hint{ font-size:11px; color:rgba(169,155,124,0.6); text-align:center; }
+  .engine-note{ font-size:10px; color:rgba(169,155,124,0.4); text-align:center; }
   footer{ margin-top:auto; padding-top:24px; font-size:11px; color:rgba(169,155,124,0.5); text-align:center; max-width:320px; line-height:1.5; }
   @media (prefers-reduced-motion: reduce){ .ball, .dot.live{ transition:none; animation:none; } }
 </style>
@@ -143,10 +144,11 @@
   <button class="mic-btn" id="micBtn">
     <span>Start Tuning</span>
   </button>
+  <div class="engine-note" id="engineNote"></div>
 </main>
 
 <footer>
-  Autocorrelation pitch detection, runs entirely on-device. No audio is recorded or sent anywhere.
+  YIN pitch detection running on a dedicated audio thread. Runs entirely on-device — nothing is recorded or sent anywhere.
 </footer>
 
 <script>
@@ -169,6 +171,7 @@
   var statusText = document.getElementById('statusText');
   var micBtn = document.getElementById('micBtn');
   var ticksEl = document.getElementById('ticks');
+  var engineNote = document.getElementById('engineNote');
 
   STRINGS.forEach(function(s, idx){
     var el = document.createElement('div');
@@ -188,25 +191,21 @@
     ticksEl.appendChild(tick);
   }
 
-  var audioCtx, analyser, mediaStream, rafId;
+  var audioCtx, mediaStream, workletNode, analyser, rafId, silentGain;
   var listening = false;
   var wakeLock = null;
-  // Rolling median-of-3 filter instead of exponential smoothing. Exponential
-  // smoothing (blend X% old + Y% new every frame) systematically LAGS behind a
-  // continuously moving target -- exactly what happens while turning a tuning
-  // peg, since pitch is ramping, not jumping. A median filter still rejects
-  // single-frame noise spikes but tracks a moving pitch immediately, since it's
-  // just picking the middle of the last few real readings rather than blending
-  // toward them.
+  var usingWorklet = false;
+
+  // small median-of-3 filter to reject single-frame outliers without the lag
+  // that exponential smoothing introduces on a continuously moving pitch
   var freqHistory = [];
   var HISTORY_LEN = 3;
-  var RESET_JUMP_RATIO = 0.08; // new pluck / string change -- clear history so median doesn't lag the reset either
-
+  var RESET_JUMP_RATIO = 0.08;
   function medianFilter(freq){
     if(freqHistory.length > 0){
       var last = freqHistory[freqHistory.length - 1];
       if(Math.abs(freq - last) / last > RESET_JUMP_RATIO){
-        freqHistory = []; // big jump: start fresh instead of averaging across the discontinuity
+        freqHistory = [];
       }
     }
     freqHistory.push(freq);
@@ -219,27 +218,17 @@
   var chimeFiredForThisHold = false;
   var HOLD_MS = 200;
 
-  var lastDetectTime = 0;
-  var DETECT_INTERVAL = 20; // ms, ~50 updates/sec -- correlation cost is low enough to support this now
-
-  // --- tone playback ---
+  // --- tone playback (separate lightweight context, always main-thread, fine since it's not time-critical detection) ---
   var toneCtx;
   function getToneCtx(){
     if(!toneCtx) toneCtx = new (window.AudioContext || window.webkitAudioContext)();
     if(toneCtx.state === 'suspended') toneCtx.resume();
     return toneCtx;
   }
-
-  // Low guitar frequencies (E2=82Hz, A2=110Hz) are often inaudible on small phone
-  // speakers even at full volume -- the driver just can't move enough air at that
-  // frequency. Fix: use a triangle wave (has audible upper harmonics a phone
-  // speaker CAN reproduce) and layer a quiet octave-up companion tone so the pitch
-  // is still clearly perceptible even when the fundamental itself is weak.
   function playReferenceTone(freq, pegEl){
     var ctx = getToneCtx();
     var now = ctx.currentTime;
     var dur = 1.4;
-
     var osc = ctx.createOscillator();
     var gain = ctx.createGain();
     osc.type = 'triangle';
@@ -248,13 +237,9 @@
     gain.gain.linearRampToValueAtTime(0.5, now + 0.04);
     gain.gain.linearRampToValueAtTime(0.5, now + dur - 0.15);
     gain.gain.linearRampToValueAtTime(0, now + dur);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + dur + 0.05);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(now); osc.stop(now + dur + 0.05);
 
-    // quiet octave-up companion -- reinforces perceived pitch on speakers that
-    // struggle with the low fundamental, without changing which note it sounds like
     var osc2 = ctx.createOscillator();
     var gain2 = ctx.createGain();
     osc2.type = 'triangle';
@@ -263,31 +248,26 @@
     gain2.gain.linearRampToValueAtTime(0.18, now + 0.04);
     gain2.gain.linearRampToValueAtTime(0.18, now + dur - 0.15);
     gain2.gain.linearRampToValueAtTime(0, now + dur);
-    osc2.connect(gain2);
-    gain2.connect(ctx.destination);
-    osc2.start(now);
-    osc2.stop(now + dur + 0.05);
+    osc2.connect(gain2); gain2.connect(ctx.destination);
+    osc2.start(now); osc2.stop(now + dur + 0.05);
 
     if(pegEl){
       pegEl.classList.add('playing');
       setTimeout(function(){ pegEl.classList.remove('playing'); }, dur*1000);
     }
   }
-
   function playInTuneChime(){
     var ctx = getToneCtx();
     var osc = ctx.createOscillator();
     var gain = ctx.createGain();
     osc.type = 'triangle';
-    osc.frequency.value = 1046.5; // C6, already well within small-speaker range
+    osc.frequency.value = 1046.5;
     var now = ctx.currentTime;
     gain.gain.setValueAtTime(0, now);
     gain.gain.linearRampToValueAtTime(0.32, now + 0.02);
     gain.gain.linearRampToValueAtTime(0, now + 0.24);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.27);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(now); osc.stop(now + 0.27);
   }
 
   function freqToNote(freq){
@@ -297,7 +277,6 @@
     var name = NOTE_NAMES[((rounded % 12)+12)%12];
     return {name:name, cents:cents};
   }
-
   function closestString(freq){
     var best = null, bestDiff = Infinity;
     STRINGS.forEach(function(s,i){
@@ -306,56 +285,12 @@
     });
     return best;
   }
-
-  // Autocorrelation restricted to guitar range (70-450Hz) with a downsampled
-  // correlation pass (stride of 2) to roughly halve the multiply-add work per
-  // detection frame -- this is the main lever against stutter/lockup on
-  // lower-powered phones, on top of the existing lag-range restriction.
-  var MIN_FREQ = 70, MAX_FREQ = 450;
-  var STRIDE = 2;
-  function autoCorrelate(buf, sampleRate){
-    var SIZE = buf.length;
-    var rms = 0;
-    for(var i=0;i<SIZE;i+=STRIDE){ rms += buf[i]*buf[i]; }
-    rms = Math.sqrt(rms/(SIZE/STRIDE));
-    if(rms < 0.01) return -1;
-
-    var minLag = Math.max(2, Math.floor(sampleRate / MAX_FREQ));
-    var maxLag = Math.min(SIZE - 2, Math.ceil(sampleRate / MIN_FREQ));
-    if(maxLag <= minLag) return -1;
-
-    var corrLen = Math.min(SIZE - maxLag, 1200);
-
-    var bestLag = -1, bestCorr = -Infinity;
-    var corrs = new Float32Array(maxLag - minLag + 1);
-    for(var lag = minLag; lag <= maxLag; lag++){
-      var sum = 0;
-      for(var j = 0; j < corrLen; j += STRIDE){
-        sum += buf[j] * buf[j+lag];
-      }
-      corrs[lag - minLag] = sum;
-      if(sum > bestCorr){ bestCorr = sum; bestLag = lag; }
-    }
-    if(bestLag < 0) return -1;
-
-    var idx = bestLag - minLag;
-    var x1 = corrs[idx-1] || bestCorr;
-    var x2 = corrs[idx];
-    var x3 = corrs[idx+1] || bestCorr;
-    var a = (x1 + x3 - 2*x2) / 2;
-    var b = (x3 - x1) / 2;
-    var shift = a ? -b/(2*a) : 0;
-    var T0 = bestLag + shift;
-    if(T0 <= 0) return -1;
-    return sampleRate / T0;
-  }
-
   function getHalfRange(){
     return (ball.parentElement.clientWidth / 2) - 20;
   }
 
-  function updateDisplay(freq, now){
-    if(freq < 30 || freq > 1200 || !isFinite(freq)){
+  function updateDisplay(rawFreq, now){
+    if(!rawFreq || rawFreq < 30 || rawFreq > 1200 || !isFinite(rawFreq)){
       centsEl.textContent = 'listening...';
       freqHistory = [];
       inTuneSince = null;
@@ -363,8 +298,7 @@
       return;
     }
 
-    var displayFreq = medianFilter(freq);
-
+    var displayFreq = medianFilter(rawFreq);
     var r = freqToNote(displayFreq);
     var name = r.name, cents = r.cents;
     var strIdx = closestString(displayFreq);
@@ -386,20 +320,16 @@
 
     if(zone === 'green'){
       if(inTuneSince === null){
-        inTuneSince = now;
-        chimeFiredForThisHold = false;
+        inTuneSince = now; chimeFiredForThisHold = false;
       } else if(!chimeFiredForThisHold && (now - inTuneSince) >= HOLD_MS){
-        playInTuneChime();
-        chimeFiredForThisHold = true;
+        playInTuneChime(); chimeFiredForThisHold = true;
       }
     } else {
-      inTuneSince = null;
-      chimeFiredForThisHold = false;
+      inTuneSince = null; chimeFiredForThisHold = false;
     }
 
     var clamped = Math.max(-50, Math.min(50, cents));
-    var halfRange = getHalfRange();
-    var px = (clamped/50) * halfRange;
+    var px = (clamped/50) * getHalfRange();
     ball.style.transform = 'translateX(' + px + 'px)';
 
     noteNameEl.textContent = name;
@@ -408,16 +338,11 @@
 
   function requestWakeLock(){
     if('wakeLock' in navigator){
-      navigator.wakeLock.request('screen').then(function(lock){
-        wakeLock = lock;
-      }).catch(function(){});
+      navigator.wakeLock.request('screen').then(function(lock){ wakeLock = lock; }).catch(function(){});
     }
   }
   function releaseWakeLock(){
-    if(wakeLock){
-      wakeLock.release().catch(function(){});
-      wakeLock = null;
-    }
+    if(wakeLock){ wakeLock.release().catch(function(){}); wakeLock = null; }
   }
   document.addEventListener('visibilitychange', function(){
     if(document.visibilityState === 'hidden'){
@@ -427,6 +352,166 @@
     }
   });
 
+  // ============================================================
+  // AudioWorklet-based YIN pitch detector -- runs on the browser's
+  // dedicated real-time audio thread, completely separate from the
+  // main UI thread. This is what fixes the "gets stuck" problem:
+  // main-thread work (rendering, GC, etc.) can no longer stall
+  // pitch detection, because detection isn't happening there anymore.
+  // ============================================================
+  var WORKLET_SRC = [
+    "class PitchProcessor extends AudioWorkletProcessor {",
+    "  constructor(){",
+    "    super();",
+    "    this.bufferSize = 2048;",
+    "    this.ring = new Float32Array(this.bufferSize);",
+    "    this.writeIdx = 0;",
+    "    this.filled = 0;",
+    "    this.samplesSinceRun = 0;",
+    "    this.hop = 1024;", // run detection roughly every 1024 new samples
+    "    this.minFreq = 70;",
+    "    this.maxFreq = 450;",
+    "  }",
+    "  yinDetect(buf, sampleRate){",
+    "    var n = buf.length;",
+    "    var tauMax = Math.min(Math.ceil(sampleRate / this.minFreq), Math.floor(n/2) - 1);",
+    "    var tauMin = Math.max(2, Math.floor(sampleRate / this.maxFreq));",
+    "    if(tauMax <= tauMin) return -1;",
+    "    var corrLen = n - tauMax;",
+    "    if(corrLen < 32) return -1;",
+    "    var rms = 0;",
+    "    for(var i=0;i<corrLen;i++){ rms += buf[i]*buf[i]; }",
+    "    rms = Math.sqrt(rms/corrLen);",
+    "    if(rms < 0.008) return -1;",
+    "    var d = new Float32Array(tauMax+1);",
+    "    var runningSum = 0;",
+    "    d[0] = 1;",
+    "    for(var tau=1; tau<=tauMax; tau++){",
+    "      var sum = 0;",
+    "      for(var j=0; j<corrLen; j++){",
+    "        var delta = buf[j] - buf[j+tau];",
+    "        sum += delta*delta;",
+    "      }",
+    "      runningSum += sum;",
+    "      d[tau] = (runningSum === 0) ? 1 : sum * tau / runningSum;",
+    "    }",
+    "    var threshold = 0.15;",
+    "    var tau = tauMin;",
+    "    var found = -1;",
+    "    while(tau <= tauMax){",
+    "      if(d[tau] < threshold){",
+    "        while(tau+1 <= tauMax && d[tau+1] < d[tau]) tau++;",
+    "        found = tau;",
+    "        break;",
+    "      }",
+    "      tau++;",
+    "    }",
+    "    if(found === -1) return -1;",
+    "    var x0 = (found > 1) ? d[found-1] : d[found];",
+    "    var x1 = d[found];",
+    "    var x2 = (found+1 <= tauMax) ? d[found+1] : d[found];",
+    "    var a = (x0 + x2 - 2*x1) / 2;",
+    "    var b = (x2 - x0) / 2;",
+    "    var betterTau = found;",
+    "    if(a !== 0) betterTau = found - b/(2*a);",
+    "    if(betterTau <= 0) return -1;",
+    "    return sampleRate / betterTau;",
+    "  }",
+    "  process(inputs){",
+    "    var input = inputs[0];",
+    "    if(!input || !input[0]) return true;",
+    "    var chunk = input[0];",
+    "    for(var i=0;i<chunk.length;i++){",
+    "      this.ring[this.writeIdx] = chunk[i];",
+    "      this.writeIdx = (this.writeIdx + 1) % this.bufferSize;",
+    "      if(this.filled < this.bufferSize) this.filled++;",
+    "    }",
+    "    this.samplesSinceRun += chunk.length;",
+    "    if(this.filled >= this.bufferSize && this.samplesSinceRun >= this.hop){",
+    "      this.samplesSinceRun = 0;",
+    "      var ordered = new Float32Array(this.bufferSize);",
+    "      for(var k=0;k<this.bufferSize;k++){",
+    "        ordered[k] = this.ring[(this.writeIdx + k) % this.bufferSize];",
+    "      }",
+    "      var freq = this.yinDetect(ordered, sampleRate);",
+    "      this.port.postMessage(freq);",
+    "    }",
+    "    return true;",
+    "  }",
+    "}",
+    "registerProcessor('pitch-processor', PitchProcessor);"
+  ].join("\\n");
+
+  function startWithWorklet(){
+    return audioCtx.audioWorklet.addModule(
+      URL.createObjectURL(new Blob([WORKLET_SRC], {type:'application/javascript'}))
+    ).then(function(){
+      var source = audioCtx.createMediaStreamSource(mediaStream);
+      workletNode = new AudioWorkletNode(audioCtx, 'pitch-processor');
+      workletNode.port.onmessage = function(e){
+        updateDisplay(e.data, performance.now());
+      };
+      // keep the node "live" in the graph (required for process() to keep firing)
+      // without producing any audible output
+      silentGain = audioCtx.createGain();
+      silentGain.gain.value = 0;
+      source.connect(workletNode);
+      workletNode.connect(silentGain);
+      silentGain.connect(audioCtx.destination);
+      usingWorklet = true;
+    });
+  }
+
+  // --- fallback path for browsers without AudioWorklet support: same idea,
+  // polled via rAF on the main thread. Kept as a safety net only. ---
+  function startWithFallback(){
+    var source = audioCtx.createMediaStreamSource(mediaStream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    source.connect(analyser);
+    var buf = new Float32Array(analyser.fftSize);
+    var lastDetectTime = 0;
+    var DETECT_INTERVAL = 20;
+
+    function autoCorrelate(b, sampleRate){
+      var SIZE = b.length;
+      var rms = 0;
+      for(var i=0;i<SIZE;i+=2){ rms += b[i]*b[i]; }
+      rms = Math.sqrt(rms/(SIZE/2));
+      if(rms < 0.01) return -1;
+      var minLag = Math.max(2, Math.floor(sampleRate/450));
+      var maxLag = Math.min(SIZE-2, Math.ceil(sampleRate/70));
+      if(maxLag <= minLag) return -1;
+      var corrLen = Math.min(SIZE-maxLag, 1200);
+      var bestLag=-1, bestCorr=-Infinity;
+      var corrs = new Float32Array(maxLag-minLag+1);
+      for(var lag=minLag; lag<=maxLag; lag++){
+        var sum=0;
+        for(var j=0;j<corrLen;j+=2){ sum += b[j]*b[j+lag]; }
+        corrs[lag-minLag]=sum;
+        if(sum>bestCorr){ bestCorr=sum; bestLag=lag; }
+      }
+      if(bestLag<0) return -1;
+      var idx=bestLag-minLag;
+      var x1=corrs[idx-1]||bestCorr, x2=corrs[idx], x3=corrs[idx+1]||bestCorr;
+      var a=(x1+x3-2*x2)/2, bb=(x3-x1)/2;
+      var shift = a ? -bb/(2*a) : 0;
+      var T0 = bestLag+shift;
+      return T0<=0 ? -1 : sampleRate/T0;
+    }
+    function loop(ts){
+      if(!listening) return;
+      if(ts - lastDetectTime >= DETECT_INTERVAL){
+        lastDetectTime = ts;
+        analyser.getFloatTimeDomainData(buf);
+        updateDisplay(autoCorrelate(buf, audioCtx.sampleRate), ts);
+      }
+      rafId = requestAnimationFrame(loop);
+    }
+    rafId = requestAnimationFrame(loop);
+    usingWorklet = false;
+  }
+
   function startListening(){
     navigator.mediaDevices.getUserMedia({ audio: {
       echoCancellation:false, noiseSuppression:false, autoGainControl:false
@@ -435,12 +520,6 @@
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       return audioCtx.resume();
     }).then(function(){
-      var source = audioCtx.createMediaStreamSource(mediaStream);
-      analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 2048;
-      source.connect(analyser);
-
-      var buf = new Float32Array(analyser.fftSize);
       listening = true;
       freqHistory = [];
       inTuneSince = null;
@@ -451,17 +530,17 @@
       micBtn.querySelector('span').textContent = 'Stop Tuning';
       requestWakeLock();
 
-      function loop(timestamp){
-        if(!listening) return;
-        if(timestamp - lastDetectTime >= DETECT_INTERVAL){
-          lastDetectTime = timestamp;
-          analyser.getFloatTimeDomainData(buf);
-          var freq = autoCorrelate(buf, audioCtx.sampleRate);
-          updateDisplay(freq, timestamp);
-        }
-        rafId = requestAnimationFrame(loop);
+      if(audioCtx.audioWorklet){
+        startWithWorklet().then(function(){
+          engineNote.textContent = 'engine: audio-thread (YIN)';
+        }).catch(function(err){
+          engineNote.textContent = 'engine: fallback';
+          startWithFallback();
+        });
+      } else {
+        engineNote.textContent = 'engine: fallback';
+        startWithFallback();
       }
-      rafId = requestAnimationFrame(loop);
     }).catch(function(){
       statusText.textContent = 'mic permission denied';
     });
@@ -470,15 +549,20 @@
   function stopListening(){
     listening = false;
     if(rafId) cancelAnimationFrame(rafId);
+    if(workletNode){ try{ workletNode.disconnect(); }catch(e){} workletNode = null; }
+    if(silentGain){ try{ silentGain.disconnect(); }catch(e){} silentGain = null; }
+    if(analyser){ try{ analyser.disconnect(); }catch(e){} analyser = null; }
     if(mediaStream) mediaStream.getTracks().forEach(function(t){ t.stop(); });
     if(audioCtx) audioCtx.close();
     releaseWakeLock();
+    freqHistory = [];
     inTuneSince = null;
     chimeFiredForThisHold = false;
     statusDot.classList.remove('live');
     statusText.textContent = 'microphone off';
     micBtn.classList.remove('listening');
     micBtn.querySelector('span').textContent = 'Start Tuning';
+    engineNote.textContent = '';
     noteNameEl.textContent = '-';
     noteNameEl.classList.remove('zone-green');
     centsEl.textContent = 'play a string to begin';
