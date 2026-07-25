@@ -315,4 +315,3 @@ export const testables = {
     midiPitchToContourBin: midiPitchToContourBin,
     midiToHz: midiToHz,
 };
-//# sourceMappingURL=toMidi.js.map

@@ -100,4 +100,3 @@ export class BasicPitch {
         percentCallback(1.0);
     }
 }
-//# sourceMappingURL=inference.js.map

@@ -1109,19 +1109,31 @@ async function startChordCapture(){
   }
 
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  await audioCtx.resume();
 
-  await audioCtx.audioWorklet.addModule(
-    URL.createObjectURL(new Blob([CAPTURE_WORKLET_SRC], { type: 'application/javascript' }))
-  );
+  try {
+    await audioCtx.resume();
+    await audioCtx.audioWorklet.addModule(
+      URL.createObjectURL(new Blob([CAPTURE_WORKLET_SRC], { type: 'application/javascript' }))
+    );
 
-  const source = audioCtx.createMediaStreamSource(mediaStream);
-  workletNode = new AudioWorkletNode(audioCtx, 'capture-processor');
-  silentGain = audioCtx.createGain();
-  silentGain.gain.value = 0;
-  source.connect(workletNode);
-  workletNode.connect(silentGain);
-  silentGain.connect(audioCtx.destination);
+    const source = audioCtx.createMediaStreamSource(mediaStream);
+    workletNode = new AudioWorkletNode(audioCtx, 'capture-processor');
+    silentGain = audioCtx.createGain();
+    silentGain.gain.value = 0;
+    source.connect(workletNode);
+    workletNode.connect(silentGain);
+    silentGain.connect(audioCtx.destination);
+  } catch (err) {
+    // Common cause: testing via file:// instead of the deployed https:// site --
+    // blob-URL worklet loading and ES module imports are both blocked under
+    // the file: origin. Clean up fully rather than leaving the mic open.
+    console.error('Chord capture setup failed:', err);
+    setChordStatus('capture setup failed', false);
+    chordNotesEl.textContent = 'audio setup failed — if opening this file directly, try the deployed site instead';
+    if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+    if (audioCtx) { audioCtx.close(); audioCtx = null; }
+    return;
+  }
 
   capturedChunks = [];
   capturedSampleCount = 0;
