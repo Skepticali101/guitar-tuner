@@ -3,21 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Fret &amp; Grain — Tuner</title>
+<title>Tu-Nerd — Tuner</title>
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=VT323&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --wood-dark:#1b1510;
-    --brass:#c9a24d;
-    --brass-bright:#e6c169;
-    --cream:#efe4c9;
-    --cream-dim:#a99b7c;
-    --flat-sharp:#b1543a;
+    --shell:#d9c9a3;
+    --shell-dark:#c4b088;
+    --shell-shadow:#a08f68;
+    --panel-dark:#2b2620;
+    --label-paper:#f3ead2;
+    --ink:#3a2f22;
+    --lcd-bg:#1c2b1e;
+    --lcd-glow:#8fe37a;
+    --lcd-glow-dim:#4a7a45;
+    --tape-red:#c1452f;
+    --tape-red-dark:#8f2f1e;
+    --tape-teal:#2f6d63;
+    --metal:#9a9186;
+    --metal-light:#c7bfb2;
     --close:#d1a53d;
-    --in-tune:#7a9a6a;
-    --hairline:rgba(201,162,77,0.18);
+    --hairline:rgba(58,47,34,0.18);
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{height:100%;}
@@ -25,9 +32,10 @@
     margin:0;
     min-height:100dvh;
     background:
-      radial-gradient(ellipse at 50% -10%, rgba(201,162,77,0.08), transparent 55%),
-      linear-gradient(180deg, var(--wood-dark), #14100c 85%);
-    color:var(--cream);
+      radial-gradient(ellipse at 50% -10%, rgba(255,255,255,0.15), transparent 55%),
+      repeating-linear-gradient(115deg, rgba(0,0,0,0.015) 0px, rgba(0,0,0,0.015) 1px, transparent 1px, transparent 4px),
+      linear-gradient(180deg, var(--shell), var(--shell-dark) 85%);
+    color:var(--ink);
     font-family:'Inter', system-ui, sans-serif;
     display:flex;
     flex-direction:column;
@@ -36,85 +44,230 @@
     overflow-x:hidden;
     user-select:none;
   }
+
+  /* header styled like a hand-labeled cassette sticker, taped on slightly askew */
   header{
     width:100%; max-width:420px;
-    display:flex; align-items:baseline; justify-content:space-between;
-    padding:14px 2px 22px;
-    border-bottom:1px solid var(--hairline);
-    margin-bottom:22px;
+    background:var(--label-paper);
+    border:1px solid rgba(58,47,34,0.25);
+    border-radius:6px;
+    padding:14px 18px;
+    margin-bottom:26px;
+    transform:rotate(-1.2deg);
+    box-shadow:0 3px 0 rgba(58,47,34,0.12), 0 6px 14px rgba(0,0,0,0.18);
+    display:flex; align-items:center; justify-content:space-between;
+    position:relative;
   }
-  .logo{ font-family:'Fraunces', serif; font-weight:700; font-size:22px; }
-  .logo span{ color:var(--brass); font-style:italic; font-weight:600; }
-  .tuning-label{ font-size:12px; letter-spacing:0.12em; text-transform:uppercase; color:var(--cream-dim); }
-  main{ width:100%; max-width:420px; display:flex; flex-direction:column; align-items:center; gap:30px; }
+  header::before{
+    content:'';
+    position:absolute; left:14px; right:14px; top:8px;
+    height:1px;
+    background:repeating-linear-gradient(90deg, rgba(58,47,34,0.25) 0 6px, transparent 6px 12px);
+  }
+  header::after{
+    content:'';
+    position:absolute; left:14px; right:14px; bottom:8px;
+    height:1px;
+    background:repeating-linear-gradient(90deg, rgba(58,47,34,0.25) 0 6px, transparent 6px 12px);
+  }
+  .logo{
+    font-family:'Permanent Marker', cursive;
+    font-weight:400;
+    font-size:26px;
+    color:var(--tape-red);
+    letter-spacing:0.5px;
+    padding-top:2px;
+  }
+  .logo span{ color:var(--tape-teal); }
+  .tuning-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--ink);
+    opacity:0.65;
+    text-align:right;
+  }
+
+  main{ width:100%; max-width:420px; display:flex; flex-direction:column; align-items:center; gap:28px; }
+
+  /* string buttons -- little cassette reels */
   .pegs{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
   .peg{
-    width:46px; height:46px; border-radius:50%;
+    width:48px; height:48px; border-radius:50%;
     display:flex; align-items:center; justify-content:center;
-    font-family:'Fraunces', serif; font-weight:600; font-size:16px;
-    color:var(--cream-dim);
-    background:radial-gradient(circle at 32% 28%, #362a1c, #1e1710 72%);
-    border:1px solid var(--hairline);
-    transition:all .25s ease;
+    font-family:'JetBrains Mono', monospace; font-weight:700; font-size:15px;
+    color:var(--panel-dark);
+    background:
+      radial-gradient(circle at center, var(--panel-dark) 0 6px, transparent 6.5px),
+      radial-gradient(circle at 32% 28%, var(--metal-light), var(--metal) 78%);
+    border:1px solid rgba(58,47,34,0.3);
+    box-shadow:0 2px 0 rgba(58,47,34,0.25), inset 0 1px 1px rgba(255,255,255,0.4);
+    transition:all .2s ease;
     cursor:pointer;
   }
-  .peg:active{ transform:scale(0.94); }
+  .peg:active{ transform:scale(0.94) translateY(1px); box-shadow:0 1px 0 rgba(58,47,34,0.25); }
   .peg.active{
-    color:#1b1510;
-    background:radial-gradient(circle at 32% 28%, var(--brass-bright), var(--brass) 75%);
-    border-color:var(--brass-bright);
-    box-shadow:0 0 18px rgba(201,162,77,0.45);
+    background:
+      radial-gradient(circle at center, var(--panel-dark) 0 6px, transparent 6.5px),
+      radial-gradient(circle at 32% 28%, #e8a05a, var(--tape-red) 78%);
+    color:#fff5e8;
+    box-shadow:0 0 0 3px rgba(193,69,47,0.25), 0 2px 0 rgba(58,47,34,0.25);
     transform:scale(1.08);
   }
-  .peg.locked{ box-shadow:0 0 18px rgba(122,154,106,0.55); background:radial-gradient(circle at 32% 28%, #a9c497, var(--in-tune) 75%); }
-  .peg.playing{ box-shadow:0 0 0 3px var(--brass-bright); }
+  .peg.locked{
+    background:
+      radial-gradient(circle at center, var(--panel-dark) 0 6px, transparent 6.5px),
+      radial-gradient(circle at 32% 28%, #a8d89a, var(--tape-teal) 78%);
+    box-shadow:0 0 0 3px rgba(47,109,99,0.3), 0 2px 0 rgba(58,47,34,0.25);
+  }
+  .peg.playing{ box-shadow:0 0 0 3px var(--tape-red), 0 2px 0 rgba(58,47,34,0.25); }
+
+  .hint{ font-size:11px; color:var(--ink); opacity:0.55; text-align:center; font-style:italic; }
+
   .gauge-wrap{ width:100%; max-width:320px; display:flex; flex-direction:column; align-items:center; gap:22px; }
-  .track-outer{ position:relative; width:100%; height:64px; }
-  .track-line{ position:absolute; top:50%; left:0; right:0; height:2px; background:rgba(239,228,201,0.1); transform:translateY(-50%); }
-  .track-ticks{ position:absolute; top:50%; left:0; right:0; display:flex; justify-content:space-between; transform:translateY(-50%); pointer-events:none; }
-  .track-ticks span{ width:1px; height:14px; background:rgba(239,228,201,0.18); }
-  .track-ticks span.center{ width:2px; height:26px; background:var(--brass); opacity:0.8; }
+
+  /* LCD tape-counter style readout, recessed into the shell */
+  .readout-numbers{
+    width:100%;
+    background:var(--lcd-bg);
+    border-radius:8px;
+    padding:14px 18px;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    box-shadow:inset 0 2px 6px rgba(0,0,0,0.6), inset 0 -1px 0 rgba(255,255,255,0.05), 0 2px 0 rgba(58,47,34,0.3);
+    border:1px solid rgba(0,0,0,0.4);
+  }
+  .num-row{ display:flex; align-items:baseline; justify-content:space-between; }
+  .num-row + .num-row{ padding-top:6px; border-top:1px dashed rgba(143,227,122,0.15); }
+  .num-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    letter-spacing:0.15em;
+    text-transform:uppercase;
+    color:var(--lcd-glow-dim);
+  }
+  .num-value{
+    font-family:'VT323', monospace;
+    font-size:26px;
+    letter-spacing:0.03em;
+    color:var(--lcd-glow);
+    text-shadow:0 0 6px rgba(143,227,122,0.55);
+  }
+  .num-row.live .num-value{ color:#e8e8a0; text-shadow:0 0 6px rgba(232,232,160,0.5); }
+
+  /* tuning window -- looks like the little position window on a tape deck */
+  .track-outer{
+    position:relative; width:100%; height:64px;
+    background:var(--lcd-bg);
+    border-radius:8px;
+    border:1px solid rgba(0,0,0,0.4);
+    box-shadow:inset 0 2px 6px rgba(0,0,0,0.6), 0 2px 0 rgba(58,47,34,0.3);
+  }
+  .track-line{ position:absolute; top:50%; left:14px; right:14px; height:1px; background:rgba(143,227,122,0.15); transform:translateY(-50%); }
+  .track-ticks{ position:absolute; top:50%; left:14px; right:14px; display:flex; justify-content:space-between; transform:translateY(-50%); pointer-events:none; }
+  .track-ticks span{ width:1px; height:12px; background:rgba(143,227,122,0.2); }
+  .track-ticks span.center{ width:2px; height:22px; background:var(--lcd-glow-dim); }
   .ball{
     position:absolute; top:50%; left:50%;
-    width:34px; height:34px; margin:-17px 0 0 -17px;
+    width:30px; height:30px;
+    margin:-15px 0 0 -15px;
     border-radius:50%;
-    background:var(--flat-sharp);
-    box-shadow:0 0 0 6px rgba(177,84,58,0.15), 0 4px 14px rgba(0,0,0,0.4);
+    background:radial-gradient(circle at 35% 30%, #e08a70, var(--tape-red-dark) 75%);
+    box-shadow:0 0 8px rgba(193,69,47,0.5), 0 2px 3px rgba(0,0,0,0.4);
     transition:background .15s ease, box-shadow .15s ease, transform .04s linear;
     will-change:transform;
   }
-  .ball.zone-yellow{ background:var(--close); box-shadow:0 0 0 6px rgba(209,165,61,0.18), 0 4px 14px rgba(0,0,0,0.4); }
-  .ball.zone-green{ background:var(--in-tune); box-shadow:0 0 0 8px rgba(122,154,106,0.22), 0 4px 18px rgba(0,0,0,0.4); }
-  .direction-label{ position:absolute; top:50%; transform:translateY(-50%); font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.1em; color:var(--cream-dim); text-transform:uppercase; }
-  .direction-label.flat{ left:0; }
-  .direction-label.sharp{ right:0; }
-  .note-readout{ text-align:center; }
-  .note-name{ font-family:'Fraunces', serif; font-weight:700; font-size:64px; line-height:1; letter-spacing:-1px; color:var(--cream); transition:color .2s ease; }
-  .note-name.zone-green{ color:var(--in-tune); }
-  .cents-readout{ font-family:'JetBrains Mono', monospace; font-size:13px; color:var(--cream-dim); margin-top:6px; }
-  .status-row{ display:flex; align-items:center; gap:8px; font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--cream-dim); min-height:18px; }
-  .dot{ width:6px; height:6px; border-radius:50%; background:var(--cream-dim); }
-  .dot.live{ background:var(--brass-bright); box-shadow:0 0 6px var(--brass-bright); animation:pulse 1.4s infinite; }
-  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.35;} }
-  .mic-btn{
-    margin-top:6px; width:100%; max-width:280px; padding:16px;
-    border-radius:999px; border:1px solid var(--brass); background:transparent;
-    color:var(--brass-bright); font-family:'Inter', sans-serif; font-weight:600; font-size:15px;
-    display:flex; align-items:center; justify-content:center; gap:10px;
-    cursor:pointer; transition:all .2s ease;
+  .ball::after{
+    content:'';
+    position:absolute; inset:9px;
+    border-radius:50%;
+    background:var(--lcd-bg);
+    opacity:0.85;
   }
-  .mic-btn:active{ transform:scale(0.97); }
-  .mic-btn.listening{ background:var(--brass); color:#1b1510; box-shadow:0 4px 24px rgba(201,162,77,0.3); }
-  .hint{ font-size:11px; color:rgba(169,155,124,0.6); text-align:center; }
-  .engine-note{ font-size:10px; color:rgba(169,155,124,0.4); text-align:center; }
-  footer{ margin-top:auto; padding-top:24px; font-size:11px; color:rgba(169,155,124,0.5); text-align:center; max-width:320px; line-height:1.5; }
+  .ball.zone-yellow{ background:radial-gradient(circle at 35% 30%, #f0d178, var(--close) 75%); box-shadow:0 0 10px rgba(209,165,61,0.55), 0 2px 3px rgba(0,0,0,0.4); }
+  .ball.zone-green{ background:radial-gradient(circle at 35% 30%, #b8e8a0, var(--tape-teal) 75%); box-shadow:0 0 12px rgba(47,109,99,0.6), 0 2px 3px rgba(0,0,0,0.4); }
+  .direction-label{
+    position:absolute; top:6px;
+    font-family:'JetBrains Mono', monospace; font-size:9px; letter-spacing:0.12em;
+    color:var(--lcd-glow-dim); text-transform:uppercase;
+  }
+  .direction-label.flat{ left:14px; }
+  .direction-label.sharp{ right:14px; }
+
+  .note-readout{ text-align:center; }
+  .note-name{
+    font-family:'VT323', monospace;
+    font-weight:400;
+    font-size:76px;
+    line-height:1;
+    color:var(--ink);
+    transition:color .2s ease;
+  }
+  .note-name.zone-green{ color:var(--tape-teal); }
+  .cents-readout{ font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--ink); opacity:0.6; margin-top:4px; }
+
+  .status-row{
+    display:flex; align-items:center; gap:8px;
+    font-family:'JetBrains Mono', monospace; font-size:11px;
+    color:var(--ink); opacity:0.6;
+    min-height:18px;
+    text-transform:uppercase; letter-spacing:0.08em;
+  }
+  .dot{ width:6px; height:6px; border-radius:50%; background:var(--ink); opacity:0.4; }
+  .dot.live{ background:var(--tape-red); opacity:1; box-shadow:0 0 6px rgba(193,69,47,0.7); animation:pulse 1.4s infinite; }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+
+  /* chunky transport-style PLAY/STOP button */
+  .mic-btn{
+    margin-top:4px; width:100%; max-width:280px; padding:16px;
+    border-radius:12px;
+    border:1px solid rgba(58,47,34,0.3);
+    background:linear-gradient(180deg, var(--metal-light), var(--metal));
+    color:var(--panel-dark);
+    font-family:'JetBrains Mono', monospace; font-weight:700; font-size:14px;
+    letter-spacing:0.08em; text-transform:uppercase;
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    cursor:pointer;
+    box-shadow:0 3px 0 rgba(58,47,34,0.35), inset 0 1px 1px rgba(255,255,255,0.5);
+    transition:all .12s ease;
+  }
+  .mic-btn::before{
+    content:'';
+    width:0; height:0;
+    border-top:7px solid transparent;
+    border-bottom:7px solid transparent;
+    border-left:11px solid var(--panel-dark);
+  }
+  .mic-btn:active{ transform:translateY(2px); box-shadow:0 1px 0 rgba(58,47,34,0.35); }
+  .mic-btn.listening{
+    background:linear-gradient(180deg, #e08a76, var(--tape-red));
+    color:#fff5e8;
+    box-shadow:0 3px 0 var(--tape-red-dark), inset 0 1px 1px rgba(255,255,255,0.3);
+  }
+  .mic-btn.listening::before{
+    border:none;
+    width:11px; height:11px;
+    background:#fff5e8;
+    border-radius:2px;
+  }
+
+  .engine-note{ font-size:10px; color:var(--ink); opacity:0.4; text-align:center; font-family:'JetBrains Mono', monospace; }
+  footer{
+    margin-top:auto; padding-top:24px;
+    font-size:10px; color:var(--ink); opacity:0.45;
+    text-align:center; max-width:320px; line-height:1.6;
+    font-family:'JetBrains Mono', monospace;
+    text-transform:uppercase; letter-spacing:0.06em;
+  }
   @media (prefers-reduced-motion: reduce){ .ball, .dot.live{ transition:none; animation:none; } }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">fret<span>&amp;</span>grain</div>
+  <div class="logo">Tu<span>-</span>Nerd</div>
   <div class="tuning-label">Standard · 6-String</div>
 </header>
 
@@ -123,6 +276,17 @@
   <div class="hint">tap a string to hear its reference pitch</div>
 
   <div class="gauge-wrap">
+    <div class="readout-numbers">
+      <div class="num-row">
+        <span class="num-label">Target</span>
+        <span class="num-value" id="targetValue">–</span>
+      </div>
+      <div class="num-row live">
+        <span class="num-label">Live</span>
+        <span class="num-value" id="liveValue">–</span>
+      </div>
+    </div>
+
     <div class="track-outer">
       <div class="direction-label flat">Flat</div>
       <div class="track-line"></div>
@@ -148,7 +312,7 @@
 </main>
 
 <footer>
-  YIN pitch detection running on a dedicated audio thread. Runs entirely on-device — nothing is recorded or sent anywhere.
+  Side A · YIN pitch detection on a dedicated audio thread. 100% on-device — nothing recorded, nothing sent anywhere.
 </footer>
 
 <script>
@@ -172,6 +336,8 @@
   var micBtn = document.getElementById('micBtn');
   var ticksEl = document.getElementById('ticks');
   var engineNote = document.getElementById('engineNote');
+  var targetValueEl = document.getElementById('targetValue');
+  var liveValueEl = document.getElementById('liveValue');
 
   STRINGS.forEach(function(s, idx){
     var el = document.createElement('div');
@@ -180,6 +346,7 @@
     el.dataset.idx = idx;
     el.addEventListener('click', function(){
       playReferenceTone(s.freq, el);
+      targetValueEl.textContent = s.label + ' string \u00b7 ' + s.freq.toFixed(2) + ' Hz';
     });
     pegsEl.appendChild(el);
   });
@@ -331,16 +498,30 @@
     return (ball.parentElement.clientWidth / 2) - 20;
   }
 
+  // Grace period so a brief gap between quick successive plucks (or a noisy
+  // pick-attack transient) doesn't flash the display back to "listening..."
+  // Only a SUSTAINED silence longer than this actually clears the reading.
+  var SILENCE_HOLD_MS = 800;
+  var lastValidReadingAt = null;
+
   function updateDisplay(rawFreq, now){
     if(!rawFreq || rawFreq < 30 || rawFreq > 1200 || !isFinite(rawFreq)){
-      centsEl.textContent = 'listening...';
+      if(lastValidReadingAt !== null && (now - lastValidReadingAt) < SILENCE_HOLD_MS){
+        return; // keep showing the last good reading through this brief gap
+      }
+      // "Listening" itself lives only in the status-row below the button now --
+      // this readout just clears back to placeholders, no duplicate wording.
+      centsEl.textContent = 'play a string to begin';
+      liveValueEl.textContent = '\u2013';
       freqHistory = [];
       rollingWindow = [];
       inTuneSince = null;
       chimeFiredForThisHold = false;
       outOfGreenSince = null;
+      lastValidReadingAt = null;
       return;
     }
+    lastValidReadingAt = now;
 
     var medianFreq = medianFilter(rawFreq);
     pushRolling(medianFreq, now);
@@ -360,6 +541,11 @@
     var zone = 'red';
     if(absCents <= 5) zone = 'green';
     else if(absCents <= 20) zone = 'yellow';
+
+    if(strIdx !== null){
+      targetValueEl.textContent = STRINGS[strIdx].label + ' string \u00b7 ' + STRINGS[strIdx].freq.toFixed(2) + ' Hz';
+    }
+    liveValueEl.textContent = trueFreq.toFixed(2) + ' Hz';
 
     ball.classList.remove('zone-yellow','zone-green');
     if(zone==='yellow') ball.classList.add('zone-yellow');
@@ -387,7 +573,7 @@
     targetPx = (clamped/50) * getHalfRange(); // visualLoop eases currentPx toward this every frame
 
     noteNameEl.textContent = name;
-    centsEl.textContent = trueFreq.toFixed(1) + ' Hz  -  ' + (cents>0?'+':'') + cents + ' cents';
+    centsEl.textContent = (cents>0?'+':'') + cents + ' cents';
   }
 
   function requestWakeLock(){
@@ -586,6 +772,7 @@
       inTuneSince = null;
       chimeFiredForThisHold = false;
       outOfGreenSince = null;
+      lastValidReadingAt = null;
       targetPx = 0;
       currentPx = 0;
       statusDot.classList.add('live');
@@ -634,6 +821,7 @@
     inTuneSince = null;
     chimeFiredForThisHold = false;
     outOfGreenSince = null;
+    lastValidReadingAt = null;
     targetPx = 0;
     currentPx = 0;
     statusDot.classList.remove('live');
@@ -644,6 +832,8 @@
     noteNameEl.textContent = '-';
     noteNameEl.classList.remove('zone-green');
     centsEl.textContent = 'play a string to begin';
+    targetValueEl.textContent = '\u2013';
+    liveValueEl.textContent = '\u2013';
     ball.style.transform = 'translateX(0px)';
     ball.classList.remove('zone-yellow','zone-green');
     pegEls.forEach(function(p){ p.classList.remove('active'); p.classList.remove('locked'); });
