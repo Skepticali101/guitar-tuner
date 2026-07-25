@@ -201,11 +201,14 @@
   var freqHistory = [];
   var HISTORY_LEN = 3;
   var RESET_JUMP_RATIO = 0.08;
+  var justReset = false; // flags when medianFilter cleared history due to a big jump (new string/pluck)
   function medianFilter(freq){
+    justReset = false;
     if(freqHistory.length > 0){
       var last = freqHistory[freqHistory.length - 1];
       if(Math.abs(freq - last) / last > RESET_JUMP_RATIO){
         freqHistory = [];
+        justReset = true;
       }
     }
     freqHistory.push(freq);
@@ -214,9 +217,48 @@
     return sorted[Math.floor(sorted.length/2)];
   }
 
+  // Rolling ~500ms average -- this is how a lot of players actually tune: pick
+  // continuously and settle on the average pitch rather than reacting to any
+  // single pluck. Using this as the "true" value for every decision (zone
+  // color, note lock, chime) is what makes the whole thing feel calmer AND
+  // matches how the instrument is actually played/tuned.
+  var rollingWindow = []; // {t, f} pairs
+  var ROLLING_WINDOW_MS = 500;
+  function pushRolling(freq, now){
+    if(justReset) rollingWindow = []; // don't average across a string change
+    rollingWindow.push({t: now, f: freq});
+    while(rollingWindow.length && now - rollingWindow[0].t > ROLLING_WINDOW_MS){
+      rollingWindow.shift();
+    }
+  }
+  function rollingAverage(){
+    if(!rollingWindow.length) return null;
+    var sum = 0;
+    for(var i=0;i<rollingWindow.length;i++) sum += rollingWindow[i].f;
+    return sum / rollingWindow.length;
+  }
+
+  // Visual-only easing for the ball's on-screen position. This is intentionally
+  // separate from the pitch math above -- the NUMBER driving tuning decisions
+  // (zone/color/note/chime) is exactly as accurate/responsive as before; only
+  // the pixel position drawn on screen glides toward it instead of jumping,
+  // which is what removes the shakiness without touching accuracy.
+  var targetPx = 0;
+  var currentPx = 0;
+  var VISUAL_EASE = 0.15;
+  var visualRafId = null;
+  function visualLoop(){
+    if(!listening) return;
+    currentPx += (targetPx - currentPx) * VISUAL_EASE;
+    ball.style.transform = 'translateX(' + currentPx + 'px)';
+    visualRafId = requestAnimationFrame(visualLoop);
+  }
+
   var inTuneSince = null;
   var chimeFiredForThisHold = false;
-  var HOLD_MS = 200;
+  var HOLD_MS = 2800;       // rest in the green zone for ~2.5-3s before the chime confirms
+  var outOfGreenSince = null;
+  var GRACE_MS = 250;       // a brief flicker out of the green zone doesn't reset the whole countdown
 
   // --- tone playback (separate lightweight context, always main-thread, fine since it's not time-critical detection) ---
   var toneCtx;
@@ -293,15 +335,21 @@
     if(!rawFreq || rawFreq < 30 || rawFreq > 1200 || !isFinite(rawFreq)){
       centsEl.textContent = 'listening...';
       freqHistory = [];
+      rollingWindow = [];
       inTuneSince = null;
       chimeFiredForThisHold = false;
+      outOfGreenSince = null;
       return;
     }
 
-    var displayFreq = medianFilter(rawFreq);
-    var r = freqToNote(displayFreq);
+    var medianFreq = medianFilter(rawFreq);
+    pushRolling(medianFreq, now);
+    var trueFreq = rollingAverage();
+    if(trueFreq === null) return;
+
+    var r = freqToNote(trueFreq);
     var name = r.name, cents = r.cents;
-    var strIdx = closestString(displayFreq);
+    var strIdx = closestString(trueFreq);
     var absCents = Math.abs(cents);
 
     pegEls.forEach(function(p,i){
@@ -318,22 +366,28 @@
     if(zone==='green') ball.classList.add('zone-green');
     noteNameEl.classList.toggle('zone-green', zone==='green');
 
+    // hold-timer with a short grace period: a brief blip out of the green zone
+    // doesn't reset the whole 2.5-3s countdown, only a SUSTAINED exit does
     if(zone === 'green'){
+      outOfGreenSince = null;
       if(inTuneSince === null){
         inTuneSince = now; chimeFiredForThisHold = false;
       } else if(!chimeFiredForThisHold && (now - inTuneSince) >= HOLD_MS){
         playInTuneChime(); chimeFiredForThisHold = true;
       }
     } else {
-      inTuneSince = null; chimeFiredForThisHold = false;
+      if(outOfGreenSince === null) outOfGreenSince = now;
+      if(now - outOfGreenSince > GRACE_MS){
+        inTuneSince = null; chimeFiredForThisHold = false; outOfGreenSince = null;
+      }
+      // else: still within grace period, keep inTuneSince running
     }
 
     var clamped = Math.max(-50, Math.min(50, cents));
-    var px = (clamped/50) * getHalfRange();
-    ball.style.transform = 'translateX(' + px + 'px)';
+    targetPx = (clamped/50) * getHalfRange(); // visualLoop eases currentPx toward this every frame
 
     noteNameEl.textContent = name;
-    centsEl.textContent = displayFreq.toFixed(1) + ' Hz  -  ' + (cents>0?'+':'') + cents + ' cents';
+    centsEl.textContent = trueFreq.toFixed(1) + ' Hz  -  ' + (cents>0?'+':'') + cents + ' cents';
   }
 
   function requestWakeLock(){
@@ -382,7 +436,7 @@
     "    var rms = 0;",
     "    for(var i=0;i<corrLen;i++){ rms += buf[i]*buf[i]; }",
     "    rms = Math.sqrt(rms/corrLen);",
-    "    if(rms < 0.008) return -1;",
+    "    if(rms < 0.006) return -1;",
     "    var d = new Float32Array(tauMax+1);",
     "    var runningSum = 0;",
     "    d[0] = 1;",
@@ -442,11 +496,10 @@
     "registerProcessor('pitch-processor', PitchProcessor);"
   ].join("\\n");
 
-  function startWithWorklet(){
+  function startWithWorklet(inputNode){
     return audioCtx.audioWorklet.addModule(
       URL.createObjectURL(new Blob([WORKLET_SRC], {type:'application/javascript'}))
     ).then(function(){
-      var source = audioCtx.createMediaStreamSource(mediaStream);
       workletNode = new AudioWorkletNode(audioCtx, 'pitch-processor');
       workletNode.port.onmessage = function(e){
         updateDisplay(e.data, performance.now());
@@ -455,7 +508,7 @@
       // without producing any audible output
       silentGain = audioCtx.createGain();
       silentGain.gain.value = 0;
-      source.connect(workletNode);
+      inputNode.connect(workletNode);
       workletNode.connect(silentGain);
       silentGain.connect(audioCtx.destination);
       usingWorklet = true;
@@ -464,11 +517,10 @@
 
   // --- fallback path for browsers without AudioWorklet support: same idea,
   // polled via rAF on the main thread. Kept as a safety net only. ---
-  function startWithFallback(){
-    var source = audioCtx.createMediaStreamSource(mediaStream);
+  function startWithFallback(inputNode){
     analyser = audioCtx.createAnalyser();
     analyser.fftSize = 2048;
-    source.connect(analyser);
+    inputNode.connect(analyser);
     var buf = new Float32Array(analyser.fftSize);
     var lastDetectTime = 0;
     var DETECT_INTERVAL = 20;
@@ -512,6 +564,14 @@
     usingWorklet = false;
   }
 
+  // Boost the captured signal before it reaches analysis, since Web Audio has
+  // no direct hardware mic-gain control -- a GainNode on the analysis path is
+  // the practical equivalent. ~9dB by default; raise INPUT_BOOST_DB if quiet
+  // plucks still aren't registering, but watch for distortion if pushed too far.
+  var INPUT_BOOST_DB = 9;
+  var INPUT_BOOST_FACTOR = Math.pow(10, INPUT_BOOST_DB / 20);
+  var inputSource, inputGain;
+
   function startListening(){
     navigator.mediaDevices.getUserMedia({ audio: {
       echoCancellation:false, noiseSuppression:false, autoGainControl:false
@@ -522,24 +582,35 @@
     }).then(function(){
       listening = true;
       freqHistory = [];
+      rollingWindow = [];
       inTuneSince = null;
       chimeFiredForThisHold = false;
+      outOfGreenSince = null;
+      targetPx = 0;
+      currentPx = 0;
       statusDot.classList.add('live');
       statusText.textContent = 'listening';
       micBtn.classList.add('listening');
       micBtn.querySelector('span').textContent = 'Stop Tuning';
       requestWakeLock();
 
+      inputSource = audioCtx.createMediaStreamSource(mediaStream);
+      inputGain = audioCtx.createGain();
+      inputGain.gain.value = INPUT_BOOST_FACTOR;
+      inputSource.connect(inputGain);
+
+      visualRafId = requestAnimationFrame(visualLoop);
+
       if(audioCtx.audioWorklet){
-        startWithWorklet().then(function(){
+        startWithWorklet(inputGain).then(function(){
           engineNote.textContent = 'engine: audio-thread (YIN)';
         }).catch(function(err){
           engineNote.textContent = 'engine: fallback';
-          startWithFallback();
+          startWithFallback(inputGain);
         });
       } else {
         engineNote.textContent = 'engine: fallback';
-        startWithFallback();
+        startWithFallback(inputGain);
       }
     }).catch(function(){
       statusText.textContent = 'mic permission denied';
@@ -549,15 +620,22 @@
   function stopListening(){
     listening = false;
     if(rafId) cancelAnimationFrame(rafId);
+    if(visualRafId) cancelAnimationFrame(visualRafId);
     if(workletNode){ try{ workletNode.disconnect(); }catch(e){} workletNode = null; }
     if(silentGain){ try{ silentGain.disconnect(); }catch(e){} silentGain = null; }
     if(analyser){ try{ analyser.disconnect(); }catch(e){} analyser = null; }
+    if(inputGain){ try{ inputGain.disconnect(); }catch(e){} inputGain = null; }
+    if(inputSource){ try{ inputSource.disconnect(); }catch(e){} inputSource = null; }
     if(mediaStream) mediaStream.getTracks().forEach(function(t){ t.stop(); });
     if(audioCtx) audioCtx.close();
     releaseWakeLock();
     freqHistory = [];
+    rollingWindow = [];
     inTuneSince = null;
     chimeFiredForThisHold = false;
+    outOfGreenSince = null;
+    targetPx = 0;
+    currentPx = 0;
     statusDot.classList.remove('live');
     statusText.textContent = 'microphone off';
     micBtn.classList.remove('listening');
