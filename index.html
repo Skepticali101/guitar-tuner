@@ -104,6 +104,59 @@
 
   main{ width:100%; max-width:420px; display:flex; flex-direction:column; align-items:center; gap:28px; }
 
+  /* mode toggle -- two square console-style buttons, matches string-button language */
+  .mode-toggle{ display:flex; gap:8px; width:100%; max-width:280px; }
+  .mode-btn{
+    flex:1;
+    padding:10px 0;
+    border-radius:5px;
+    font-family:'JetBrains Mono', monospace;
+    font-weight:700;
+    font-size:12px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--plaque);
+    background:linear-gradient(180deg, var(--cap), var(--cap-dark));
+    border:1px solid rgba(0,0,0,0.4);
+    box-shadow:inset 0 1px 1px rgba(255,255,255,0.15), inset 0 -3px 4px rgba(0,0,0,0.3), 0 2px 0 rgba(0,0,0,0.3);
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  .mode-btn:active{ transform:translateY(1px); }
+  .mode-btn.active{
+    background:linear-gradient(180deg, #f0b878, var(--amber));
+    color:#2a1c08;
+    box-shadow:inset 0 1px 1px rgba(255,255,255,0.3), 0 0 10px rgba(232,149,46,0.4), 0 2px 0 rgba(0,0,0,0.3);
+  }
+
+  #tuneMode, #chordMode{ width:100%; display:flex; flex-direction:column; align-items:center; gap:28px; }
+
+  /* chord ID readout -- reuses the same recessed LCD material as the tuner's numbers */
+  .chord-readout{
+    width:100%; max-width:320px;
+    background:var(--meter-bg);
+    border-radius:6px;
+    padding:20px 18px;
+    text-align:center;
+    box-shadow:inset 0 2px 6px rgba(0,0,0,0.7), inset 0 -1px 0 rgba(255,255,255,0.04), 0 2px 0 rgba(42,36,48,0.3);
+    border:1px solid rgba(0,0,0,0.5);
+  }
+  .chord-name{
+    font-family:'VT323', monospace;
+    font-size:52px;
+    line-height:1;
+    color:var(--amber);
+    text-shadow:0 0 8px rgba(232,149,46,0.55);
+  }
+  .chord-notes{
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px;
+    letter-spacing:0.04em;
+    color:var(--live-white);
+    opacity:0.85;
+    margin-top:10px;
+  }
+
   /* string buttons -- Neve/SSL channel-strip style square buttons */
   .pegs{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
   .peg{
@@ -282,6 +335,13 @@
   }
   @media (prefers-reduced-motion: reduce){ .ball, .dot.live, #targetValue{ transition:none; animation:none; } }
 </style>
+<script type="importmap">
+{
+  "imports": {
+    "@tensorflow/tfjs": "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.fesm.min.js"
+  }
+}
+</script>
 </head>
 <body>
 
@@ -291,6 +351,12 @@
 </header>
 
 <main>
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="modeTuneBtn">Tune</button>
+    <button class="mode-btn" id="modeChordBtn">Chord ID</button>
+  </div>
+
+  <div id="tuneMode">
   <div class="pegs" id="pegs"></div>
   <div class="hint">tap a string to hear its reference pitch</div>
 
@@ -328,6 +394,26 @@
     <span>Start Tuning</span>
   </button>
   <div class="engine-note" id="engineNote"></div>
+  </div>
+
+  <div id="chordMode" style="display:none;">
+    <div class="hint">strum a chord, then capture ~2 seconds of it</div>
+
+    <div class="chord-readout">
+      <div class="chord-name" id="chordName">–</div>
+      <div class="chord-notes" id="chordNotes">notes will appear here</div>
+    </div>
+
+    <div class="status-row">
+      <span class="dot" id="chordStatusDot"></span>
+      <span id="chordStatusText">idle</span>
+    </div>
+
+    <button class="mic-btn" id="chordCaptureBtn">
+      <span>Capture Chord</span>
+    </button>
+    <div class="engine-note" id="chordEngineNote">model not loaded yet</div>
+  </div>
 </main>
 
 <footer>
@@ -895,8 +981,318 @@
   micBtn.addEventListener('click', function(){
     if(listening) stopListening(); else startListening();
   });
+
+  // Minimal bridge for the mode toggle (a separate module script) to stop the
+  // tuner's mic when switching to Chord ID mode, without a larger refactor.
+  window.__tunerStop = function(){ if(listening) stopListening(); };
 })();
 </script>
 
+<script type="module">
+// ============================================================
+// Chord ID mode -- built on Spotify's Basic Pitch (polyphonic
+// pitch detection), vendored locally alongside its model files.
+// Everything still runs entirely on-device.
+// ============================================================
+
+const modeTuneBtn = document.getElementById('modeTuneBtn');
+const modeChordBtn = document.getElementById('modeChordBtn');
+const tuneModeEl = document.getElementById('tuneMode');
+const chordModeEl = document.getElementById('chordMode');
+const chordCaptureBtn = document.getElementById('chordCaptureBtn');
+const chordNameEl = document.getElementById('chordName');
+const chordNotesEl = document.getElementById('chordNotes');
+const chordStatusDot = document.getElementById('chordStatusDot');
+const chordStatusText = document.getElementById('chordStatusText');
+const chordEngineNote = document.getElementById('chordEngineNote');
+
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const CAPTURE_SECONDS = 2.0;
+
+// Chord templates as semitone intervals from a root (0-11).
+// Ordered roughly common-to-rare; matching picks the best score, not the first hit.
+const CHORD_TEMPLATES = [
+  { suffix: '',      intervals: [0, 4, 7] },       // major
+  { suffix: 'm',     intervals: [0, 3, 7] },       // minor
+  { suffix: '7',     intervals: [0, 4, 7, 10] },   // dominant 7
+  { suffix: 'maj7',  intervals: [0, 4, 7, 11] },   // major 7
+  { suffix: 'm7',    intervals: [0, 3, 7, 10] },   // minor 7
+  { suffix: 'sus2',  intervals: [0, 2, 7] },
+  { suffix: 'sus4',  intervals: [0, 5, 7] },
+  { suffix: 'dim',   intervals: [0, 3, 6] },
+  { suffix: 'aug',   intervals: [0, 4, 8] },
+  { suffix: '6',     intervals: [0, 4, 7, 9] },
+  { suffix: 'm6',    intervals: [0, 3, 7, 9] },
+  { suffix: 'm7b5',  intervals: [0, 3, 6, 10] },
+  { suffix: 'add9',  intervals: [0, 2, 4, 7] },
+];
+
+let basicPitchModule = null;   // { BasicPitch, outputToNotesPoly, addPitchBendsToNoteEvents, noteFramesToTime }
+let basicPitchInstance = null; // BasicPitch instance, model loads once and is reused
+let modelLoadPromise = null;
+
+let audioCtx = null;
+let mediaStream = null;
+let workletNode = null;
+let silentGain = null;
+let capturing = false;
+let capturedChunks = [];
+let capturedSampleCount = 0;
+
+function setChordStatus(text, live){
+  chordStatusText.textContent = text;
+  chordStatusDot.classList.toggle('live', !!live);
+}
+
+// Lazily load the vendored library + model on first use, so users who never
+// open Chord ID mode never pay the download/parse cost.
+function ensureModelLoaded(){
+  if (modelLoadPromise) return modelLoadPromise;
+  chordEngineNote.textContent = 'loading model…';
+  modelLoadPromise = import('./vendor/basic-pitch/index.js')
+    .then((mod) => {
+      basicPitchModule = mod;
+      basicPitchInstance = new mod.BasicPitch('./model/basic-pitch/model.json');
+      return basicPitchInstance.model; // this is itself a Promise<tf.GraphModel>; awaiting confirms it actually loaded
+    })
+    .then(() => {
+      chordEngineNote.textContent = 'engine: Basic Pitch (on-device ML)';
+    })
+    .catch((err) => {
+      chordEngineNote.textContent = 'model failed to load';
+      modelLoadPromise = null; // allow retry on next capture attempt
+      throw err;
+    });
+  return modelLoadPromise;
+}
+
+// ---- capture worklet: just forwards raw sample blocks to the main thread.
+// Unlike the tuner's continuous 60fps pitch loop, this only needs to run for
+// ~2 seconds total, so accumulating on the main thread from these messages
+// is perfectly fine -- no need for the heavier on-thread buffering the
+// tuner's YIN detector uses.
+const CAPTURE_WORKLET_SRC = [
+  "class CaptureProcessor extends AudioWorkletProcessor {",
+  "  process(inputs){",
+  "    const input = inputs[0];",
+  "    if(input && input[0]){",
+  "      this.port.postMessage(input[0].slice());",
+  "    }",
+  "    return true;",
+  "  }",
+  "}",
+  "registerProcessor('capture-processor', CaptureProcessor);"
+].join("\n");
+
+function stopChordCapture(){
+  capturing = false;
+  if (workletNode){ try { workletNode.disconnect(); } catch(e){} workletNode = null; }
+  if (silentGain){ try { silentGain.disconnect(); } catch(e){} silentGain = null; }
+  if (mediaStream){ mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+  if (audioCtx){ audioCtx.close(); audioCtx = null; }
+}
+
+async function startChordCapture(){
+  if (capturing) return;
+  chordNameEl.textContent = '–';
+  chordNotesEl.textContent = 'listening…';
+  setChordStatus('requesting mic…', false);
+
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+    });
+  } catch (err) {
+    setChordStatus('mic permission denied', false);
+    chordNotesEl.textContent = 'enable microphone access and try again';
+    return;
+  }
+
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  await audioCtx.resume();
+
+  await audioCtx.audioWorklet.addModule(
+    URL.createObjectURL(new Blob([CAPTURE_WORKLET_SRC], { type: 'application/javascript' }))
+  );
+
+  const source = audioCtx.createMediaStreamSource(mediaStream);
+  workletNode = new AudioWorkletNode(audioCtx, 'capture-processor');
+  silentGain = audioCtx.createGain();
+  silentGain.gain.value = 0;
+  source.connect(workletNode);
+  workletNode.connect(silentGain);
+  silentGain.connect(audioCtx.destination);
+
+  capturedChunks = [];
+  capturedSampleCount = 0;
+  capturing = true;
+  setChordStatus('capturing — strum now', true);
+
+  const targetSamples = Math.ceil(CAPTURE_SECONDS * audioCtx.sampleRate);
+  const nativeSampleRate = audioCtx.sampleRate;
+
+  workletNode.port.onmessage = (e) => {
+    if (!capturing) return;
+    capturedChunks.push(e.data);
+    capturedSampleCount += e.data.length;
+    if (capturedSampleCount >= targetSamples) {
+      capturing = false;
+      finishCapture(nativeSampleRate);
+    }
+  };
+}
+
+async function finishCapture(nativeSampleRate){
+  setChordStatus('analyzing…', true);
+
+  // flatten the captured chunks into one Float32Array
+  const combined = new Float32Array(capturedSampleCount);
+  let offset = 0;
+  for (const chunk of capturedChunks) {
+    combined.set(chunk, offset);
+    offset += chunk.length;
+  }
+  capturedChunks = [];
+
+  stopChordCapture();
+
+  try {
+    await ensureModelLoaded();
+    const resampled = await resampleTo22050(combined, nativeSampleRate);
+    const notes = await runBasicPitch(resampled);
+    renderChordResult(notes);
+  } catch (err) {
+    setChordStatus('analysis failed', false);
+    chordNotesEl.textContent = 'something went wrong — try again';
+    console.error(err);
+    return;
+  }
+
+  setChordStatus('ready', false);
+}
+
+// Basic Pitch requires exactly 22050Hz mono. Our capture is at whatever the
+// device's native rate is (typically 44100 or 48000), so resample via a
+// throwaway OfflineAudioContext -- the standard Web Audio technique for this.
+async function resampleTo22050(float32Data, originalSampleRate){
+  const TARGET_RATE = 22050;
+  const scratchCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const originalBuffer = scratchCtx.createBuffer(1, float32Data.length, originalSampleRate);
+  originalBuffer.copyToChannel(float32Data, 0);
+  scratchCtx.close();
+
+  const targetLength = Math.ceil(float32Data.length * TARGET_RATE / originalSampleRate);
+  const offlineCtx = new OfflineAudioContext(1, targetLength, TARGET_RATE);
+  const src = offlineCtx.createBufferSource();
+  src.buffer = originalBuffer;
+  src.connect(offlineCtx.destination);
+  src.start(0);
+  return offlineCtx.startRendering(); // resolves to an AudioBuffer at 22050Hz mono
+}
+
+async function runBasicPitch(resampledBuffer){
+  const { outputToNotesPoly, addPitchBendsToNoteEvents, noteFramesToTime } = basicPitchModule;
+  const frames = [], onsets = [], contours = [];
+
+  await basicPitchInstance.evaluateModel(
+    resampledBuffer,
+    (f, o, c) => { frames.push(...f); onsets.push(...o); contours.push(...c); },
+    () => {} // percent callback -- capture is short enough not to need a progress bar
+  );
+
+  const rawNotes = outputToNotesPoly(frames, onsets); // library defaults for thresholds
+  const withBends = addPitchBendsToNoteEvents(contours, rawNotes);
+  const timed = noteFramesToTime(withBends);
+
+  // Filter out faint/very-short spurious detections
+  return timed.filter(n => n.amplitude > 0.25 && n.durationSeconds > 0.03);
+}
+
+function midiToNoteName(pitchMidi){
+  const pitchClass = ((Math.round(pitchMidi) % 12) + 12) % 12;
+  const octave = Math.floor(Math.round(pitchMidi) / 12) - 1;
+  return { name: NOTE_NAMES[pitchClass], octave, pitchClass };
+}
+
+function matchChord(pitchClassSet, lowestPitchClass){
+  let best = null;
+  for (let root = 0; root < 12; root++) {
+    for (const tmpl of CHORD_TEMPLATES) {
+      const expected = new Set(tmpl.intervals.map(iv => (root + iv) % 12));
+      let inCommon = 0;
+      expected.forEach(pc => { if (pitchClassSet.has(pc)) inCommon++; });
+      const missing = expected.size - inCommon;
+      let extra = 0;
+      pitchClassSet.forEach(pc => { if (!expected.has(pc)) extra++; });
+      let score = inCommon - missing * 0.6 - extra * 0.35;
+      if (root === lowestPitchClass) score += 0.2; // slight preference for the bass note being the root
+      if (!best || score > best.score) {
+        best = { root, tmpl, score, inCommon };
+      }
+    }
+  }
+  return best;
+}
+
+function renderChordResult(notes){
+  if (notes.length === 0) {
+    chordNameEl.textContent = '–';
+    chordNotesEl.textContent = 'no clear notes detected — try strumming louder or closer to the mic';
+    return;
+  }
+
+  const namedNotes = notes
+    .map(n => ({ ...midiToNoteName(n.pitchMidi), midi: n.pitchMidi }))
+    .sort((a, b) => a.midi - b.midi);
+
+  const pitchClassSet = new Set(namedNotes.map(n => n.pitchClass));
+  const lowestPitchClass = namedNotes[0].pitchClass;
+
+  const breakdown = namedNotes.map(n => `${n.name}${n.octave}`).join(' · ');
+
+  if (pitchClassSet.size === 1) {
+    chordNameEl.textContent = NOTE_NAMES[lowestPitchClass];
+    chordNotesEl.textContent = breakdown + ' (single note, not a chord)';
+    return;
+  }
+
+  const best = matchChord(pitchClassSet, lowestPitchClass);
+
+  if (!best || best.inCommon < 2) {
+    chordNameEl.textContent = '?';
+    chordNotesEl.textContent = breakdown + ' — no clean chord match';
+    return;
+  }
+
+  chordNameEl.textContent = NOTE_NAMES[best.root] + best.tmpl.suffix;
+  chordNotesEl.textContent = breakdown;
+}
+
+chordCaptureBtn.addEventListener('click', () => {
+  ensureModelLoaded().catch(() => {}); // kick off loading if not already; capture proceeds regardless, evaluateModel awaits it
+  startChordCapture();
+});
+
+// ---- mode toggle ----
+function showTuneMode(){
+  modeTuneBtn.classList.add('active');
+  modeChordBtn.classList.remove('active');
+  tuneModeEl.style.display = '';
+  chordModeEl.style.display = 'none';
+  stopChordCapture();
+}
+function showChordMode(){
+  modeChordBtn.classList.add('active');
+  modeTuneBtn.classList.remove('active');
+  chordModeEl.style.display = '';
+  tuneModeEl.style.display = 'none';
+  if (window.__tunerStop) window.__tunerStop();
+  ensureModelLoaded().catch(() => {}); // pre-warm the model as soon as this mode is opened
+}
+
+modeTuneBtn.addEventListener('click', showTuneMode);
+modeChordBtn.addEventListener('click', showChordMode);
+
+</script>
 </body>
 </html>
