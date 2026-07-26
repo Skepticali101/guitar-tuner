@@ -129,6 +129,17 @@
     box-shadow:inset 0 1px 1px rgba(255,255,255,0.3), 0 0 10px rgba(232,149,46,0.4), 0 2px 0 rgba(0,0,0,0.3);
   }
 
+  .tone-picker{ display:flex; align-items:center; gap:8px; width:100%; max-width:280px; }
+  .tone-picker-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--fg);
+    opacity:0.5;
+    white-space:nowrap;
+  }
+
   #tuneMode, #chordMode, #chartMode{ width:100%; display:flex; flex-direction:column; align-items:center; gap:28px; }
 
   /* chord ID readout -- reuses the same recessed LCD material as the tuner's numbers */
@@ -230,6 +241,139 @@
     color:var(--fg);
     opacity:0.4;
     padding:20px 0;
+  }
+
+  /* multi-mode picker -- up to 3 active at once, oldest evicted on a 4th pick */
+  .mode-picker{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; width:100%; max-width:420px; }
+  .mode-pill{
+    padding:6px 12px;
+    border-radius:999px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.04em;
+    color:var(--fg);
+    opacity:0.6;
+    background:var(--meter-bg);
+    border:1px solid rgba(0,0,0,0.5);
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  .mode-pill.active{
+    opacity:1;
+    color:#2a1c08;
+    background:linear-gradient(180deg, #f0b878, var(--amber));
+    border-color:transparent;
+    box-shadow:0 0 8px rgba(232,149,46,0.4);
+  }
+
+  .chart-groups{ width:100%; max-width:420px; display:flex; flex-direction:column; gap:18px; }
+  .chart-group-header{
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    font-size:13px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--amber);
+    opacity:0.85;
+    border-bottom:1px solid var(--hairline);
+    padding-bottom:4px;
+  }
+
+  .chart-card{ position:relative; }
+  .chart-card-add{
+    position:absolute;
+    top:4px; right:4px;
+    width:20px; height:20px;
+    border-radius:5px;
+    border:1px solid rgba(0,0,0,0.4);
+    background:linear-gradient(180deg, var(--cap), var(--cap-dark));
+    color:var(--plaque);
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px;
+    line-height:1;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+  .chart-card-add:active{ transform:scale(0.9); }
+  .chart-card-add.added{ background:linear-gradient(180deg, #9fc98a, var(--locked)); color:#12250c; }
+
+  /* progression tray -- persists across mode/key swaps until the app closes (or reload, via localStorage) */
+  .progression-panel{
+    width:100%; max-width:420px;
+    display:flex; flex-direction:column; gap:10px;
+    margin-top:6px;
+    padding-top:16px;
+    border-top:1px solid var(--hairline);
+  }
+  .progression-header{ display:flex; align-items:center; justify-content:space-between; }
+  .progression-title{
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    font-size:13px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--fg);
+    opacity:0.85;
+  }
+  .progression-actions{ display:flex; gap:6px; }
+  .mini-btn{
+    padding:5px 10px;
+    border-radius:5px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    color:var(--plaque);
+    background:linear-gradient(180deg, var(--cap), var(--cap-dark));
+    border:1px solid rgba(0,0,0,0.4);
+    cursor:pointer;
+  }
+  .mini-btn:active{ transform:scale(0.96); }
+  .progression-row{
+    width:100%;
+    display:flex;
+    gap:8px;
+    overflow-x:auto;
+    padding-bottom:6px;
+    -webkit-overflow-scrolling:touch;
+    min-height:52px;
+  }
+  .progression-empty{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    color:var(--fg);
+    opacity:0.35;
+    align-self:center;
+    white-space:nowrap;
+  }
+  .progression-chip{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    background:var(--meter-bg);
+    border:1px solid rgba(0,0,0,0.5);
+    border-radius:6px;
+    padding:8px 10px;
+    box-shadow:inset 0 2px 4px rgba(0,0,0,0.5);
+  }
+  .progression-chip-name{
+    font-family:'VT323', monospace;
+    font-size:18px;
+    color:var(--amber);
+  }
+  .progression-chip-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:9px;
+    color:var(--fg);
+    opacity:0.5;
+  }
+  .progression-chip-remove{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    color:var(--off);
+    cursor:pointer;
+    padding:0 2px;
   }
 
   /* string buttons -- Neve/SSL channel-strip style square buttons */
@@ -432,6 +576,16 @@
     <button class="mode-btn" id="modeChartBtn">Chart</button>
   </div>
 
+  <div class="tone-picker">
+    <span class="tone-picker-label">Tone</span>
+    <select class="chart-select" id="toneTypeSelect">
+      <option value="triangle">Triangle (Warm)</option>
+      <option value="sine">Sine (Soft)</option>
+      <option value="sawtooth">Sawtooth (Bright)</option>
+      <option value="square">Square (Buzzy)</option>
+    </select>
+  </div>
+
   <div id="tuneMode">
   <div class="pegs" id="pegs"></div>
   <div class="hint">tap a string to hear its reference pitch</div>
@@ -494,14 +648,28 @@
   </div>
 
   <div id="chartMode" style="display:none;">
-    <div class="hint">pick a key and mode to see its 7 diatonic chords</div>
+    <div class="hint">pick a key, select up to 3 modes to browse, tap + to build a progression</div>
 
     <div class="chart-controls">
       <select class="chart-select" id="chartKeySelect"></select>
-      <select class="chart-select" id="chartModeSelect"></select>
     </div>
 
-    <div class="chart-row" id="chartRow"></div>
+    <div class="mode-picker" id="modePicker"></div>
+
+    <div class="chart-groups" id="chartGroups"></div>
+
+    <div class="progression-panel">
+      <div class="progression-header">
+        <span class="progression-title">Your Progression</span>
+        <div class="progression-actions">
+          <button class="mini-btn" id="progressionDownloadBtn">Download</button>
+          <button class="mini-btn" id="progressionClearBtn">Clear</button>
+        </div>
+      </div>
+      <div class="progression-row" id="progressionRow">
+        <div class="progression-empty" id="progressionEmpty">tap + on any chord above to add it here</div>
+      </div>
+    </div>
   </div>
 </main>
 
@@ -511,6 +679,13 @@
 
 <script>
 (function(){
+  window.__toneType = window.__toneType || 'triangle';
+  var toneTypeSelect = document.getElementById('toneTypeSelect');
+  toneTypeSelect.value = window.__toneType;
+  toneTypeSelect.addEventListener('change', function(){
+    window.__toneType = toneTypeSelect.value;
+  });
+
   var STRINGS = [
     {note:'E2', freq:82.41, label:'E'},
     {note:'A2', freq:110.00, label:'A'},
@@ -665,6 +840,7 @@
     var ctx = getToneCtx();
     var now = ctx.currentTime;
     var dur = 1.4;
+    var toneType = window.__toneType || 'triangle';
 
     // The lower the string, the harder a phone speaker struggles with the
     // fundamental -- so scale how present the octave-up companion tone is
@@ -678,7 +854,7 @@
 
     var osc = ctx.createOscillator();
     var gain = ctx.createGain();
-    osc.type = 'triangle';
+    osc.type = toneType;
     osc.frequency.value = freq;
     gain.gain.setValueAtTime(0, now);
     gain.gain.linearRampToValueAtTime(0.5, now + 0.04);
@@ -689,7 +865,7 @@
 
     var osc2 = ctx.createOscillator();
     var gain2 = ctx.createGain();
-    osc2.type = 'triangle';
+    osc2.type = toneType;
     osc2.frequency.value = freq * 2;
     gain2.gain.setValueAtTime(0, now);
     gain2.gain.linearRampToValueAtTime(octaveGain, now + 0.04);
@@ -1582,8 +1758,12 @@ chordCaptureBtn.addEventListener('click', () => {
 const modeChartBtn = document.getElementById('modeChartBtn');
 const chartModeEl = document.getElementById('chartMode');
 const chartKeySelect = document.getElementById('chartKeySelect');
-const chartModeSelect = document.getElementById('chartModeSelect');
-const chartRow = document.getElementById('chartRow');
+const modePicker = document.getElementById('modePicker');
+const chartGroups = document.getElementById('chartGroups');
+const progressionRow = document.getElementById('progressionRow');
+const progressionEmpty = document.getElementById('progressionEmpty');
+const progressionDownloadBtn = document.getElementById('progressionDownloadBtn');
+const progressionClearBtn = document.getElementById('progressionClearBtn');
 
 const ALL_MODE_BTNS = [modeTuneBtn, modeChordBtn, modeChartBtn];
 const ALL_MODE_PANELS = [tuneModeEl, chordModeEl, chartModeEl];
@@ -1605,7 +1785,7 @@ function showChordMode(){
 }
 function showChartMode(){
   switchToMode(modeChartBtn, chartModeEl);
-  ensureChordsDbLoaded().then(renderChart).catch(() => {});
+  ensureChordsDbLoaded().then(renderChartGroups).catch(() => {});
 }
 
 modeTuneBtn.addEventListener('click', showTuneMode);
@@ -1626,6 +1806,7 @@ const MODES_TABLE = {
   Locrian:    { intervals:[0,1,3,5,6,8,10], qualities:['dim','maj','min','min','maj','maj','min'], labels:['i°','bII','biii','iv','bV','bVI','bvii'] },
 };
 const QUALITY_TO_SUFFIX = { maj: '', min: 'm', dim: 'dim' };
+const MODE_NAMES = Object.keys(MODES_TABLE);
 
 ROOT_TO_DB_KEY.forEach((_, i) => {
   const opt = document.createElement('option');
@@ -1633,19 +1814,13 @@ ROOT_TO_DB_KEY.forEach((_, i) => {
   opt.textContent = NOTE_NAMES[i];
   chartKeySelect.appendChild(opt);
 });
-Object.keys(MODES_TABLE).forEach(modeName => {
-  const opt = document.createElement('option');
-  opt.value = modeName;
-  opt.textContent = modeName;
-  chartModeSelect.appendChild(opt);
-});
-chartKeySelect.value = 7;  // default to G, a friendly starting key
-chartModeSelect.value = 'Ionian';
+chartKeySelect.value = 7; // default to G, a friendly starting key
 
 // ---- click-to-play for chart cards -- same triangle-wave approach as the
 // tuner's string reference tones (not square wave, despite the resemblance --
 // triangle has cleaner harmonics and was already tuned for phone-speaker
-// audibility on the low strings; reused here for consistency). ----
+// audibility on the low strings; reused here for consistency, and now
+// selectable via the global Tone picker). ----
 const OPEN_STRING_FREQS = [82.41, 110.00, 146.83, 196.00, 246.94, 329.63]; // low E to high E
 let chartToneCtx = null;
 function getChartToneCtx(){
@@ -1657,21 +1832,20 @@ function playChordShape(shape, cardEl){
   const ctx = getChartToneCtx();
   const now = ctx.currentTime;
   const dur = 1.4;
+  const toneType = window.__toneType || 'triangle';
   const activeStrings = shape.frets.filter(f => f !== -1);
   if (activeStrings.length === 0) return;
-  // scale per-note gain down as more strings sound together, so a full
-  // 6-string chord doesn't clip from summing too many simultaneous oscillators
   const noteGain = Math.min(0.32, 1.4 / activeStrings.length);
 
   shape.frets.forEach((f, i) => {
-    if (f === -1) return; // muted string
+    if (f === -1) return;
     const freq = OPEN_STRING_FREQS[i] * Math.pow(2, f / 12);
-    const startAt = now + i * 0.02; // slight stagger, like an actual strum
+    const startAt = now + i * 0.02;
     const octaveGain = (freq < 100 ? 0.42 : freq < 130 ? 0.36 : freq < 170 ? 0.28 : 0.14) * (noteGain / 0.32);
 
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = 'triangle';
+    osc.type = toneType;
     osc.frequency.value = freq;
     gain.gain.setValueAtTime(0, startAt);
     gain.gain.linearRampToValueAtTime(noteGain, startAt + 0.03);
@@ -1682,7 +1856,7 @@ function playChordShape(shape, cardEl){
 
     const osc2 = ctx.createOscillator();
     const gain2 = ctx.createGain();
-    osc2.type = 'triangle';
+    osc2.type = toneType;
     osc2.frequency.value = freq * 2;
     gain2.gain.setValueAtTime(0, startAt);
     gain2.gain.linearRampToValueAtTime(octaveGain, startAt + 0.03);
@@ -1698,50 +1872,180 @@ function playChordShape(shape, cardEl){
   }
 }
 
-function renderChart(){
-  const tonicIndex = parseInt(chartKeySelect.value, 10);
-  const modeData = MODES_TABLE[chartModeSelect.value];
-  chartRow.innerHTML = '';
+// ---- up to 3 active modes at once, oldest evicted on a 4th pick ----
+let activeModes = ['Ionian'];
 
-  modeData.intervals.forEach((interval, degreeIdx) => {
-    const rootIndex = (tonicIndex + interval) % 12;
-    const quality = modeData.qualities[degreeIdx];
-    const suffix = QUALITY_TO_SUFFIX[quality];
-    const label = modeData.labels[degreeIdx];
-    const chordName = NOTE_NAMES[rootIndex] + suffix;
-
-    const card = document.createElement('div');
-    card.className = 'chart-card';
-
-    const degreeEl = document.createElement('div');
-    degreeEl.className = 'chart-card-degree';
-    degreeEl.textContent = label;
-    card.appendChild(degreeEl);
-
-    const nameEl = document.createElement('div');
-    nameEl.className = 'chart-card-name';
-    nameEl.textContent = chordName;
-    card.appendChild(nameEl);
-
-    const shape = lookupChordShape(rootIndex, suffix);
-    if (shape) {
-      const diagramHolder = document.createElement('div');
-      diagramHolder.innerHTML = renderChordDiagramSVG(shape);
-      card.appendChild(diagramHolder.firstChild);
-      card.addEventListener('click', () => playChordShape(shape, card));
-    } else {
-      const empty = document.createElement('div');
-      empty.className = 'chart-card-empty';
-      empty.textContent = 'no diagram';
-      card.appendChild(empty);
-    }
-
-    chartRow.appendChild(card);
+function renderModePicker(){
+  modePicker.innerHTML = '';
+  MODE_NAMES.forEach(modeName => {
+    const pill = document.createElement('div');
+    pill.className = 'mode-pill' + (activeModes.includes(modeName) ? ' active' : '');
+    pill.textContent = modeName;
+    pill.addEventListener('click', () => {
+      if (activeModes.includes(modeName)) {
+        if (activeModes.length > 1) activeModes = activeModes.filter(m => m !== modeName);
+      } else {
+        activeModes = [...activeModes, modeName];
+        if (activeModes.length > 3) activeModes.shift(); // evict the oldest pick
+      }
+      renderModePicker();
+      renderChartGroups();
+    });
+    modePicker.appendChild(pill);
   });
 }
 
-chartKeySelect.addEventListener('change', renderChart);
-chartModeSelect.addEventListener('change', renderChart);
+// ---- progression tray -- persists via localStorage until explicitly cleared ----
+const PROGRESSION_STORAGE_KEY = 'ftr-progression-v1';
+let progression = [];
+try {
+  const saved = localStorage.getItem(PROGRESSION_STORAGE_KEY);
+  if (saved) progression = JSON.parse(saved);
+} catch (e) { progression = []; }
+
+function saveProgression(){
+  try { localStorage.setItem(PROGRESSION_STORAGE_KEY, JSON.stringify(progression)); } catch (e) {}
+}
+
+function renderProgression(){
+  progressionRow.innerHTML = '';
+  if (progression.length === 0) {
+    progressionRow.appendChild(progressionEmpty);
+    return;
+  }
+  progression.forEach((entry, idx) => {
+    const chip = document.createElement('div');
+    chip.className = 'progression-chip';
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'progression-chip-name';
+    nameEl.textContent = entry.chordName;
+    chip.appendChild(nameEl);
+
+    const labelEl = document.createElement('span');
+    labelEl.className = 'progression-chip-label';
+    labelEl.textContent = entry.label + ' · ' + entry.modeName;
+    chip.appendChild(labelEl);
+
+    const removeEl = document.createElement('span');
+    removeEl.className = 'progression-chip-remove';
+    removeEl.textContent = '×';
+    removeEl.addEventListener('click', () => {
+      progression = progression.filter((_, i) => i !== idx);
+      saveProgression();
+      renderProgression();
+    });
+    chip.appendChild(removeEl);
+
+    progressionRow.appendChild(chip);
+  });
+}
+
+function addToProgression(entry){
+  progression = [...progression, entry];
+  saveProgression();
+  renderProgression();
+}
+
+progressionClearBtn.addEventListener('click', () => {
+  progression = [];
+  saveProgression();
+  renderProgression();
+});
+
+progressionDownloadBtn.addEventListener('click', () => {
+  if (progression.length === 0) return;
+  const keyName = chartKeySelect.options[chartKeySelect.selectedIndex].textContent;
+  const modesUsed = [...new Set(progression.map(p => p.modeName))].join(', ');
+  const lines = [
+    'Frequency Target Replicator -- Chord Progression',
+    'Key: ' + keyName,
+    'Modes used: ' + modesUsed,
+    '',
+    'Progression:',
+    ...progression.map((p, i) => (i + 1) + '. ' + p.chordName + '  (' + p.label + ', ' + p.modeName + ')'),
+  ];
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'progression-' + keyName.replace('#','sharp') + '.txt';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+function renderChartGroups(){
+  const tonicIndex = parseInt(chartKeySelect.value, 10);
+  chartGroups.innerHTML = '';
+
+  activeModes.forEach(modeName => {
+    const modeData = MODES_TABLE[modeName];
+
+    const group = document.createElement('div');
+    const header = document.createElement('div');
+    header.className = 'chart-group-header';
+    header.textContent = modeName;
+    group.appendChild(header);
+
+    const row = document.createElement('div');
+    row.className = 'chart-row';
+    row.style.marginTop = '10px';
+
+    modeData.intervals.forEach((interval, degreeIdx) => {
+      const rootIndex = (tonicIndex + interval) % 12;
+      const quality = modeData.qualities[degreeIdx];
+      const suffix = QUALITY_TO_SUFFIX[quality];
+      const label = modeData.labels[degreeIdx];
+      const chordName = NOTE_NAMES[rootIndex] + suffix;
+
+      const card = document.createElement('div');
+      card.className = 'chart-card';
+
+      const addBtn = document.createElement('div');
+      addBtn.className = 'chart-card-add';
+      addBtn.textContent = '+';
+      addBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // don't also trigger the card's play-on-click
+        addToProgression({ chordName, label, modeName, rootIndex, suffix });
+        addBtn.classList.add('added');
+        setTimeout(() => addBtn.classList.remove('added'), 400);
+      });
+      card.appendChild(addBtn);
+
+      const degreeEl = document.createElement('div');
+      degreeEl.className = 'chart-card-degree';
+      degreeEl.textContent = label;
+      card.appendChild(degreeEl);
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'chart-card-name';
+      nameEl.textContent = chordName;
+      card.appendChild(nameEl);
+
+      const shape = lookupChordShape(rootIndex, suffix);
+      if (shape) {
+        const diagramHolder = document.createElement('div');
+        diagramHolder.innerHTML = renderChordDiagramSVG(shape);
+        card.appendChild(diagramHolder.firstChild);
+        card.addEventListener('click', () => playChordShape(shape, card));
+      } else {
+        const empty = document.createElement('div');
+        empty.className = 'chart-card-empty';
+        empty.textContent = 'no diagram';
+        card.appendChild(empty);
+      }
+
+      row.appendChild(card);
+    });
+
+    group.appendChild(row);
+    chartGroups.appendChild(group);
+  });
+}
+
+chartKeySelect.addEventListener('change', renderChartGroups);
+renderModePicker();
+renderProgression();
 
 </script>
 </body>
