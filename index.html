@@ -624,9 +624,8 @@
   // Target readout flashes a quick burst whenever a NEW string is acquired
   // (idle float animation runs continuously via CSS regardless)
   var lastTargetStrIdx = null;
-  var pendingTargetStrIdx = null;
   var pendingTargetSince = null;
-  var TARGET_LOCK_MS = 1600; // a candidate string must stay closest-match for this long before the Target display commits to it
+  var TARGET_LOCK_MS = 1600; // must have been off the locked target continuously for this long before switching
   var flashTimeoutId = null;
   function flashTarget(){
     targetValueEl.classList.remove('flash');
@@ -742,7 +741,6 @@
       outOfGreenSince = null;
       lastValidReadingAt = null;
       lastTargetStrIdx = null;
-      pendingTargetStrIdx = null;
       pendingTargetSince = null;
       return;
     }
@@ -769,15 +767,15 @@
 
     if(strIdx !== null){
       if(strIdx === lastTargetStrIdx){
-        pendingTargetStrIdx = null; // already locked onto this string, nothing pending
-      } else if(strIdx !== pendingTargetStrIdx){
-        pendingTargetStrIdx = strIdx;   // new candidate -- start its hold timer fresh
-        pendingTargetSince = now;
-      } else if(now - pendingTargetSince >= TARGET_LOCK_MS){
-        lastTargetStrIdx = strIdx;      // candidate has held steady long enough -- commit
-        targetValueEl.textContent = STRINGS[strIdx].label + ' string \u00b7 ' + STRINGS[strIdx].freq.toFixed(2) + ' Hz';
-        flashTarget();
-        pendingTargetStrIdx = null;
+        pendingTargetSince = null; // back on the locked target -- cancel any pending switch
+      } else {
+        if(pendingTargetSince === null) pendingTargetSince = now; // just moved off the locked target -- start the clock
+        if(now - pendingTargetSince >= TARGET_LOCK_MS){
+          lastTargetStrIdx = strIdx; // been off the old target long enough -- commit to whatever we're reading now
+          targetValueEl.textContent = STRINGS[strIdx].label + ' string \u00b7 ' + STRINGS[strIdx].freq.toFixed(2) + ' Hz';
+          flashTarget();
+          pendingTargetSince = null;
+        }
       }
     }
     liveValueEl.textContent = trueFreq.toFixed(2) + ' Hz';
@@ -1009,7 +1007,6 @@
       outOfGreenSince = null;
       lastValidReadingAt = null;
       lastTargetStrIdx = null;
-      pendingTargetStrIdx = null;
       pendingTargetSince = null;
       targetPx = 0;
       currentPx = 0;
@@ -1061,7 +1058,6 @@
     outOfGreenSince = null;
     lastValidReadingAt = null;
     lastTargetStrIdx = null;
-    pendingTargetStrIdx = null;
     pendingTargetSince = null;
     if(flashTimeoutId){ clearTimeout(flashTimeoutId); flashTimeoutId = null; }
     targetValueEl.classList.remove('flash');
