@@ -381,6 +381,12 @@
     color:var(--fg);
     opacity:0.85;
   }
+  .progression-status{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    color:var(--locked);
+    opacity:0.85;
+  }
   .progression-actions{ display:flex; gap:6px; }
   .mini-btn{
     padding:5px 10px;
@@ -941,6 +947,7 @@
           <button class="mini-btn" id="progressionClearBtn">Clear</button>
         </div>
       </div>
+      <div class="progression-status" id="progressionStatus" style="display:none;"></div>
       <div class="progression-row" id="progressionRow">
         <div class="progression-empty" id="progressionEmpty">tap + on any chord above to add it here</div>
       </div>
@@ -2324,6 +2331,7 @@ const modePicker = document.getElementById('modePicker');
 const chartGroups = document.getElementById('chartGroups');
 const progressionRow = document.getElementById('progressionRow');
 const progressionEmpty = document.getElementById('progressionEmpty');
+const progressionStatus = document.getElementById('progressionStatus');
 const progressionDownloadBtn = document.getElementById('progressionDownloadBtn');
 const progressionClearBtn = document.getElementById('progressionClearBtn');
 
@@ -2413,17 +2421,17 @@ POPULAR_PROGRESSIONS.forEach((p, i) => {
   popularProgressionSelect.appendChild(opt);
 });
 
-loadProgressionBtn.addEventListener('click', () => {
-  const idx = popularProgressionSelect.value;
-  if (idx === '') return;
-  const preset = POPULAR_PROGRESSIONS[parseInt(idx, 10)];
+// Tracks which preset (if any) currently populated the tray, so changing the
+// key or toggling a mode can automatically re-resolve the SAME preset against
+// the new context -- no need to re-click Load every time while exploring.
+// Cleared the moment the user manually edits the tray (add/remove/clear),
+// since at that point it's their own custom progression, not the preset
+// anymore, and shouldn't get silently overwritten by a later key change.
+let activePresetIndex = null;
+
+function resolvePresetIntoTray(presetIndex){
+  const preset = POPULAR_PROGRESSIONS[presetIndex];
   if (!preset) return;
-
-  if (progression.length > 0) {
-    const ok = window.confirm('Loading "' + preset.name + '" will replace your current progression. Continue?');
-    if (!ok) return;
-  }
-
   const tonicIndex = parseInt(chartKeySelect.value, 10);
   const modeName = activeModes[0] || 'Ionian'; // resolve against the first active mode, defaulting to Ionian if none selected
   const modeData = MODES_TABLE[modeName];
@@ -2442,7 +2450,29 @@ loadProgressionBtn.addEventListener('click', () => {
 
   saveProgression();
   renderProgression();
-  syncCardSelectionStates(); // reflects the newly-loaded chords in the browsing grid too, wherever they overlap
+  syncCardSelectionStates();
+}
+
+function applyActivePresetIfAny(){
+  if (activePresetIndex !== null) resolvePresetIntoTray(activePresetIndex);
+}
+
+loadProgressionBtn.addEventListener('click', () => {
+  const idx = popularProgressionSelect.value;
+  if (idx === '') return;
+  const presetIndex = parseInt(idx, 10);
+  const preset = POPULAR_PROGRESSIONS[presetIndex];
+  if (!preset) return;
+
+  if (progression.length > 0 && activePresetIndex === null) {
+    // only warn when replacing genuinely custom work -- re-loading while a
+    // preset is already active isn't a surprising/destructive action
+    const ok = window.confirm('Loading "' + preset.name + '" will replace your current progression. Continue?');
+    if (!ok) return;
+  }
+
+  activePresetIndex = presetIndex;
+  resolvePresetIntoTray(presetIndex);
 });
 
 ROOT_TO_DB_KEY.forEach((_, i) => {
@@ -2549,6 +2579,7 @@ function renderModePicker(){
       }
       renderModePicker();
       renderChartGroups();
+      applyActivePresetIfAny();
     });
     modePicker.appendChild(pill);
   });
@@ -2579,6 +2610,13 @@ function syncCardSelectionStates(){
 }
 
 function renderProgression(){
+  if (activePresetIndex !== null && POPULAR_PROGRESSIONS[activePresetIndex]) {
+    progressionStatus.style.display = '';
+    progressionStatus.textContent = '\u2713 Tracking "' + POPULAR_PROGRESSIONS[activePresetIndex].name + '" -- changes to key/mode auto-update it. Edit any chord to make it your own.';
+  } else {
+    progressionStatus.style.display = 'none';
+  }
+
   progressionRow.innerHTML = '';
   if (progression.length === 0) {
     progressionRow.appendChild(progressionEmpty);
@@ -2607,6 +2645,7 @@ function renderProgression(){
         if (shape) playChordShape(shape, chip, progression[idx].arpeggiate);
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
+        activePresetIndex = null;
         progression = progression.filter((_, i) => i !== idx);
         saveProgression();
         renderProgression();
@@ -2636,6 +2675,7 @@ function renderProgression(){
     });
     beatsSelect.addEventListener('click', (e) => e.stopPropagation());
     beatsSelect.addEventListener('change', () => {
+      activePresetIndex = null; // per-chord customization -- stop auto-reapplying the preset over it
       progression[idx] = { ...progression[idx], beats: parseInt(beatsSelect.value, 10) };
       saveProgression();
       renderTimeline(); // only the timeline needs to reflect the new duration, no need to rebuild every chip
@@ -2650,6 +2690,7 @@ function renderProgression(){
     chipArpBtn.setAttribute('aria-pressed', entry.arpeggiate ? 'true' : 'false');
     chipArpBtn.addEventListener('click', (e) => {
       e.stopPropagation();
+      activePresetIndex = null; // per-chord customization -- stop auto-reapplying the preset over it
       const nowOn = !progression[idx].arpeggiate;
       progression[idx] = { ...progression[idx], arpeggiate: nowOn };
       saveProgression();
@@ -2665,6 +2706,7 @@ function renderProgression(){
     removeEl.setAttribute('aria-label', 'Remove ' + entry.chordName + ' from progression');
     removeEl.addEventListener('click', (e) => {
       e.stopPropagation(); // don't also trigger the chip's play-on-click
+      activePresetIndex = null;
       progression = progression.filter((_, i) => i !== idx);
       saveProgression();
       renderProgression();
@@ -2691,6 +2733,7 @@ function renderTimeline(){
 
 
 function addToProgression(entry){
+  activePresetIndex = null; // manual edit -- this is now a custom progression, not tied to a preset anymore
   progression = [...progression, { ...entry, beats: 4, arpeggiate: false }]; // default to a full 4-beat measure, strummed
   saveProgression();
   renderProgression();
@@ -2698,6 +2741,7 @@ function addToProgression(entry){
 }
 
 progressionClearBtn.addEventListener('click', () => {
+  activePresetIndex = null;
   progression = [];
   saveProgression();
   renderProgression();
@@ -3139,7 +3183,10 @@ function renderChartGroups(){
   });
 }
 
-chartKeySelect.addEventListener('change', renderChartGroups);
+chartKeySelect.addEventListener('change', () => {
+  renderChartGroups();
+  applyActivePresetIfAny();
+});
 renderModePicker();
 renderProgression();
 updatePickerVisibility(tuneModeEl); // Tune is the default active mode on page load
@@ -3254,11 +3301,13 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowLeft') {
       chartKeySelect.selectedIndex = Math.max(0, chartKeySelect.selectedIndex - 1);
       renderChartGroups();
+      applyActivePresetIfAny();
       return;
     }
     if (e.key === 'ArrowRight') {
       chartKeySelect.selectedIndex = Math.min(chartKeySelect.options.length - 1, chartKeySelect.selectedIndex + 1);
       renderChartGroups();
+      applyActivePresetIfAny();
       return;
     }
     if (e.key >= '1' && e.key <= '7') {
@@ -3271,6 +3320,7 @@ document.addEventListener('keydown', (e) => {
         }
         renderModePicker();
         renderChartGroups();
+        applyActivePresetIfAny();
       }
       return;
     }
