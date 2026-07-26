@@ -267,6 +267,15 @@
   }
 
   .chart-groups{ width:100%; max-width:420px; display:flex; flex-direction:column; gap:18px; }
+  .chart-groups-empty{
+    width:100%;
+    text-align:center;
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    color:var(--fg);
+    opacity:0.4;
+    padding:20px 0;
+  }
   .chart-group-header{
     font-family:'Oswald', sans-serif;
     font-weight:600;
@@ -635,16 +644,17 @@
      grids (chart cards, mode pills, progression chips) naturally fit more
      per row -- no structural redesign needed, just more room to breathe. */
   @media (min-width: 760px){
-    header{ max-width:760px; }
-    main{ max-width:760px; }
+    header{ max-width:900px; }
+    main{ max-width:900px; }
     .mode-toggle{ max-width:420px; }
     .tone-picker{ max-width:420px; }
     .readout-numbers{ max-width:480px; }
     .chart-controls{ max-width:480px; }
     .chord-readout{ max-width:640px; }
-    .mode-picker{ max-width:700px; }
-    .chart-groups{ max-width:760px; }
-    .progression-panel{ max-width:760px; }
+    .mode-picker{ max-width:900px; }
+    .chart-groups{ max-width:900px; flex-direction:row; align-items:flex-start; gap:16px; }
+    .chart-mode-group{ flex:1; min-width:0; }
+    .progression-panel{ max-width:900px; }
     .gauge-wrap{ max-width:480px; }
     .mic-btn{ max-width:420px; }
     footer{ max-width:480px; }
@@ -1938,7 +1948,7 @@ ROOT_TO_DB_KEY.forEach((_, i) => {
   opt.textContent = NOTE_NAMES[i];
   chartKeySelect.appendChild(opt);
 });
-chartKeySelect.value = 7; // default to G, a friendly starting key
+chartKeySelect.value = 9; // default to A, a friendly starting key
 
 // ---- click-to-play for chart cards -- same triangle-wave approach as the
 // tuner's string reference tones (not square wave, despite the resemblance --
@@ -1997,7 +2007,7 @@ function playChordShape(shape, cardEl){
 }
 
 // ---- up to 3 active modes at once, oldest evicted on a 4th pick ----
-let activeModes = ['Ionian'];
+let activeModes = []; // nothing preselected -- the order the user picks in is theirs to build
 
 function renderModePicker(){
   modePicker.innerHTML = '';
@@ -2007,7 +2017,7 @@ function renderModePicker(){
     pill.textContent = modeName;
     pill.addEventListener('click', () => {
       if (activeModes.includes(modeName)) {
-        if (activeModes.length > 1) activeModes = activeModes.filter(m => m !== modeName);
+        activeModes = activeModes.filter(m => m !== modeName); // free to deselect down to zero
       } else {
         activeModes = [...activeModes, modeName];
         if (activeModes.length > 3) activeModes.shift(); // evict the oldest pick
@@ -2391,10 +2401,19 @@ function renderChartGroups(){
   const tonicIndex = parseInt(chartKeySelect.value, 10);
   chartGroups.innerHTML = '';
 
+  if (activeModes.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'chart-groups-empty';
+    empty.textContent = 'select a mode above to see its chords';
+    chartGroups.appendChild(empty);
+    return;
+  }
+
   activeModes.forEach(modeName => {
     const modeData = MODES_TABLE[modeName];
 
     const group = document.createElement('div');
+    group.className = 'chart-mode-group';
     const header = document.createElement('div');
     header.className = 'chart-group-header';
     header.textContent = modeName;
