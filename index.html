@@ -628,6 +628,30 @@
     text-transform:uppercase; letter-spacing:0.06em;
   }
   @media (prefers-reduced-motion: reduce){ .ball, .dot.live, #targetValue{ transition:none; animation:none; } }
+
+  /* Desktop breakpoint -- the whole layout above is mobile-first with a fixed
+     ~420px column, which just sits centered with wasted space on a wide
+     browser window. Widening the containers here lets the existing flex-wrap
+     grids (chart cards, mode pills, progression chips) naturally fit more
+     per row -- no structural redesign needed, just more room to breathe. */
+  @media (min-width: 760px){
+    header{ max-width:760px; }
+    main{ max-width:760px; }
+    .mode-toggle{ max-width:420px; }
+    .tone-picker{ max-width:420px; }
+    .readout-numbers{ max-width:480px; }
+    .chart-controls{ max-width:480px; }
+    .chord-readout{ max-width:640px; }
+    .mode-picker{ max-width:700px; }
+    .chart-groups{ max-width:760px; }
+    .progression-panel{ max-width:760px; }
+    .gauge-wrap{ max-width:480px; }
+    .mic-btn{ max-width:420px; }
+    footer{ max-width:480px; }
+    body{ padding:36px 24px; }
+    .chart-card{ max-width:170px; }
+    .note-name{ font-size:92px; }
+  }
 </style>
 <script type="importmap">
 {
