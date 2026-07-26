@@ -375,6 +375,81 @@
     cursor:pointer;
     padding:0 2px;
   }
+  .progression-chip-beats{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    color:var(--amber);
+    background:var(--panel-mid);
+    border:1px solid rgba(0,0,0,0.4);
+    border-radius:3px;
+    padding:1px 3px;
+    width:32px;
+  }
+
+  /* timeline strip -- block width proportional to each chord's beat count */
+  .progression-timeline{
+    width:100%;
+    display:flex;
+    gap:2px;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .timeline-block{
+    flex:0 0 auto;
+    background:var(--meter-bg);
+    border:1px solid rgba(0,0,0,0.5);
+    border-radius:3px;
+    padding:4px 2px;
+    text-align:center;
+    font-family:'JetBrains Mono', monospace;
+    font-size:9px;
+    color:var(--fg);
+    opacity:0.5;
+    transition:opacity .1s ease, box-shadow .1s ease;
+  }
+  .timeline-block.playing{
+    opacity:1;
+    color:#2a1c08;
+    background:var(--amber);
+    box-shadow:0 0 8px rgba(232,149,46,0.6);
+  }
+
+  .playback-controls{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    padding-top:4px;
+  }
+  .playback-transport{ display:flex; gap:6px; }
+  .mini-btn:disabled{ opacity:0.35; cursor:default; }
+  .playback-settings{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    align-items:center;
+  }
+  .playback-setting{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    color:var(--fg);
+    opacity:0.75;
+  }
+  .playback-setting input[type="number"]{
+    width:46px;
+    padding:3px 4px;
+    background:var(--meter-bg);
+    color:var(--amber);
+    border:1px solid rgba(0,0,0,0.5);
+    border-radius:4px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+  }
+  .playback-setting-unit{ opacity:0.6; }
+  .playback-setting.checkbox{ cursor:pointer; }
+  .playback-setting.checkbox input{ accent-color: var(--amber); }
 
   /* string buttons -- Neve/SSL channel-strip style square buttons */
   .pegs{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
@@ -662,12 +737,37 @@
       <div class="progression-header">
         <span class="progression-title">Your Progression</span>
         <div class="progression-actions">
-          <button class="mini-btn" id="progressionDownloadBtn">Download</button>
+          <button class="mini-btn" id="progressionDownloadBtn">Save Image</button>
           <button class="mini-btn" id="progressionClearBtn">Clear</button>
         </div>
       </div>
       <div class="progression-row" id="progressionRow">
         <div class="progression-empty" id="progressionEmpty">tap + on any chord above to add it here</div>
+      </div>
+
+      <div class="progression-timeline" id="progressionTimeline"></div>
+
+      <div class="playback-controls">
+        <div class="playback-transport">
+          <button class="mini-btn" id="progressionPlayBtn">Play</button>
+          <button class="mini-btn" id="progressionStopBtn" disabled>Stop</button>
+          <button class="mini-btn" id="progressionCopyBtn">Copy</button>
+        </div>
+        <div class="playback-settings">
+          <label class="playback-setting">
+            <span>Tempo</span>
+            <input type="number" id="tempoInput" min="40" max="220" step="5" value="90">
+            <span class="playback-setting-unit">bpm</span>
+          </label>
+          <label class="playback-setting checkbox">
+            <input type="checkbox" id="metronomeToggle">
+            <span>Metronome</span>
+          </label>
+          <label class="playback-setting checkbox">
+            <input type="checkbox" id="loopToggle">
+            <span>Loop</span>
+          </label>
+        </div>
       </div>
     </div>
   </div>
@@ -1911,6 +2011,7 @@ function renderProgression(){
   progressionRow.innerHTML = '';
   if (progression.length === 0) {
     progressionRow.appendChild(progressionEmpty);
+    renderTimeline();
     return;
   }
   progression.forEach((entry, idx) => {
@@ -1932,6 +2033,23 @@ function renderProgression(){
     labelEl.textContent = entry.label + ' · ' + entry.modeName;
     chip.appendChild(labelEl);
 
+    const beatsSelect = document.createElement('select');
+    beatsSelect.className = 'progression-chip-beats';
+    [1, 2, 3, 4].forEach(n => {
+      const opt = document.createElement('option');
+      opt.value = n;
+      opt.textContent = n + ' beat' + (n > 1 ? 's' : '');
+      if (n === (entry.beats || 4)) opt.selected = true;
+      beatsSelect.appendChild(opt);
+    });
+    beatsSelect.addEventListener('click', (e) => e.stopPropagation());
+    beatsSelect.addEventListener('change', () => {
+      progression[idx] = { ...progression[idx], beats: parseInt(beatsSelect.value, 10) };
+      saveProgression();
+      renderTimeline(); // only the timeline needs to reflect the new duration, no need to rebuild every chip
+    });
+    chip.appendChild(beatsSelect);
+
     const removeEl = document.createElement('span');
     removeEl.className = 'progression-chip-remove';
     removeEl.textContent = '×';
@@ -1945,10 +2063,24 @@ function renderProgression(){
 
     progressionRow.appendChild(chip);
   });
+  renderTimeline();
 }
 
+function renderTimeline(){
+  progressionTimeline.innerHTML = '';
+  const BEAT_PX = 18;
+  progression.forEach((entry) => {
+    const block = document.createElement('div');
+    block.className = 'timeline-block';
+    block.style.width = ((entry.beats || 4) * BEAT_PX) + 'px';
+    block.textContent = entry.chordName;
+    progressionTimeline.appendChild(block);
+  });
+}
+
+
 function addToProgression(entry){
-  progression = [...progression, entry];
+  progression = [...progression, { ...entry, beats: 4 }]; // default to a full 4-beat measure per chord
   saveProgression();
   renderProgression();
 }
@@ -2122,10 +2254,7 @@ progressionDownloadBtn.addEventListener('click', () => {
   }, 'image/png');
 });
 
-const progressionCopyBtn = document.createElement('button');
-progressionCopyBtn.className = 'mini-btn';
-progressionCopyBtn.textContent = 'Copy';
-progressionDownloadBtn.parentElement.insertBefore(progressionCopyBtn, progressionDownloadBtn);
+const progressionCopyBtn = document.getElementById('progressionCopyBtn');
 progressionCopyBtn.addEventListener('click', async () => {
   if (progression.length === 0) return;
   const canvas = generateProgressionCanvas();
@@ -2141,24 +2270,98 @@ progressionCopyBtn.addEventListener('click', async () => {
   }, 'image/png');
 });
 
-// ---- play through the whole progression in order ----
-const progressionPlayBtn = document.createElement('button');
-progressionPlayBtn.className = 'mini-btn';
-progressionPlayBtn.textContent = 'Play';
-progressionDownloadBtn.parentElement.insertBefore(progressionPlayBtn, progressionCopyBtn);
-progressionPlayBtn.addEventListener('click', () => {
-  if (progression.length === 0) return;
-  const GAP_MS = 1500;
-  progression.forEach((entry, i) => {
-    setTimeout(() => {
-      const shape = lookupChordShape(entry.rootIndex, entry.suffix);
-      if (shape) {
-        const chip = progressionRow.children[i];
-        playChordShape(shape, chip);
-      }
-    }, i * GAP_MS);
+// ---- playback: variable beats-per-chord, tempo, metronome, loop, and a
+// real Stop that actually cancels everything in flight ----
+const progressionPlayBtn = document.getElementById('progressionPlayBtn');
+const progressionStopBtn = document.getElementById('progressionStopBtn');
+const progressionTimeline = document.getElementById('progressionTimeline');
+const tempoInput = document.getElementById('tempoInput');
+const metronomeToggle = document.getElementById('metronomeToggle');
+const loopToggle = document.getElementById('loopToggle');
+
+let isPlaying = false;
+let activeTimeoutIds = [];
+let metronomeIntervalId = null;
+let currentPlayIndex = -1;
+
+function beatMs(){
+  const bpm = Math.max(40, Math.min(220, parseInt(tempoInput.value, 10) || 90));
+  return 60000 / bpm;
+}
+
+function updateTimelineHighlight(){
+  Array.from(progressionTimeline.children).forEach((block, i) => {
+    block.classList.toggle('playing', i === currentPlayIndex);
   });
-});
+}
+
+function playMetronomeTick(accented){
+  const ctx = getChartToneCtx();
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'square';
+  osc.frequency.value = accented ? 1600 : 1100;
+  gain.gain.setValueAtTime(0.22, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(now); osc.stop(now + 0.06);
+}
+
+function stopPlayback(){
+  isPlaying = false;
+  activeTimeoutIds.forEach(id => clearTimeout(id));
+  activeTimeoutIds = [];
+  if (metronomeIntervalId) { clearInterval(metronomeIntervalId); metronomeIntervalId = null; }
+  currentPlayIndex = -1;
+  updateTimelineHighlight();
+  progressionPlayBtn.disabled = false;
+  progressionStopBtn.disabled = true;
+}
+
+function playProgressionThrough(){
+  if (progression.length === 0) return;
+  stopPlayback(); // cancel any prior run cleanly before starting a new one
+  isPlaying = true;
+  progressionPlayBtn.disabled = true;
+  progressionStopBtn.disabled = false;
+
+  function runOnce(){
+    let elapsed = 0;
+    progression.forEach((entry, i) => {
+      const durMs = (entry.beats || 4) * beatMs();
+      const id = setTimeout(() => {
+        currentPlayIndex = i;
+        updateTimelineHighlight();
+        const shape = lookupChordShape(entry.rootIndex, entry.suffix);
+        if (shape) playChordShape(shape, progressionRow.children[i]);
+      }, elapsed);
+      activeTimeoutIds.push(id);
+      elapsed += durMs;
+    });
+    const endId = setTimeout(() => {
+      if (loopToggle.checked && isPlaying) {
+        runOnce();
+      } else {
+        stopPlayback();
+      }
+    }, elapsed);
+    activeTimeoutIds.push(endId);
+  }
+  runOnce();
+
+  if (metronomeToggle.checked) {
+    let beatCount = 0;
+    playMetronomeTick(true);
+    metronomeIntervalId = setInterval(() => {
+      beatCount++;
+      playMetronomeTick(beatCount % 4 === 0);
+    }, beatMs());
+  }
+}
+
+progressionPlayBtn.addEventListener('click', playProgressionThrough);
+progressionStopBtn.addEventListener('click', stopPlayback);
 
 function renderChartGroups(){
   const tonicIndex = parseInt(chartKeySelect.value, 10);
