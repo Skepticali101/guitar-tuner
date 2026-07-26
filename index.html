@@ -288,7 +288,19 @@
     padding-bottom:4px;
   }
 
-  .chart-card{ position:relative; }
+  .chart-card{ position:relative; padding-top:34px; }
+  .chart-card-mod{
+    display:block;
+    width:calc(100% - 26px);
+    margin-bottom:6px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:9px;
+    color:var(--amber);
+    background:var(--panel-mid);
+    border:1px solid rgba(0,0,0,0.4);
+    border-radius:4px;
+    padding:2px 3px;
+  }
   .chart-card-add{
     position:absolute;
     top:4px; right:4px;
@@ -1487,7 +1499,44 @@ const SUFFIX_TO_DB = {
   'sus2': 'sus2', 'sus4': 'sus4', 'dim': 'dim', 'aug': 'aug',
   '6': '6', 'm6': 'm6', 'm7b5': 'm7b5', 'add9': 'add9',
   '9': '9', 'maj9': 'maj9', 'm9': 'm9', '69': '69',
-  'dim7': 'dim7', 'aug7': 'aug7', '7sus4': '7sus4', 'add11': 'add11'
+  'dim7': 'dim7', 'aug7': 'aug7', '7sus4': '7sus4', 'add11': 'add11',
+  'madd9': 'madd9', '5': '5'
+};
+
+// Per-chord "mod" dropdown options, bucketed by the diatonic chord's base
+// quality -- each value is one of our own suffixes (looked up the same way
+// as everywhere else), each label is what the dropdown shows.
+const MOD_OPTIONS = {
+  maj: [
+    { value: '',     label: 'Triad' },
+    { value: '7',     label: '7 (Dominant)' },
+    { value: 'maj7',  label: 'Maj7' },
+    { value: '6',     label: '6' },
+    { value: 'add9',  label: 'Add9' },
+    { value: '9',     label: '9' },
+    { value: 'maj9',  label: 'Maj9' },
+    { value: 'sus2',  label: 'Sus2' },
+    { value: 'sus4',  label: 'Sus4' },
+    { value: 'aug',   label: 'Augmented' },
+    { value: '5',     label: '5 (Power Chord)' },
+  ],
+  min: [
+    { value: 'm',     label: 'Triad' },
+    { value: 'm7',    label: 'm7' },
+    { value: 'm6',    label: 'm6' },
+    { value: 'madd9', label: 'Add9' },
+    { value: 'm9',    label: 'm9' },
+    { value: 'sus2',  label: 'Sus2' },
+    { value: 'sus4',  label: 'Sus4' },
+    { value: 'dim',   label: 'Diminished' },
+    { value: 'm7b5',  label: 'm7b5 (Half-dim)' },
+    { value: '5',     label: '5 (Power Chord)' },
+  ],
+  dim: [
+    { value: 'dim',   label: 'Triad' },
+    { value: 'dim7',  label: 'Dim7' },
+    { value: 'm7b5',  label: 'm7b5 (Half-dim)' },
+  ],
 };
 
 function ensureChordsDbLoaded(){
@@ -2425,20 +2474,39 @@ function renderChartGroups(){
 
     modeData.intervals.forEach((interval, degreeIdx) => {
       const rootIndex = (tonicIndex + interval) % 12;
-      const quality = modeData.qualities[degreeIdx];
-      const suffix = QUALITY_TO_SUFFIX[quality];
+      const quality = modeData.qualities[degreeIdx]; // 'maj' | 'min' | 'dim' -- the diatonic default
+      const baseSuffix = QUALITY_TO_SUFFIX[quality];
       const label = modeData.labels[degreeIdx];
-      const chordName = NOTE_NAMES[rootIndex] + suffix;
+      const modOptions = MOD_OPTIONS[quality];
+
+      // mutable per-card state -- the mod dropdown changes this, and
+      // everything else on the card (name, diagram, sound, add-to-progression)
+      // stays in sync with whatever it's currently set to
+      let currentSuffix = baseSuffix;
+      let currentShape = null;
 
       const card = document.createElement('div');
       card.className = 'chart-card';
+
+      const modSelect = document.createElement('select');
+      modSelect.className = 'chart-card-mod';
+      modOptions.forEach(opt => {
+        const o = document.createElement('option');
+        o.value = opt.value;
+        o.textContent = opt.label;
+        if (opt.value === baseSuffix) o.selected = true;
+        modSelect.appendChild(o);
+      });
+      modSelect.addEventListener('click', (e) => e.stopPropagation());
+      card.appendChild(modSelect);
 
       const addBtn = document.createElement('div');
       addBtn.className = 'chart-card-add';
       addBtn.textContent = '+';
       addBtn.addEventListener('click', (e) => {
         e.stopPropagation(); // don't also trigger the card's play-on-click
-        addToProgression({ chordName, label, modeName, rootIndex, suffix });
+        const chordName = NOTE_NAMES[rootIndex] + currentSuffix;
+        addToProgression({ chordName, label, modeName, rootIndex, suffix: currentSuffix });
         addBtn.classList.add('added');
         setTimeout(() => addBtn.classList.remove('added'), 400);
       });
@@ -2451,21 +2519,36 @@ function renderChartGroups(){
 
       const nameEl = document.createElement('div');
       nameEl.className = 'chart-card-name';
-      nameEl.textContent = chordName;
       card.appendChild(nameEl);
 
-      const shape = lookupChordShape(rootIndex, suffix);
-      if (shape) {
-        const diagramHolder = document.createElement('div');
-        diagramHolder.innerHTML = renderChordDiagramSVG(shape);
-        card.appendChild(diagramHolder.firstChild);
-        card.addEventListener('click', () => playChordShape(shape, card));
-      } else {
-        const empty = document.createElement('div');
-        empty.className = 'chart-card-empty';
-        empty.textContent = 'no diagram';
-        card.appendChild(empty);
+      const diagramSlot = document.createElement('div');
+      card.appendChild(diagramSlot);
+
+      function refreshCard(){
+        nameEl.textContent = NOTE_NAMES[rootIndex] + currentSuffix;
+        currentShape = lookupChordShape(rootIndex, currentSuffix);
+        diagramSlot.innerHTML = '';
+        if (currentShape) {
+          const holder = document.createElement('div');
+          holder.innerHTML = renderChordDiagramSVG(currentShape);
+          diagramSlot.appendChild(holder.firstChild);
+        } else {
+          const empty = document.createElement('div');
+          empty.className = 'chart-card-empty';
+          empty.textContent = 'no diagram';
+          diagramSlot.appendChild(empty);
+        }
       }
+      refreshCard();
+
+      modSelect.addEventListener('change', () => {
+        currentSuffix = modSelect.value;
+        refreshCard();
+      });
+
+      card.addEventListener('click', () => {
+        if (currentShape) playChordShape(currentShape, card);
+      });
 
       row.appendChild(card);
     });
