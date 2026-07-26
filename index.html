@@ -563,6 +563,23 @@
   var HISTORY_LEN = 3;
   var RESET_JUMP_RATIO = 0.08;
   var justReset = false; // flags when medianFilter cleared history due to a big jump (new string/pluck)
+
+  // YIN's best-known failure mode is octave errors -- briefly reporting double
+  // or half the true fundamental when a note's harmonic balance shifts (very
+  // common as a held note decays). A raw ~100%/50% jump isn't a new note, but
+  // our own 8%-jump reset logic was treating it as one and wiping the whole
+  // rolling average from a single bad frame. Correcting it at the source,
+  // before it ever reaches the averaging pipeline, is the actual fix -- not
+  // another downstream smoothing layer.
+  var lastTrueFreq = null;
+  function correctOctaveError(freq, reference){
+    if(!reference) return freq;
+    var ratio = freq / reference;
+    if(ratio > 1.85 && ratio < 2.15) return freq / 2;
+    if(ratio > 0.465 && ratio < 0.54)  return freq * 2;
+    return freq;
+  }
+
   function medianFilter(freq){
     justReset = false;
     if(freqHistory.length > 0){
@@ -742,14 +759,17 @@
       lastValidReadingAt = null;
       lastTargetStrIdx = null;
       pendingTargetSince = null;
+      lastTrueFreq = null;
       return;
     }
     lastValidReadingAt = now;
 
-    var medianFreq = medianFilter(rawFreq);
+    var correctedFreq = correctOctaveError(rawFreq, lastTrueFreq);
+    var medianFreq = medianFilter(correctedFreq);
     pushRolling(medianFreq, now);
     var trueFreq = rollingAverage();
     if(trueFreq === null) return;
+    lastTrueFreq = trueFreq;
 
     var r = freqToNote(trueFreq);
     var name = r.name, cents = r.cents;
@@ -1008,6 +1028,7 @@
       lastValidReadingAt = null;
       lastTargetStrIdx = null;
       pendingTargetSince = null;
+      lastTrueFreq = null;
       targetPx = 0;
       currentPx = 0;
       statusDot.classList.add('live');
@@ -1059,6 +1080,7 @@
     lastValidReadingAt = null;
     lastTargetStrIdx = null;
     pendingTargetSince = null;
+    lastTrueFreq = null;
     if(flashTimeoutId){ clearTimeout(flashTimeoutId); flashTimeoutId = null; }
     targetValueEl.classList.remove('flash');
     targetPx = 0;
