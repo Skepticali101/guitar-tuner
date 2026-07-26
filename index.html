@@ -206,7 +206,7 @@
   }
 
   /* chart mode -- key/mode selectors + a scrollable row of 7 diatonic chords */
-  .chart-controls{ display:flex; gap:10px; width:100%; max-width:320px; }
+  .chart-controls{ display:flex; flex-wrap:wrap; gap:10px; width:100%; max-width:320px; }
   .chart-select{
     flex:1;
     padding:10px 8px;
@@ -242,6 +242,11 @@
   }
   .chart-card:active{ transform:scale(0.97); }
   .chart-card.playing{ box-shadow:inset 0 2px 5px rgba(0,0,0,0.6), 0 0 12px 2px rgba(232,149,46,0.6); }
+  .chart-card.selected{
+    border-color:var(--locked);
+    box-shadow:inset 0 2px 5px rgba(0,0,0,0.6), 0 0 0 2px var(--locked);
+  }
+  .chart-card.selected.playing{ box-shadow:inset 0 2px 5px rgba(0,0,0,0.6), 0 0 0 2px var(--locked), 0 0 12px 2px rgba(232,149,46,0.6); }
   .chart-card-degree{
     font-family:'JetBrains Mono', monospace;
     font-size:13px;
@@ -783,7 +788,7 @@
     .mode-toggle{ max-width:420px; }
     .tone-picker{ max-width:420px; }
     .readout-numbers{ max-width:480px; }
-    .chart-controls{ max-width:480px; }
+    .chart-controls{ max-width:560px; }
     .chord-readout{ max-width:640px; }
     .mode-picker{ max-width:900px; }
     .chart-groups{
@@ -918,6 +923,10 @@
 
     <div class="chart-controls">
       <select class="chart-select" id="chartKeySelect"></select>
+      <select class="chart-select" id="popularProgressionSelect">
+        <option value="">Popular Progressions...</option>
+      </select>
+      <button type="button" class="mini-btn" id="loadProgressionBtn">Load</button>
     </div>
 
     <div class="mode-picker" id="modePicker"></div>
@@ -2371,6 +2380,67 @@ const MODES_TABLE = {
 const QUALITY_TO_SUFFIX = { maj: '', min: 'm', dim: 'dim' };
 const MODE_NAMES = Object.keys(MODES_TABLE);
 
+// Well-known progressions, defined as scale-degree indices (0 = degree 1,
+// 4 = degree 5, etc.) rather than fixed chord names -- this is what lets the
+// SAME progression resolve correctly against whichever mode is active. The
+// classic "I-V-vi-IV" pop progression in Ionian becomes a genuinely
+// different, mode-appropriate set of chords if loaded while Dorian or
+// Mixolydian is selected instead, since the quality at each degree comes
+// straight from MODES_TABLE.
+const POPULAR_PROGRESSIONS = [
+  { name: 'Pop Progression (I-V-vi-IV)', degrees: [0,4,5,3] },
+  { name: "50s Progression (I-vi-IV-V)", degrees: [0,5,3,4] },
+  { name: 'Jazz Turnaround (ii-V-I)', degrees: [1,4,0] },
+  { name: 'Three-Chord Blues (I-IV-V)', degrees: [0,3,4] },
+  { name: '12-Bar Blues', degrees: [0,0,0,0,3,3,0,0,4,3,0,0] },
+  { name: "Canon Progression", degrees: [0,4,5,2,3,0,3,4] },
+  { name: 'Minor Rock (i-bVII-bVI-bVII)', degrees: [0,6,5,6] },
+  { name: 'Andalusian Cadence', degrees: [0,6,5,4] },
+  { name: 'Simple Folk (I-IV-I-V)', degrees: [0,3,0,4] },
+  { name: 'Minor Pop (vi-IV-I-V)', degrees: [5,3,0,4] },
+];
+
+const popularProgressionSelect = document.getElementById('popularProgressionSelect');
+const loadProgressionBtn = document.getElementById('loadProgressionBtn');
+POPULAR_PROGRESSIONS.forEach((p, i) => {
+  const opt = document.createElement('option');
+  opt.value = i;
+  opt.textContent = p.name;
+  popularProgressionSelect.appendChild(opt);
+});
+
+loadProgressionBtn.addEventListener('click', () => {
+  const idx = popularProgressionSelect.value;
+  if (idx === '') return;
+  const preset = POPULAR_PROGRESSIONS[parseInt(idx, 10)];
+  if (!preset) return;
+
+  if (progression.length > 0) {
+    const ok = window.confirm('Loading "' + preset.name + '" will replace your current progression. Continue?');
+    if (!ok) return;
+  }
+
+  const tonicIndex = parseInt(chartKeySelect.value, 10);
+  const modeName = activeModes[0] || 'Ionian'; // resolve against the first active mode, defaulting to Ionian if none selected
+  const modeData = MODES_TABLE[modeName];
+
+  progression = preset.degrees.map(degreeIdx => {
+    const rootIndex = (tonicIndex + modeData.intervals[degreeIdx]) % 12;
+    const quality = modeData.qualities[degreeIdx];
+    const suffix = QUALITY_TO_SUFFIX[quality];
+    const label = modeData.labels[degreeIdx];
+    return {
+      chordName: NOTE_NAMES[rootIndex] + suffix,
+      label, modeName, rootIndex, suffix,
+      beats: 4, arpeggiate: false
+    };
+  });
+
+  saveProgression();
+  renderProgression();
+  syncCardSelectionStates(); // reflects the newly-loaded chords in the browsing grid too, wherever they overlap
+});
+
 ROOT_TO_DB_KEY.forEach((_, i) => {
   const opt = document.createElement('option');
   opt.value = i;
@@ -2492,6 +2562,18 @@ function saveProgression(){
   try { localStorage.setItem(PROGRESSION_STORAGE_KEY, JSON.stringify(progression)); } catch (e) {}
 }
 
+// ---- persistent "already in progression" highlight on chart cards, kept in
+// sync without needing a full grid re-render every time the tray changes ----
+let renderedChartCards = []; // { card, rootIndex, getCurrentSuffix } for every card currently on screen
+function isChordInProgression(rootIndex, suffix){
+  return progression.some(e => e.rootIndex === rootIndex && e.suffix === suffix);
+}
+function syncCardSelectionStates(){
+  renderedChartCards.forEach(entry => {
+    entry.card.classList.toggle('selected', isChordInProgression(entry.rootIndex, entry.getCurrentSuffix()));
+  });
+}
+
 function renderProgression(){
   progressionRow.innerHTML = '';
   if (progression.length === 0) {
@@ -2524,6 +2606,7 @@ function renderProgression(){
         progression = progression.filter((_, i) => i !== idx);
         saveProgression();
         renderProgression();
+        syncCardSelectionStates();
       }
     });
 
@@ -2581,6 +2664,7 @@ function renderProgression(){
       progression = progression.filter((_, i) => i !== idx);
       saveProgression();
       renderProgression();
+      syncCardSelectionStates();
     });
     chip.appendChild(removeEl);
 
@@ -2606,12 +2690,14 @@ function addToProgression(entry){
   progression = [...progression, { ...entry, beats: 4, arpeggiate: false }]; // default to a full 4-beat measure, strummed
   saveProgression();
   renderProgression();
+  syncCardSelectionStates();
 }
 
 progressionClearBtn.addEventListener('click', () => {
   progression = [];
   saveProgression();
   renderProgression();
+  syncCardSelectionStates();
 });
 
 // ---- Canvas-rendered chord diagram, for the exported image (Canvas can't
@@ -2889,6 +2975,7 @@ progressionStopBtn.addEventListener('click', stopPlayback);
 function renderChartGroups(){
   const tonicIndex = parseInt(chartKeySelect.value, 10);
   chartGroups.innerHTML = '';
+  renderedChartCards = []; // rebuilt fresh each render, used to sync "already in progression" highlighting
 
   if (activeModes.length === 0) {
     const empty = document.createElement('div');
@@ -3005,7 +3092,9 @@ function renderChartGroups(){
           empty.textContent = 'no diagram';
           diagramSlot.appendChild(empty);
         }
+        card.classList.toggle('selected', isChordInProgression(rootIndex, currentSuffix));
       }
+      renderedChartCards.push({ card, rootIndex, getCurrentSuffix: () => currentSuffix });
       refreshCard();
 
       modSelect.addEventListener('change', () => {
