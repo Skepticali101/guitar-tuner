@@ -129,7 +129,7 @@
     box-shadow:inset 0 1px 1px rgba(255,255,255,0.3), 0 0 10px rgba(232,149,46,0.4), 0 2px 0 rgba(0,0,0,0.3);
   }
 
-  #tuneMode, #chordMode{ width:100%; display:flex; flex-direction:column; align-items:center; gap:28px; }
+  #tuneMode, #chordMode, #chartMode{ width:100%; display:flex; flex-direction:column; align-items:center; gap:28px; }
 
   /* chord ID readout -- reuses the same recessed LCD material as the tuner's numbers */
   .chord-readout{
@@ -172,6 +172,59 @@
     text-transform:uppercase;
     color:var(--fg);
     opacity:0.4;
+  }
+
+  /* chart mode -- key/mode selectors + a scrollable row of 7 diatonic chords */
+  .chart-controls{ display:flex; gap:10px; width:100%; max-width:320px; }
+  .chart-select{
+    flex:1;
+    padding:10px 8px;
+    border-radius:6px;
+    background:var(--meter-bg);
+    color:var(--amber);
+    border:1px solid rgba(0,0,0,0.5);
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px;
+    letter-spacing:0.04em;
+    box-shadow:inset 0 2px 5px rgba(0,0,0,0.6);
+  }
+  .chart-row{
+    width:100%;
+    max-width:420px;
+    display:flex;
+    gap:10px;
+    overflow-x:auto;
+    padding-bottom:6px;
+    -webkit-overflow-scrolling:touch;
+  }
+  .chart-card{
+    flex:0 0 100px;
+    background:var(--meter-bg);
+    border-radius:6px;
+    border:1px solid rgba(0,0,0,0.5);
+    padding:10px 8px;
+    text-align:center;
+    box-shadow:inset 0 2px 5px rgba(0,0,0,0.6);
+  }
+  .chart-card-degree{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    color:var(--amber-dim);
+    letter-spacing:0.06em;
+  }
+  .chart-card-name{
+    font-family:'VT323', monospace;
+    font-size:20px;
+    color:var(--amber);
+    margin:2px 0 4px;
+  }
+  .chart-card svg{ width:100%; height:auto; }
+  .chart-card-empty{
+    font-family:'JetBrains Mono', monospace;
+    font-size:9px;
+    color:var(--fg);
+    opacity:0.4;
+    padding:20px 0;
   }
 
   /* string buttons -- Neve/SSL channel-strip style square buttons */
@@ -371,6 +424,7 @@
   <div class="mode-toggle">
     <button class="mode-btn active" id="modeTuneBtn">Tune</button>
     <button class="mode-btn" id="modeChordBtn">Chord ID</button>
+    <button class="mode-btn" id="modeChartBtn">Chart</button>
   </div>
 
   <div id="tuneMode">
@@ -414,7 +468,7 @@
   </div>
 
   <div id="chordMode" style="display:none;">
-    <div class="hint">strum a chord, then capture ~2 seconds of it</div>
+    <div class="hint">press capture, then strum — it waits for you</div>
 
     <div class="chord-readout">
       <div class="chord-name" id="chordName">–</div>
@@ -432,6 +486,17 @@
       <span>Capture Chord</span>
     </button>
     <div class="engine-note" id="chordEngineNote">model not loaded yet</div>
+  </div>
+
+  <div id="chartMode" style="display:none;">
+    <div class="hint">pick a key and mode to see its 7 diatonic chords</div>
+
+    <div class="chart-controls">
+      <select class="chart-select" id="chartKeySelect"></select>
+      <select class="chart-select" id="chartModeSelect"></select>
+    </div>
+
+    <div class="chart-row" id="chartRow"></div>
   </div>
 </main>
 
@@ -1031,11 +1096,11 @@ const CAPTURE_SECONDS = 2.0;
 // Chord templates as semitone intervals from a root (0-11).
 // Ordered roughly common-to-rare; matching picks the best score, not the first hit.
 const CHORD_TEMPLATES = [
-  { suffix: '',      intervals: [0, 4, 7] },       // major
-  { suffix: 'm',     intervals: [0, 3, 7] },       // minor
-  { suffix: '7',     intervals: [0, 4, 7, 10] },   // dominant 7
-  { suffix: 'maj7',  intervals: [0, 4, 7, 11] },   // major 7
-  { suffix: 'm7',    intervals: [0, 3, 7, 10] },   // minor 7
+  { suffix: '',      intervals: [0, 4, 7] },        // major
+  { suffix: 'm',     intervals: [0, 3, 7] },        // minor
+  { suffix: '7',     intervals: [0, 4, 7, 10] },    // dominant 7
+  { suffix: 'maj7',  intervals: [0, 4, 7, 11] },    // major 7
+  { suffix: 'm7',    intervals: [0, 3, 7, 10] },    // minor 7
   { suffix: 'sus2',  intervals: [0, 2, 7] },
   { suffix: 'sus4',  intervals: [0, 5, 7] },
   { suffix: 'dim',   intervals: [0, 3, 6] },
@@ -1044,6 +1109,16 @@ const CHORD_TEMPLATES = [
   { suffix: 'm6',    intervals: [0, 3, 7, 9] },
   { suffix: 'm7b5',  intervals: [0, 3, 6, 10] },
   { suffix: 'add9',  intervals: [0, 2, 4, 7] },
+  // wider coverage for richer chords -- previously anything not in this
+  // list got force-matched to the closest wrong simple chord
+  { suffix: '9',     intervals: [0, 2, 4, 7, 10] }, // dominant 9
+  { suffix: 'maj9',  intervals: [0, 2, 4, 7, 11] },
+  { suffix: 'm9',    intervals: [0, 2, 3, 7, 10] },
+  { suffix: '69',    intervals: [0, 2, 4, 7, 9] },  // 6/9
+  { suffix: 'dim7',  intervals: [0, 3, 6, 9] },
+  { suffix: 'aug7',  intervals: [0, 4, 8, 10] },
+  { suffix: '7sus4', intervals: [0, 5, 7, 10] },
+  { suffix: 'add11', intervals: [0, 4, 5, 7] },
 ];
 
 let basicPitchModule = null;   // { BasicPitch, outputToNotesPoly, addPitchBendsToNoteEvents, noteFramesToTime }
@@ -1062,7 +1137,9 @@ const ROOT_TO_DB_KEY = ['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
 const SUFFIX_TO_DB = {
   '': 'major', 'm': 'minor', '7': '7', 'maj7': 'maj7', 'm7': 'm7',
   'sus2': 'sus2', 'sus4': 'sus4', 'dim': 'dim', 'aug': 'aug',
-  '6': '6', 'm6': 'm6', 'm7b5': 'm7b5', 'add9': 'add9'
+  '6': '6', 'm6': 'm6', 'm7b5': 'm7b5', 'add9': 'add9',
+  '9': '9', 'maj9': 'maj9', 'm9': 'm9', '69': '69',
+  'dim7': 'dim7', 'aug7': 'aug7', '7sus4': '7sus4', 'add11': 'add11'
 };
 
 function ensureChordsDbLoaded(){
@@ -1273,16 +1350,46 @@ async function startChordCapture(){
   capturedChunks = [];
   capturedSampleCount = 0;
   capturing = true;
-  setChordStatus('capturing — strum now', true);
+  setChordStatus('armed — strum when ready', true);
 
   const targetSamples = Math.ceil(CAPTURE_SECONDS * audioCtx.sampleRate);
   const nativeSampleRate = audioCtx.sampleRate;
+  const ARM_TIMEOUT_MS = 6000;     // give the player a real window to get ready and strum
+  const ONSET_RMS_THRESHOLD = 0.02;
+
+  let onsetDetected = false;
+  let postOnsetSamples = 0;
+  const armTimeoutId = setTimeout(() => {
+    if (!onsetDetected && capturing) {
+      capturing = false;
+      stopChordCapture();
+      setChordStatus('no strum detected', false);
+      chordNotesEl.textContent = 'try again — strum clearly within a few seconds of arming';
+    }
+  }, ARM_TIMEOUT_MS);
 
   workletNode.port.onmessage = (e) => {
     if (!capturing) return;
-    capturedChunks.push(e.data);
-    capturedSampleCount += e.data.length;
-    if (capturedSampleCount >= targetSamples) {
+    const chunk = e.data;
+
+    if (!onsetDetected) {
+      // Wait for the actual strum rather than starting the 2s clock the instant
+      // the mic connects -- otherwise part of the capture window is silence
+      // before the player has even picked up the guitar, which was very
+      // likely why richer/quieter chords were coming back wrong or unmatched.
+      let rms = 0;
+      for (let i = 0; i < chunk.length; i++) rms += chunk[i] * chunk[i];
+      rms = Math.sqrt(rms / chunk.length);
+      if (rms < ONSET_RMS_THRESHOLD) return;
+      onsetDetected = true;
+      clearTimeout(armTimeoutId);
+      setChordStatus('capturing — hold the chord', true);
+    }
+
+    capturedChunks.push(chunk);
+    capturedSampleCount += chunk.length;
+    postOnsetSamples += chunk.length;
+    if (postOnsetSamples >= targetSamples) {
       capturing = false;
       finishCapture(nativeSampleRate);
     }
@@ -1352,7 +1459,12 @@ async function runBasicPitch(resampledBuffer){
   const timed = noteFramesToTime(withBends);
 
   // Filter out faint/very-short spurious detections
-  return timed.filter(n => n.amplitude > 0.25 && n.durationSeconds > 0.03);
+  // A guitar has 6 strings, so 6 is a hard ceiling on simultaneous distinct
+  // notes -- keeping the loudest 6 (rather than a flat amplitude cutoff) is
+  // more robust against stray harmonics or pick noise adding spurious extras.
+  const filtered = timed.filter(n => n.durationSeconds > 0.03);
+  filtered.sort((a, b) => b.amplitude - a.amplitude);
+  return filtered.slice(0, 6);
 }
 
 function midiToNoteName(pitchMidi){
@@ -1372,9 +1484,13 @@ function matchChord(pitchClassSet, lowestPitchClass){
       let extra = 0;
       pitchClassSet.forEach(pc => { if (!expected.has(pc)) extra++; });
       let score = inCommon - missing * 0.6 - extra * 0.35;
-      if (root === lowestPitchClass) score += 0.2; // slight preference for the bass note being the root
+      // Guitar chords played in common shapes overwhelmingly have the root
+      // as the lowest string played -- weighting this more heavily helps
+      // distinguish between chords that otherwise share most of their tones
+      // (e.g. a 6th chord vs. its relative minor 7th).
+      if (root === lowestPitchClass) score += 0.5;
       if (!best || score > best.score) {
-        best = { root, tmpl, score, inCommon };
+        best = { root, tmpl, score, inCommon, expectedSize: expected.size, coverage: inCommon / expected.size };
       }
     }
   }
@@ -1407,7 +1523,7 @@ function renderChordResult(notes){
 
   const best = matchChord(pitchClassSet, lowestPitchClass);
 
-  if (!best || best.inCommon < 2) {
+  if (!best || best.inCommon < 2 || best.coverage < 0.7) {
     chordNameEl.textContent = '?';
     chordNotesEl.textContent = breakdown + ' — no clean chord match';
     chordDiagramWrap.innerHTML = '';
@@ -1425,25 +1541,112 @@ chordCaptureBtn.addEventListener('click', () => {
 });
 
 // ---- mode toggle ----
-function showTuneMode(){
-  modeTuneBtn.classList.add('active');
-  modeChordBtn.classList.remove('active');
-  tuneModeEl.style.display = '';
-  chordModeEl.style.display = 'none';
+const modeChartBtn = document.getElementById('modeChartBtn');
+const chartModeEl = document.getElementById('chartMode');
+const chartKeySelect = document.getElementById('chartKeySelect');
+const chartModeSelect = document.getElementById('chartModeSelect');
+const chartRow = document.getElementById('chartRow');
+
+const ALL_MODE_BTNS = [modeTuneBtn, modeChordBtn, modeChartBtn];
+const ALL_MODE_PANELS = [tuneModeEl, chordModeEl, chartModeEl];
+
+function switchToMode(activeBtn, activePanel){
+  ALL_MODE_BTNS.forEach(b => b.classList.toggle('active', b === activeBtn));
+  ALL_MODE_PANELS.forEach(p => { p.style.display = (p === activePanel) ? '' : 'none'; });
   stopChordCapture();
+  if (window.__tunerStop) window.__tunerStop();
+}
+
+function showTuneMode(){
+  switchToMode(modeTuneBtn, tuneModeEl);
 }
 function showChordMode(){
-  modeChordBtn.classList.add('active');
-  modeTuneBtn.classList.remove('active');
-  chordModeEl.style.display = '';
-  tuneModeEl.style.display = 'none';
-  if (window.__tunerStop) window.__tunerStop();
+  switchToMode(modeChordBtn, chordModeEl);
   ensureModelLoaded().catch(() => {}); // pre-warm the model as soon as this mode is opened
   ensureChordsDbLoaded().catch(() => {}); // pre-warm the chord diagram database too
+}
+function showChartMode(){
+  switchToMode(modeChartBtn, chartModeEl);
+  ensureChordsDbLoaded().then(renderChart).catch(() => {});
 }
 
 modeTuneBtn.addEventListener('click', showTuneMode);
 modeChordBtn.addEventListener('click', showChordMode);
+modeChartBtn.addEventListener('click', showChartMode);
+
+// ---- Chart mode: diatonic 7-chord tables for all 7 modes of the major scale ----
+// intervals: semitone offsets of each scale degree from the tonic
+// qualities: chord quality built on that degree ('maj' | 'min' | 'dim')
+// labels: the roman-numeral text to display (matches standard modal-harmony notation)
+const MODES_TABLE = {
+  Ionian:     { intervals:[0,2,4,5,7,9,11], qualities:['maj','min','min','maj','maj','min','dim'], labels:['I','ii','iii','IV','V','vi','vii°'] },
+  Dorian:     { intervals:[0,2,3,5,7,9,10], qualities:['min','min','maj','maj','min','dim','maj'], labels:['i','ii','bIII','IV','v','vi°','bVII'] },
+  Phrygian:   { intervals:[0,1,3,5,7,8,10], qualities:['min','maj','maj','min','dim','maj','min'], labels:['i','bII','bIII','iv','v°','bVI','bvii'] },
+  Lydian:     { intervals:[0,2,4,6,7,9,11], qualities:['maj','maj','min','dim','maj','min','min'], labels:['I','II','iii','#iv°','V','vi','vii'] },
+  Mixolydian: { intervals:[0,2,4,5,7,9,10], qualities:['maj','min','dim','maj','min','min','maj'], labels:['I','ii','iii°','IV','v','vi','bVII'] },
+  Aeolian:    { intervals:[0,2,3,5,7,8,10], qualities:['min','dim','maj','min','min','maj','maj'], labels:['i','ii°','bIII','iv','v','bVI','bVII'] },
+  Locrian:    { intervals:[0,1,3,5,6,8,10], qualities:['dim','maj','min','min','maj','maj','min'], labels:['i°','bII','biii','iv','bV','bVI','bvii'] },
+};
+const QUALITY_TO_SUFFIX = { maj: '', min: 'm', dim: 'dim' };
+
+ROOT_TO_DB_KEY.forEach((_, i) => {
+  const opt = document.createElement('option');
+  opt.value = i;
+  opt.textContent = NOTE_NAMES[i];
+  chartKeySelect.appendChild(opt);
+});
+Object.keys(MODES_TABLE).forEach(modeName => {
+  const opt = document.createElement('option');
+  opt.value = modeName;
+  opt.textContent = modeName;
+  chartModeSelect.appendChild(opt);
+});
+chartKeySelect.value = 7;  // default to G, a friendly starting key
+chartModeSelect.value = 'Ionian';
+
+function renderChart(){
+  const tonicIndex = parseInt(chartKeySelect.value, 10);
+  const modeData = MODES_TABLE[chartModeSelect.value];
+  chartRow.innerHTML = '';
+
+  modeData.intervals.forEach((interval, degreeIdx) => {
+    const rootIndex = (tonicIndex + interval) % 12;
+    const quality = modeData.qualities[degreeIdx];
+    const suffix = QUALITY_TO_SUFFIX[quality];
+    const label = modeData.labels[degreeIdx];
+    const chordName = NOTE_NAMES[rootIndex] + suffix;
+
+    const card = document.createElement('div');
+    card.className = 'chart-card';
+
+    const degreeEl = document.createElement('div');
+    degreeEl.className = 'chart-card-degree';
+    degreeEl.textContent = label;
+    card.appendChild(degreeEl);
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'chart-card-name';
+    nameEl.textContent = chordName;
+    card.appendChild(nameEl);
+
+    const shape = lookupChordShape(rootIndex, suffix);
+    if (shape) {
+      const diagramHolder = document.createElement('div');
+      diagramHolder.innerHTML = renderChordDiagramSVG(shape);
+      card.appendChild(diagramHolder.firstChild);
+    } else {
+      const empty = document.createElement('div');
+      empty.className = 'chart-card-empty';
+      empty.textContent = 'no diagram';
+      card.appendChild(empty);
+    }
+
+    chartRow.appendChild(card);
+  });
+}
+
+chartKeySelect.addEventListener('change', renderChart);
+chartModeSelect.addEventListener('change', renderChart);
 
 </script>
 </body>
