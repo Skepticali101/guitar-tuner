@@ -157,6 +157,23 @@
     margin-top:10px;
   }
 
+  .chord-diagram-wrap{
+    width:100%; max-width:200px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
+  }
+  .chord-diagram-wrap svg{ width:100%; height:auto; }
+  .chord-diagram-caption{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--fg);
+    opacity:0.4;
+  }
+
   /* string buttons -- Neve/SSL channel-strip style square buttons */
   .pegs{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
   .peg{
@@ -403,6 +420,8 @@
       <div class="chord-name" id="chordName">–</div>
       <div class="chord-notes" id="chordNotes">notes will appear here</div>
     </div>
+
+    <div class="chord-diagram-wrap" id="chordDiagramWrap"></div>
 
     <div class="status-row">
       <span class="dot" id="chordStatusDot"></span>
@@ -1031,6 +1050,122 @@ let basicPitchModule = null;   // { BasicPitch, outputToNotesPoly, addPitchBends
 let basicPitchInstance = null; // BasicPitch instance, model loads once and is reused
 let modelLoadPromise = null;
 
+// ---- chord fretboard diagrams, via vendored @tombatossals/chords-db data ----
+const chordDiagramWrap = document.getElementById('chordDiagramWrap');
+let chordsDbData = null;
+let chordsDbLoadPromise = null;
+
+// chords-db spells three roots with flats rather than sharps; everything else matches our NOTE_NAMES directly
+const ROOT_TO_DB_KEY = ['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+
+// our internal chord-template suffixes -> chords-db's suffix spelling (mostly identical)
+const SUFFIX_TO_DB = {
+  '': 'major', 'm': 'minor', '7': '7', 'maj7': 'maj7', 'm7': 'm7',
+  'sus2': 'sus2', 'sus4': 'sus4', 'dim': 'dim', 'aug': 'aug',
+  '6': '6', 'm6': 'm6', 'm7b5': 'm7b5', 'add9': 'add9'
+};
+
+function ensureChordsDbLoaded(){
+  if (chordsDbLoadPromise) return chordsDbLoadPromise;
+  chordsDbLoadPromise = fetch('./vendor/chords-db/guitar.json')
+    .then(r => r.json())
+    .then(data => { chordsDbData = data; });
+  return chordsDbLoadPromise;
+}
+
+function lookupChordShape(rootIndex, ourSuffix){
+  if (!chordsDbData) return null;
+  const dbKey = ROOT_TO_DB_KEY[rootIndex];
+  const dbSuffix = SUFFIX_TO_DB[ourSuffix];
+  if (!dbSuffix) return null;
+  const entries = chordsDbData.chords[dbKey];
+  if (!entries) return null;
+  const match = entries.find(e => e.suffix === dbSuffix);
+  if (!match || !match.positions || match.positions.length === 0) return null;
+  return match.positions[0]; // first position is consistently the simplest/most common voicing in this dataset
+}
+
+// Hand-drawn SVG fretboard diagram -- deliberately not using an external
+// rendering library, same "vendor data, build our own visuals" approach
+// as the rest of this app.
+function renderChordDiagramSVG(position){
+  const { frets, fingers, baseFret, barres } = position;
+  const numStrings = 6;
+  const relFrets = frets.map(f => (f > 0 ? f - baseFret + 1 : f));
+  const maxRel = Math.max(4, ...relFrets.filter(f => f > 0));
+  const numFretRows = maxRel;
+
+  const width = 140, topPad = 26, leftPad = 14, rightPad = 14, bottomPad = 10;
+  const gridWidth = width - leftPad - rightPad;
+  const rowHeight = 26;
+  const gridHeight = numFretRows * rowHeight;
+  const height = topPad + gridHeight + bottomPad;
+  const stringX = (i) => leftPad + (gridWidth / (numStrings - 1)) * i;
+  const fretY = (row) => topPad + row * rowHeight; // row 0 = nut line
+
+  let svg = `<svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`;
+
+  // string lines
+  for (let i = 0; i < numStrings; i++) {
+    svg += `<line x1="${stringX(i)}" y1="${topPad}" x2="${stringX(i)}" y2="${topPad + gridHeight}" stroke="var(--amber-dim)" stroke-width="1.5" />`;
+  }
+  // fret lines
+  for (let row = 0; row <= numFretRows; row++) {
+    const isNut = row === 0 && baseFret === 1;
+    svg += `<line x1="${leftPad}" y1="${fretY(row)}" x2="${leftPad + gridWidth}" y2="${fretY(row)}" stroke="var(--amber-dim)" stroke-width="${isNut ? 3 : 1.5}" />`;
+  }
+  // base fret label if not starting at the nut
+  if (baseFret > 1) {
+    svg += `<text x="${leftPad - 8}" y="${fretY(0) + rowHeight * 0.65}" font-size="10" fill="var(--amber)" text-anchor="end" font-family="JetBrains Mono, monospace">${baseFret}fr</text>`;
+  }
+  // barres
+  (barres || []).forEach(barreFret => {
+    const relBarre = barreFret - baseFret + 1;
+    const stringsAtBarre = [];
+    frets.forEach((f, i) => { if (f === barreFret) stringsAtBarre.push(i); });
+    if (stringsAtBarre.length >= 2) {
+      const x1 = stringX(Math.min(...stringsAtBarre));
+      const x2 = stringX(Math.max(...stringsAtBarre));
+      const y = fretY(relBarre - 1) + rowHeight / 2;
+      svg += `<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="var(--amber)" stroke-width="8" stroke-linecap="round" opacity="0.85" />`;
+    }
+  });
+  // per-string markers: X (muted), O (open), or a filled dot with finger number
+  frets.forEach((f, i) => {
+    const x = stringX(i);
+    if (f === -1) {
+      svg += `<text x="${x}" y="${topPad - 10}" font-size="12" fill="var(--off)" text-anchor="middle" font-family="JetBrains Mono, monospace">x</text>`;
+    } else if (f === 0) {
+      svg += `<circle cx="${x}" cy="${topPad - 13}" r="4.5" fill="none" stroke="var(--live-white)" stroke-width="1.5" />`;
+    } else {
+      const row = f - baseFret + 1;
+      const y = fretY(row - 1) + rowHeight / 2;
+      svg += `<circle cx="${x}" cy="${y}" r="8" fill="var(--amber)" />`;
+      const fingerNum = fingers ? fingers[i] : 0;
+      if (fingerNum > 0) {
+        svg += `<text x="${x}" y="${y + 3.5}" font-size="9" fill="#2a1c08" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="700">${fingerNum}</text>`;
+      }
+    }
+  });
+
+  svg += '</svg>';
+  return svg;
+}
+
+function updateChordDiagram(rootIndex, ourSuffix){
+  chordDiagramWrap.innerHTML = '';
+  ensureChordsDbLoaded().then(() => {
+    const shape = lookupChordShape(rootIndex, ourSuffix);
+    if (!shape) {
+      chordDiagramWrap.innerHTML = '<div class="chord-diagram-caption">no diagram available for this voicing</div>';
+      return;
+    }
+    chordDiagramWrap.innerHTML = renderChordDiagramSVG(shape) + '<div class="chord-diagram-caption">common voicing</div>';
+  }).catch(() => {
+    chordDiagramWrap.innerHTML = '';
+  });
+}
+
 let audioCtx = null;
 let mediaStream = null;
 let workletNode = null;
@@ -1250,6 +1385,7 @@ function renderChordResult(notes){
   if (notes.length === 0) {
     chordNameEl.textContent = '–';
     chordNotesEl.textContent = 'no clear notes detected — try strumming louder or closer to the mic';
+    chordDiagramWrap.innerHTML = '';
     return;
   }
 
@@ -1265,6 +1401,7 @@ function renderChordResult(notes){
   if (pitchClassSet.size === 1) {
     chordNameEl.textContent = NOTE_NAMES[lowestPitchClass];
     chordNotesEl.textContent = breakdown + ' (single note, not a chord)';
+    chordDiagramWrap.innerHTML = '';
     return;
   }
 
@@ -1273,11 +1410,13 @@ function renderChordResult(notes){
   if (!best || best.inCommon < 2) {
     chordNameEl.textContent = '?';
     chordNotesEl.textContent = breakdown + ' — no clean chord match';
+    chordDiagramWrap.innerHTML = '';
     return;
   }
 
   chordNameEl.textContent = NOTE_NAMES[best.root] + best.tmpl.suffix;
   chordNotesEl.textContent = breakdown;
+  updateChordDiagram(best.root, best.tmpl.suffix);
 }
 
 chordCaptureBtn.addEventListener('click', () => {
@@ -1300,6 +1439,7 @@ function showChordMode(){
   tuneModeEl.style.display = 'none';
   if (window.__tunerStop) window.__tunerStop();
   ensureModelLoaded().catch(() => {}); // pre-warm the model as soon as this mode is opened
+  ensureChordsDbLoaded().catch(() => {}); // pre-warm the chord diagram database too
 }
 
 modeTuneBtn.addEventListener('click', showTuneMode);
