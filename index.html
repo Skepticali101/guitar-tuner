@@ -786,8 +786,24 @@
     .chart-controls{ max-width:480px; }
     .chord-readout{ max-width:640px; }
     .mode-picker{ max-width:900px; }
-    .chart-groups{ max-width:900px; flex-direction:row; align-items:flex-start; gap:16px; }
-    .chart-mode-group{ flex:1; min-width:0; }
+    .chart-groups{
+      max-width:900px;
+      flex-direction:row;
+      flex-wrap:nowrap;
+      align-items:flex-start;
+      gap:16px;
+      overflow-x:auto;
+      -webkit-overflow-scrolling:touch;
+      padding-bottom:8px;
+    }
+    .chart-mode-group{
+      flex:0 0 calc((100% - 32px) / 3); /* exactly 3 columns fit the container width; a 4th+ scrolls */
+      min-width:260px;
+    }
+    .chart-mode-group + .chart-mode-group{
+      border-left:1px solid var(--hairline);
+      padding-left:16px;
+    }
     .progression-panel{ max-width:900px; }
     .gauge-wrap{ max-width:480px; }
     .mic-btn{ max-width:420px; }
@@ -898,7 +914,7 @@
   </div>
 
   <div id="chartMode" style="display:none;">
-    <div class="hint">pick a key, select up to 3 modes to browse, tap + to build a progression</div>
+    <div class="hint">pick a key, select any modes to browse, tap + to build a progression</div>
 
     <div class="chart-controls">
       <select class="chart-select" id="chartKeySelect"></select>
@@ -993,6 +1009,41 @@
     return window.__sharedToneCtx;
   };
 
+  // Master output bus -- every voice connects here instead of straight to
+  // ctx.destination. Two stages:
+  //   1) a high-pass filter at 42Hz -- below the lowest note this app ever
+  //      actually plays (piano samples bottom out at A1/55Hz, guitar's
+  //      lowest string is E2/82Hz), so it only removes genuine sub-rumble/
+  //      junk, never real musical content. A shelf cut was here originally,
+  //      but with the octave-companion doubling removed from chord playback
+  //      (that was the real source of excess low-end buildup, not the plain
+  //      fundamentals), a surgical HPF below all real content is the more
+  //      correct tool than broadly attenuating legitimate bass.
+  //   2) a fast, high-ratio compressor acting as a safety limiter, so a
+  //      6-note chord (still several simultaneous oscillators/voices) can
+  //      never sum past 0dBFS and hard-clip, regardless of how many voices
+  //      stack at once.
+  // Built once per AudioContext and cached on the context itself.
+  window.__getMasterBus = function(ctx){
+    if(ctx.__masterBusInput) return ctx.__masterBusInput;
+    var hpf = ctx.createBiquadFilter();
+    hpf.type = 'highpass';
+    hpf.frequency.value = 42;
+    hpf.Q.value = 0.707; // standard Butterworth slope, no resonant peak at the cutoff
+
+    var limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -8;
+    limiter.knee.value = 6;
+    limiter.ratio.value = 16;   // near-limiter, catches peaks without obviously "pumping" on normal material
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.25;
+
+    hpf.connect(limiter);
+    limiter.connect(ctx.destination);
+    ctx.__masterBusInput = hpf; // everything connects to this node
+    return hpf;
+  };
+
   // ============================================================
   // Shared instrument-voice engine -- one implementation used by both this
   // script (tuner reference tones) and the Chart mode module script (chord
@@ -1064,7 +1115,7 @@
       g.gain.linearRampToValueAtTime(gain, startAt + 0.008);
       g.gain.setValueAtTime(gain, startAt + Math.max(0.05, duration - 0.15));
       g.gain.linearRampToValueAtTime(0, startAt + duration);
-      src.connect(g); g.connect(ctx.destination);
+      src.connect(g); g.connect(window.__getMasterBus(ctx));
       src.start(startAt);
       src.stop(startAt + duration + 0.05);
     }
@@ -1085,7 +1136,7 @@
       outGain.gain.linearRampToValueAtTime(gain, startAt + 0.008);
       outGain.gain.setValueAtTime(gain * 0.8, startAt + Math.max(0.05, duration - 0.2));
       outGain.gain.linearRampToValueAtTime(0, startAt + duration);
-      carrier.connect(outGain); outGain.connect(ctx.destination);
+      carrier.connect(outGain); outGain.connect(window.__getMasterBus(ctx));
       modulator.start(startAt); carrier.start(startAt);
       modulator.stop(startAt + duration + 0.05); carrier.stop(startAt + duration + 0.05);
     }
@@ -1104,7 +1155,7 @@
         g.gain.linearRampToValueAtTime(amp, startAt + 0.015);
         g.gain.setValueAtTime(amp, startAt + Math.max(0.05, duration - 0.08));
         g.gain.linearRampToValueAtTime(0, startAt + duration);
-        osc.connect(g); g.connect(ctx.destination);
+        osc.connect(g); g.connect(window.__getMasterBus(ctx));
         osc.start(startAt); osc.stop(startAt + duration + 0.05);
       });
     }
@@ -1305,7 +1356,7 @@
       gain.gain.linearRampToValueAtTime(0.5, now + 0.04);
       gain.gain.linearRampToValueAtTime(0.5, now + dur - 0.15);
       gain.gain.linearRampToValueAtTime(0, now + dur);
-      osc.connect(gain); gain.connect(ctx.destination);
+      osc.connect(gain); gain.connect(window.__getMasterBus(ctx));
       osc.start(now); osc.stop(now + dur + 0.05);
 
       var osc2 = ctx.createOscillator();
@@ -1316,7 +1367,7 @@
       gain2.gain.linearRampToValueAtTime(octaveGain, now + 0.04);
       gain2.gain.linearRampToValueAtTime(octaveGain, now + dur - 0.15);
       gain2.gain.linearRampToValueAtTime(0, now + dur);
-      osc2.connect(gain2); gain2.connect(ctx.destination);
+      osc2.connect(gain2); gain2.connect(window.__getMasterBus(ctx));
       osc2.start(now); osc2.stop(now + dur + 0.05);
     }
 
@@ -1335,7 +1386,7 @@
     gain.gain.setValueAtTime(0, now);
     gain.gain.linearRampToValueAtTime(0.32, now + 0.02);
     gain.gain.linearRampToValueAtTime(0, now + 0.24);
-    osc.connect(gain); gain.connect(ctx.destination);
+    osc.connect(gain); gain.connect(window.__getMasterBus(ctx));
     osc.start(now); osc.stop(now + 0.27);
   }
 
@@ -2351,7 +2402,7 @@ function playChordShape(shape, cardEl, forceArpeggiate){
   const ARPEGGIO_STAGGER = 0.16; // real spacing between distinct notes
   const dur = isInstrument ? 1.8 : 1.4; // sampled/synthesized instrument voices ring out a bit longer than the plain oscillator tones
 
-  const noteGain = Math.min(0.32, 1.4 / notes.length);
+  const noteGain = Math.min(0.26, 1.0 / notes.length);
 
   function scheduleNotes(){
     const now = ctx.currentTime;
@@ -2361,12 +2412,16 @@ function playChordShape(shape, cardEl, forceArpeggiate){
       const startAt = now + stagger;
 
       if (isInstrument) {
-        window.__toneEngine.playNote(ctx, toneType, freq, startAt, noteGain * 1.7, dur);
+        window.__toneEngine.playNote(ctx, toneType, freq, startAt, noteGain * 1.15, dur);
         return;
       }
 
-      const octaveGain = (freq < 100 ? 0.42 : freq < 130 ? 0.36 : freq < 170 ? 0.28 : 0.14) * (noteGain / 0.32);
-
+      // Single oscillator per note -- no octave-companion doubling here.
+      // That trick exists specifically to make a single reference tone
+      // audible on a phone speaker (tuner mode only); doubling every note
+      // in a full chord adds real muddiness and was a major contributor to
+      // the clipping we were seeing, on top of not being musically what a
+      // "strummed chord" should sound like.
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = toneType;
@@ -2375,19 +2430,8 @@ function playChordShape(shape, cardEl, forceArpeggiate){
       gain.gain.linearRampToValueAtTime(noteGain, startAt + 0.03);
       gain.gain.linearRampToValueAtTime(noteGain, startAt + dur - 0.15);
       gain.gain.linearRampToValueAtTime(0, startAt + dur);
-      osc.connect(gain); gain.connect(ctx.destination);
+      osc.connect(gain); gain.connect(window.__getMasterBus(ctx));
       osc.start(startAt); osc.stop(startAt + dur + 0.05);
-
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.type = toneType;
-      osc2.frequency.value = freq * 2;
-      gain2.gain.setValueAtTime(0, startAt);
-      gain2.gain.linearRampToValueAtTime(octaveGain, startAt + 0.03);
-      gain2.gain.linearRampToValueAtTime(octaveGain, startAt + dur - 0.15);
-      gain2.gain.linearRampToValueAtTime(0, startAt + dur);
-      osc2.connect(gain2); gain2.connect(ctx.destination);
-      osc2.start(startAt); osc2.stop(startAt + dur + 0.05);
     });
   }
 
@@ -2419,8 +2463,7 @@ function renderModePicker(){
       if (activeModes.includes(modeName)) {
         activeModes = activeModes.filter(m => m !== modeName); // free to deselect down to zero
       } else {
-        activeModes = [...activeModes, modeName];
-        if (activeModes.length > 3) activeModes.shift(); // evict the oldest pick
+        activeModes = [...activeModes, modeName]; // no cap -- select as many as you want, columns scroll on desktop
       }
       renderModePicker();
       renderChartGroups();
@@ -2776,7 +2819,7 @@ function playMetronomeTick(accented){
   osc.frequency.value = accented ? 1600 : 1100;
   gain.gain.setValueAtTime(0.22, now);
   gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-  osc.connect(gain); gain.connect(ctx.destination);
+  osc.connect(gain); gain.connect(window.__getMasterBus(ctx));
   osc.start(now); osc.stop(now + 0.06);
 }
 
@@ -3124,7 +3167,6 @@ document.addEventListener('keydown', (e) => {
           activeModes = activeModes.filter(m => m !== modeName);
         } else {
           activeModes = [...activeModes, modeName];
-          if (activeModes.length > 3) activeModes.shift();
         }
         renderModePicker();
         renderChartGroups();
