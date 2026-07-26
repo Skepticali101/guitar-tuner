@@ -3,8 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#161311">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
 <title>Frequency Target Replicator</title>
-<link rel="icon" href="data:,">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%276%27%20fill%3D%27%23161311%27/%3E%3Cpath%20d%3D%27M10%206%20L10%2016%20Q10%2020%2016%2020%20Q22%2020%2022%2016%20L22%206%27%20stroke%3D%27%23e8952e%27%20stroke-width%3D%272.6%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3Cline%20x1%3D%2716%27%20y1%3D%2720%27%20x2%3D%2716%27%20y2%3D%2727%27%20stroke%3D%27%23e8952e%27%20stroke-width%3D%272.6%27%20stroke-linecap%3D%27round%27/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=VT323&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -317,6 +321,26 @@
   }
   .chart-card-add:active{ transform:scale(0.9); }
   .chart-card-add.added{ background:linear-gradient(180deg, #9fc98a, var(--locked)); color:#12250c; }
+
+  .chart-card-arp{
+    position:absolute;
+    top:4px; left:4px;
+    width:20px; height:20px;
+    border-radius:5px;
+    border:1px solid rgba(0,0,0,0.4);
+    background:linear-gradient(180deg, var(--cap), var(--cap-dark));
+    color:var(--plaque);
+    font-size:12px;
+    line-height:1;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+  .chart-card-arp:active{ transform:scale(0.9); }
+  .chart-card-arp.active{
+    background:linear-gradient(180deg, #f0b878, var(--amber));
+    color:#2a1c08;
+    box-shadow:0 0 6px rgba(232,149,46,0.5);
+  }
 
   /* progression tray -- persists across mode/key swaps until the app closes (or reload, via localStorage) */
   .progression-panel{
@@ -843,6 +867,17 @@
     window.__arpeggiate = arpeggiateToggle.checked;
   });
 
+  // One shared AudioContext for all short reference/chord tone playback
+  // (tuner reference tones, in-tune chime, chart chord playback) instead of
+  // each script maintaining its own separate persistent context.
+  window.__getSharedToneCtx = function(){
+    if(!window.__sharedToneCtx){
+      window.__sharedToneCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if(window.__sharedToneCtx.state === 'suspended') window.__sharedToneCtx.resume();
+    return window.__sharedToneCtx;
+  };
+
   var STRINGS = [
     {note:'E2', freq:82.41, label:'E'},
     {note:'A2', freq:110.00, label:'A'},
@@ -986,12 +1021,11 @@
     }, 1300);
   }
 
-  // --- tone playback (separate lightweight context, always main-thread, fine since it's not time-critical detection) ---
-  var toneCtx;
+  // --- tone playback -- delegates to one shared AudioContext (window.__getSharedToneCtx),
+  // used by both this script and the Chart mode module script, instead of
+  // each maintaining its own separate persistent context for the same job ---
   function getToneCtx(){
-    if(!toneCtx) toneCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if(toneCtx.state === 'suspended') toneCtx.resume();
-    return toneCtx;
+    return window.__getSharedToneCtx();
   }
   function playReferenceTone(freq, pegEl){
     var ctx = getToneCtx();
@@ -1962,9 +1996,20 @@ const progressionClearBtn = document.getElementById('progressionClearBtn');
 const ALL_MODE_BTNS = [modeTuneBtn, modeChordBtn, modeChartBtn];
 const ALL_MODE_PANELS = [tuneModeEl, chordModeEl, chartModeEl];
 
+// Tone/Arpeggiate picker only makes sense where something actually gets
+// played: Tune uses Tone (single reference notes) but never chords, so
+// Arpeggiate has nothing to do there; Chord ID doesn't play anything at all.
+const tonePickerEl = document.querySelector('.tone-picker');
+const arpeggiateLabel = document.getElementById('arpeggiateToggle').closest('label');
+function updatePickerVisibility(activePanel){
+  tonePickerEl.style.display = (activePanel === chordModeEl) ? 'none' : '';
+  arpeggiateLabel.style.display = (activePanel === chartModeEl) ? '' : 'none';
+}
+
 function switchToMode(activeBtn, activePanel){
   ALL_MODE_BTNS.forEach(b => b.classList.toggle('active', b === activeBtn));
   ALL_MODE_PANELS.forEach(p => { p.style.display = (p === activePanel) ? '' : 'none'; });
+  updatePickerVisibility(activePanel);
   stopChordCapture();
   if (window.__tunerStop) window.__tunerStop();
 }
@@ -2016,18 +2061,15 @@ chartKeySelect.value = 9; // default to A, a friendly starting key
 // audibility on the low strings; reused here for consistency, and now
 // selectable via the global Tone picker). ----
 const OPEN_STRING_FREQS = [82.41, 110.00, 146.83, 196.00, 246.94, 329.63]; // low E to high E
-let chartToneCtx = null;
 function getChartToneCtx(){
-  if (!chartToneCtx) chartToneCtx = new (window.AudioContext || window.webkitAudioContext)();
-  if (chartToneCtx.state === 'suspended') chartToneCtx.resume();
-  return chartToneCtx;
+  return window.__getSharedToneCtx();
 }
-function playChordShape(shape, cardEl){
+function playChordShape(shape, cardEl, forceArpeggiate){
   const ctx = getChartToneCtx();
   const now = ctx.currentTime;
   const dur = 1.4;
   const toneType = window.__toneType || 'triangle';
-  const arpeggiate = !!window.__arpeggiate;
+  const arpeggiate = !!window.__arpeggiate || !!forceArpeggiate;
 
   // compute the real frequency for every active string first -- needed for
   // arpeggiate mode, since a fretted low string can occasionally sit HIGHER
@@ -2511,9 +2553,21 @@ function renderChartGroups(){
       // stays in sync with whatever it's currently set to
       let currentSuffix = baseSuffix;
       let currentShape = null;
+      let cardArpeggiate = false; // per-card override -- ORs with the global toggle, so this only needs to force it ON
 
       const card = document.createElement('div');
       card.className = 'chart-card';
+
+      const arpBtn = document.createElement('div');
+      arpBtn.className = 'chart-card-arp';
+      arpBtn.textContent = '\u2933'; // small arpeggio/sweep glyph
+      arpBtn.title = 'Arpeggiate this chord';
+      arpBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        cardArpeggiate = !cardArpeggiate;
+        arpBtn.classList.toggle('active', cardArpeggiate);
+      });
+      card.appendChild(arpBtn);
 
       const modSelect = document.createElement('select');
       modSelect.className = 'chart-card-mod';
@@ -2574,7 +2628,7 @@ function renderChartGroups(){
       });
 
       card.addEventListener('click', () => {
-        if (currentShape) playChordShape(currentShape, card);
+        if (currentShape) playChordShape(currentShape, card, cardArpeggiate);
       });
 
       row.appendChild(card);
@@ -2588,6 +2642,7 @@ function renderChartGroups(){
 chartKeySelect.addEventListener('change', renderChartGroups);
 renderModePicker();
 renderProgression();
+updatePickerVisibility(tuneModeEl); // Tune is the default active mode on page load
 
 </script>
 </body>
