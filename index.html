@@ -342,6 +342,7 @@
   }
   .chart-card-add:active{ transform:scale(0.9); }
   .chart-card-add.added{ background:linear-gradient(180deg, #9fc98a, var(--locked)); color:#12250c; }
+  .chart-card-add.remove-mode{ background:linear-gradient(180deg, #e8776a, var(--off)); color:#fff5ef; }
 
   .chart-card-arp{
     position:absolute;
@@ -2606,6 +2607,7 @@ function isChordInProgression(rootIndex, suffix){
 function syncCardSelectionStates(){
   renderedChartCards.forEach(entry => {
     entry.card.classList.toggle('selected', isChordInProgression(entry.rootIndex, entry.getCurrentSuffix()));
+    if (entry.refreshToggleBtn) entry.refreshToggleBtn();
   });
 }
 
@@ -3098,19 +3100,40 @@ function renderChartGroups(){
       modSelect.addEventListener('click', (e) => e.stopPropagation());
       card.appendChild(modSelect);
 
-      const addBtn = document.createElement('button');
-      addBtn.type = 'button';
-      addBtn.className = 'chart-card-add';
-      addBtn.textContent = '+';
-      addBtn.setAttribute('aria-label', 'Add to progression');
-      addBtn.addEventListener('click', (e) => {
+      // Single toggling button, not two separate ones: shows '+' and adds
+      // when this chord isn't in the progression yet, swaps to a minus and
+      // removes when it already is. Mirrors the same highlight state the
+      // card's green border already reflects, so the two stay in sync.
+      const toggleBtn = document.createElement('button');
+      toggleBtn.type = 'button';
+      toggleBtn.className = 'chart-card-add';
+      function refreshToggleBtn(){
+        const inProg = isChordInProgression(rootIndex, currentSuffix);
+        toggleBtn.textContent = inProg ? '\u2212' : '+';
+        toggleBtn.setAttribute('aria-label', inProg ? 'Remove from progression' : 'Add to progression');
+        toggleBtn.setAttribute('aria-pressed', inProg ? 'true' : 'false');
+        toggleBtn.classList.toggle('remove-mode', inProg);
+      }
+      toggleBtn.addEventListener('click', (e) => {
         e.stopPropagation(); // don't also trigger the card's play-on-click
-        const chordName = NOTE_NAMES[rootIndex] + currentSuffix;
-        addToProgression({ chordName, label, modeName, rootIndex, suffix: currentSuffix });
-        addBtn.classList.add('added');
-        setTimeout(() => addBtn.classList.remove('added'), 400);
+        if (isChordInProgression(rootIndex, currentSuffix)) {
+          // Remove one matching instance -- the most recently added one --
+          // not every occurrence, since the same chord can legitimately
+          // appear more than once in a real progression.
+          const lastMatchIdx = progression.map(en => en.rootIndex === rootIndex && en.suffix === currentSuffix)
+            .lastIndexOf(true);
+          if (lastMatchIdx === -1) return;
+          activePresetIndex = null;
+          progression = progression.filter((_, i) => i !== lastMatchIdx);
+          saveProgression();
+          renderProgression();
+        } else {
+          const chordName = NOTE_NAMES[rootIndex] + currentSuffix;
+          addToProgression({ chordName, label, modeName, rootIndex, suffix: currentSuffix });
+        }
+        syncCardSelectionStates();
       });
-      card.appendChild(addBtn);
+      card.appendChild(toggleBtn);
 
       const degreeEl = document.createElement('div');
       degreeEl.className = 'chart-card-degree';
@@ -3141,8 +3164,9 @@ function renderChartGroups(){
           diagramSlot.appendChild(empty);
         }
         card.classList.toggle('selected', isChordInProgression(rootIndex, currentSuffix));
+        refreshToggleBtn();
       }
-      renderedChartCards.push({ card, rootIndex, getCurrentSuffix: () => currentSuffix });
+      renderedChartCards.push({ card, rootIndex, getCurrentSuffix: () => currentSuffix, refreshToggleBtn });
       refreshCard();
 
       modSelect.addEventListener('change', () => {
