@@ -8,7 +8,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
 <title>Frequency Target Replicator</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%276%27%20fill%3D%27%23161311%27/%3E%3Cpath%20d%3D%27M10%206%20L10%2016%20Q10%2020%2016%2020%20Q22%2020%2022%2016%20L22%206%27%20stroke%3D%27%23e8952e%27%20stroke-width%3D%272.6%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3Cline%20x1%3D%2716%27%20y1%3D%2720%27%20x2%3D%2716%27%20y2%3D%2727%27%20stroke%3D%27%23e8952e%27%20stroke-width%3D%272.6%27%20stroke-linecap%3D%27round%27/%3E%3C/svg%3E">
+<link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=VT323&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -34,6 +36,20 @@
     --hairline:rgba(230,226,218,0.14);
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+
+  /* Elements converted from <div> to <button> or given role="button" keep
+     their existing custom styling (already fully declared per class below);
+     this just strips the browser's default button chrome so nothing leaks
+     through, and gives every keyboard-focusable control a consistent,
+     visible focus ring -- amber to match the app's accent color. */
+  button{ font-family:inherit; margin:0; text-align:inherit; }
+  button:focus-visible,
+  select:focus-visible,
+  input:focus-visible,
+  [role="button"]:focus-visible{
+    outline:2px solid var(--amber, #e8952e);
+    outline-offset:2px;
+  }
   html,body{height:100%;}
   body{
     margin:0;
@@ -674,6 +690,68 @@
   }
   @media (prefers-reduced-motion: reduce){ .ball, .dot.live, #targetValue{ transition:none; animation:none; } }
 
+  /* keyboard shortcuts help overlay */
+  .shortcuts-overlay{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,0.7);
+    display:flex; align-items:center; justify-content:center;
+    z-index:100;
+    padding:20px;
+  }
+  .shortcuts-panel{
+    width:100%; max-width:520px;
+    max-height:80vh;
+    overflow-y:auto;
+    background:var(--panel);
+    border:1px solid rgba(0,0,0,0.5);
+    border-radius:8px;
+    box-shadow:0 8px 30px rgba(0,0,0,0.6);
+  }
+  .shortcuts-header{
+    position:sticky; top:0;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 18px;
+    background:var(--panel);
+    border-bottom:1px solid var(--hairline);
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    font-size:15px;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    color:var(--fg);
+  }
+  #shortcutsCloseBtn{
+    background:none; border:none; color:var(--fg); opacity:0.6;
+    font-size:22px; line-height:1; cursor:pointer; padding:0 4px;
+  }
+  #shortcutsCloseBtn:hover{ opacity:1; }
+  .shortcuts-body{ padding:8px 18px 18px; }
+  .shortcuts-section-title{
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    font-size:12px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--amber);
+    margin-top:16px;
+    margin-bottom:6px;
+  }
+  .shortcuts-row{
+    display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+    padding:5px 0;
+    border-bottom:1px solid var(--hairline);
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    color:var(--fg);
+    opacity:0.85;
+  }
+  .shortcuts-keys{
+    color:var(--amber);
+    white-space:nowrap;
+    flex-shrink:0;
+  }
+  .shortcuts-desc{ text-align:right; opacity:0.85; }
+
   /* Desktop breakpoint -- the whole layout above is mobile-first with a fixed
      ~420px column, which just sits centered with wasted space on a wide
      browser window. Widening the containers here lets the existing flex-wrap
@@ -851,6 +929,17 @@
   Model FTR-1 · YIN pitch detection on a dedicated audio thread · 100% on-device, nothing recorded or transmitted
 </footer>
 
+<div id="shortcutsOverlay" class="shortcuts-overlay" style="display:none;">
+  <div class="shortcuts-panel" role="dialog" aria-modal="true" aria-labelledby="shortcutsTitle">
+    <div class="shortcuts-header">
+      <span id="shortcutsTitle">Keyboard Shortcuts</span>
+      <button type="button" id="shortcutsCloseBtn" aria-label="Close shortcuts help">&times;</button>
+    </div>
+    <div class="shortcuts-body" id="shortcutsBody"></div>
+  </div>
+</div>
+
+
 <script>
 (function(){
   window.__toneType = window.__toneType || 'triangle';
@@ -901,10 +990,12 @@
   var liveValueEl = document.getElementById('liveValue');
 
   STRINGS.forEach(function(s, idx){
-    var el = document.createElement('div');
+    var el = document.createElement('button');
+    el.type = 'button';
     el.className = 'peg';
     el.textContent = s.label;
     el.dataset.idx = idx;
+    el.setAttribute('aria-label', s.label + ' string, ' + s.freq.toFixed(2) + ' Hz reference tone');
     el.addEventListener('click', function(){
       playReferenceTone(s.freq, el);
       targetValueEl.textContent = s.label + ' string \u00b7 ' + s.freq.toFixed(2) + ' Hz';
@@ -1471,9 +1562,16 @@
     if(listening) stopListening(); else startListening();
   });
 
-  // Minimal bridge for the mode toggle (a separate module script) to stop the
-  // tuner's mic when switching to Chord ID mode, without a larger refactor.
+  // Bridge for the mode toggle and keyboard shortcuts (a separate module
+  // script) to control the tuner without a larger refactor.
   window.__tunerStop = function(){ if(listening) stopListening(); };
+  window.__tunerToggle = function(){ if(listening) stopListening(); else startListening(); };
+  window.__playPegByIndex = function(i){ if(pegEls[i]) pegEls[i].click(); };
+  window.__cycleToneType = function(){
+    var opts = toneTypeSelect.options;
+    toneTypeSelect.selectedIndex = (toneTypeSelect.selectedIndex + 1) % opts.length;
+    window.__toneType = toneTypeSelect.value;
+  };
 })();
 </script>
 
@@ -2006,12 +2104,15 @@ function updatePickerVisibility(activePanel){
   arpeggiateLabel.style.display = (activePanel === chartModeEl) ? '' : 'none';
 }
 
+let currentActiveMode = 'tune'; // 'tune' | 'chord' | 'chart' -- tracked for keyboard shortcuts
+
 function switchToMode(activeBtn, activePanel){
   ALL_MODE_BTNS.forEach(b => b.classList.toggle('active', b === activeBtn));
   ALL_MODE_PANELS.forEach(p => { p.style.display = (p === activePanel) ? '' : 'none'; });
   updatePickerVisibility(activePanel);
   stopChordCapture();
   if (window.__tunerStop) window.__tunerStop();
+  currentActiveMode = activePanel === tuneModeEl ? 'tune' : activePanel === chordModeEl ? 'chord' : 'chart';
 }
 
 function showTuneMode(){
@@ -2130,9 +2231,11 @@ let activeModes = []; // nothing preselected -- the order the user picks in is t
 function renderModePicker(){
   modePicker.innerHTML = '';
   MODE_NAMES.forEach(modeName => {
-    const pill = document.createElement('div');
+    const pill = document.createElement('button');
+    pill.type = 'button';
     pill.className = 'mode-pill' + (activeModes.includes(modeName) ? ' active' : '');
     pill.textContent = modeName;
+    pill.setAttribute('aria-pressed', activeModes.includes(modeName) ? 'true' : 'false');
     pill.addEventListener('click', () => {
       if (activeModes.includes(modeName)) {
         activeModes = activeModes.filter(m => m !== modeName); // free to deselect down to zero
@@ -2167,12 +2270,31 @@ function renderProgression(){
     return;
   }
   progression.forEach((entry, idx) => {
+    // Same rationale as chart cards: this contains a nested <select> and
+    // <button>, so it can't be a real <button> itself (invalid nesting) --
+    // role="button" + tabindex + explicit key handling instead.
     const chip = document.createElement('div');
     chip.className = 'progression-chip';
     chip.style.cursor = 'pointer';
+    chip.setAttribute('role', 'button');
+    chip.setAttribute('tabindex', '0');
+    chip.setAttribute('aria-label', entry.chordName + ', ' + entry.label + ', ' + entry.modeName + '. Press Enter to preview, Delete to remove.');
     chip.addEventListener('click', () => {
       const shape = lookupChordShape(entry.rootIndex, entry.suffix);
       if (shape) playChordShape(shape, chip);
+    });
+    chip.addEventListener('keydown', (e) => {
+      if (e.target !== chip) return; // let the nested select/button handle their own keys
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        const shape = lookupChordShape(entry.rootIndex, entry.suffix);
+        if (shape) playChordShape(shape, chip);
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        progression = progression.filter((_, i) => i !== idx);
+        saveProgression();
+        renderProgression();
+      }
     });
 
     const nameEl = document.createElement('span');
@@ -2187,6 +2309,7 @@ function renderProgression(){
 
     const beatsSelect = document.createElement('select');
     beatsSelect.className = 'progression-chip-beats';
+    beatsSelect.setAttribute('aria-label', 'Beats for ' + entry.chordName);
     [1, 2, 3, 4].forEach(n => {
       const opt = document.createElement('option');
       opt.value = n;
@@ -2202,9 +2325,11 @@ function renderProgression(){
     });
     chip.appendChild(beatsSelect);
 
-    const removeEl = document.createElement('span');
+    const removeEl = document.createElement('button');
+    removeEl.type = 'button';
     removeEl.className = 'progression-chip-remove';
     removeEl.textContent = '×';
+    removeEl.setAttribute('aria-label', 'Remove ' + entry.chordName + ' from progression');
     removeEl.addEventListener('click', (e) => {
       e.stopPropagation(); // don't also trigger the chip's play-on-click
       progression = progression.filter((_, i) => i !== idx);
@@ -2555,17 +2680,28 @@ function renderChartGroups(){
       let currentShape = null;
       let cardArpeggiate = false; // per-card override -- ORs with the global toggle, so this only needs to force it ON
 
+      // Deliberately NOT a real <button> for the card itself -- it contains
+      // nested interactive children (the mod select, the add/arp buttons),
+      // and a <button> is not allowed to contain other interactive content
+      // per the HTML spec (browsers will mishandle the nesting). role="button"
+      // + tabindex + explicit key handling gives the same keyboard behavior
+      // without that invalid nesting.
       const card = document.createElement('div');
       card.className = 'chart-card';
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
 
-      const arpBtn = document.createElement('div');
+      const arpBtn = document.createElement('button');
+      arpBtn.type = 'button';
       arpBtn.className = 'chart-card-arp';
       arpBtn.textContent = '\u2933'; // small arpeggio/sweep glyph
       arpBtn.title = 'Arpeggiate this chord';
+      arpBtn.setAttribute('aria-pressed', 'false');
       arpBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         cardArpeggiate = !cardArpeggiate;
         arpBtn.classList.toggle('active', cardArpeggiate);
+        arpBtn.setAttribute('aria-pressed', cardArpeggiate ? 'true' : 'false');
       });
       card.appendChild(arpBtn);
 
@@ -2581,9 +2717,11 @@ function renderChartGroups(){
       modSelect.addEventListener('click', (e) => e.stopPropagation());
       card.appendChild(modSelect);
 
-      const addBtn = document.createElement('div');
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
       addBtn.className = 'chart-card-add';
       addBtn.textContent = '+';
+      addBtn.setAttribute('aria-label', 'Add to progression');
       addBtn.addEventListener('click', (e) => {
         e.stopPropagation(); // don't also trigger the card's play-on-click
         const chordName = NOTE_NAMES[rootIndex] + currentSuffix;
@@ -2606,7 +2744,9 @@ function renderChartGroups(){
       card.appendChild(diagramSlot);
 
       function refreshCard(){
-        nameEl.textContent = NOTE_NAMES[rootIndex] + currentSuffix;
+        const chordName = NOTE_NAMES[rootIndex] + currentSuffix;
+        nameEl.textContent = chordName;
+        card.setAttribute('aria-label', chordName + ', chord ' + label + ', ' + modeName + '. Press Enter to play, Shift+Enter to add to progression.');
         currentShape = lookupChordShape(rootIndex, currentSuffix);
         diagramSlot.innerHTML = '';
         if (currentShape) {
@@ -2631,6 +2771,27 @@ function renderChartGroups(){
         if (currentShape) playChordShape(currentShape, card, cardArpeggiate);
       });
 
+      card.addEventListener('keydown', (e) => {
+        if (e.target !== card) return; // let the nested select/buttons handle their own keys
+        if (e.key === 'Enter' && e.shiftKey) {
+          e.preventDefault();
+          addBtn.click();
+        } else if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          if (currentShape) playChordShape(currentShape, card, cardArpeggiate);
+        } else if (e.key.toLowerCase() === 'a') {
+          e.preventDefault();
+          arpBtn.click();
+        } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          const dir = e.key === 'ArrowUp' ? -1 : 1;
+          const nextIndex = Math.max(0, Math.min(modSelect.options.length - 1, modSelect.selectedIndex + dir));
+          modSelect.selectedIndex = nextIndex;
+          currentSuffix = modSelect.value;
+          refreshCard();
+        }
+      });
+
       row.appendChild(card);
     });
 
@@ -2644,6 +2805,151 @@ renderModePicker();
 renderProgression();
 updatePickerVisibility(tuneModeEl); // Tune is the default active mode on page load
 
+// ============================================================
+// Keyboard shortcuts -- desktop only, doesn't affect phone/touch use at all.
+// Global tab-switching uses Alt+1/2/3 rather than bare 1/2/3, specifically
+// to avoid colliding with Chart mode's bare 1-7 mode-pill shortcuts.
+// ============================================================
+const SHORTCUTS = [
+  { section: 'Global', items: [
+    { keys: 'Alt+1 / Alt+2 / Alt+3', desc: 'Switch to Tune / Chord ID / Chart' },
+    { keys: '?', desc: 'Toggle this help' },
+  ]},
+  { section: 'Tune', items: [
+    { keys: 'Space', desc: 'Start / stop tuning' },
+    { keys: '1\u20136', desc: 'Play reference tone (low E \u2192 high E)' },
+    { keys: 'T', desc: 'Cycle tone type' },
+  ]},
+  { section: 'Chord ID', items: [
+    { keys: 'Space or C', desc: 'Capture chord' },
+  ]},
+  { section: 'Chart', items: [
+    { keys: '\u2190 / \u2192', desc: 'Change key' },
+    { keys: '1\u20137', desc: 'Toggle mode pill (Ionian\u2026Locrian)' },
+    { keys: 'P', desc: 'Play progression' },
+    { keys: 'S or Esc', desc: 'Stop playback' },
+    { keys: 'L', desc: 'Toggle loop' },
+    { keys: 'M', desc: 'Toggle metronome' },
+    { keys: '+ / -', desc: 'Tempo \u00b15 bpm' },
+  ]},
+  { section: 'Chart \u2014 chord card focused', items: [
+    { keys: 'Enter / Space', desc: 'Play this chord' },
+    { keys: 'Shift+Enter', desc: 'Add to progression' },
+    { keys: 'A', desc: 'Toggle arpeggiate for this chord' },
+    { keys: '\u2191 / \u2193', desc: 'Cycle its mod dropdown' },
+  ]},
+  { section: 'Chart \u2014 progression chip focused', items: [
+    { keys: 'Enter / Space', desc: 'Preview this chord' },
+    { keys: 'Delete / Backspace', desc: 'Remove from progression' },
+  ]},
+];
+
+const shortcutsOverlay = document.getElementById('shortcutsOverlay');
+const shortcutsBody = document.getElementById('shortcutsBody');
+const shortcutsCloseBtn = document.getElementById('shortcutsCloseBtn');
+
+function renderShortcutsHelp(){
+  shortcutsBody.innerHTML = '';
+  SHORTCUTS.forEach(group => {
+    const title = document.createElement('div');
+    title.className = 'shortcuts-section-title';
+    title.textContent = group.section;
+    shortcutsBody.appendChild(title);
+    group.items.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'shortcuts-row';
+      const keys = document.createElement('span');
+      keys.className = 'shortcuts-keys';
+      keys.textContent = item.keys;
+      const desc = document.createElement('span');
+      desc.className = 'shortcuts-desc';
+      desc.textContent = item.desc;
+      row.appendChild(keys);
+      row.appendChild(desc);
+      shortcutsBody.appendChild(row);
+    });
+  });
+}
+renderShortcutsHelp();
+
+function toggleShortcutsOverlay(forceState){
+  const show = forceState !== undefined ? forceState : shortcutsOverlay.style.display === 'none';
+  shortcutsOverlay.style.display = show ? 'flex' : 'none';
+}
+shortcutsCloseBtn.addEventListener('click', () => toggleShortcutsOverlay(false));
+shortcutsOverlay.addEventListener('click', (e) => {
+  if (e.target === shortcutsOverlay) toggleShortcutsOverlay(false); // click on backdrop, not the panel itself
+});
+
+document.addEventListener('keydown', (e) => {
+  // help overlay: Escape always closes it first, regardless of anything else
+  if (shortcutsOverlay.style.display !== 'none') {
+    if (e.key === 'Escape') toggleShortcutsOverlay(false);
+    return;
+  }
+  if (e.key === '?') { toggleShortcutsOverlay(true); return; }
+
+  // Global tab-switching (Alt+1/2/3) works even while a form control has focus
+  if (e.altKey && e.key === '1') { e.preventDefault(); showTuneMode(); return; }
+  if (e.altKey && e.key === '2') { e.preventDefault(); showChordMode(); return; }
+  if (e.altKey && e.key === '3') { e.preventDefault(); showChartMode(); return; }
+
+  // Everything below is mode-scoped and intentionally skipped while typing in
+  // a form control, so it never hijacks normal text/number entry -- per-card
+  // and per-chip keydown handlers (Enter/Space/arrows/etc.) are unaffected
+  // since those are separate listeners on those specific elements.
+  const activeTag = document.activeElement ? document.activeElement.tagName : '';
+  if (activeTag === 'INPUT' || activeTag === 'SELECT' || activeTag === 'TEXTAREA') return;
+
+  if (currentActiveMode === 'tune') {
+    if (e.key === ' ') { e.preventDefault(); if (window.__tunerToggle) window.__tunerToggle(); return; }
+    if (e.key >= '1' && e.key <= '6') { if (window.__playPegByIndex) window.__playPegByIndex(parseInt(e.key, 10) - 1); return; }
+    if (e.key.toLowerCase() === 't') { if (window.__cycleToneType) window.__cycleToneType(); return; }
+  }
+
+  if (currentActiveMode === 'chord') {
+    if (e.key === ' ' || e.key.toLowerCase() === 'c') { e.preventDefault(); chordCaptureBtn.click(); return; }
+  }
+
+  if (currentActiveMode === 'chart') {
+    if (e.key === 'ArrowLeft') {
+      chartKeySelect.selectedIndex = Math.max(0, chartKeySelect.selectedIndex - 1);
+      renderChartGroups();
+      return;
+    }
+    if (e.key === 'ArrowRight') {
+      chartKeySelect.selectedIndex = Math.min(chartKeySelect.options.length - 1, chartKeySelect.selectedIndex + 1);
+      renderChartGroups();
+      return;
+    }
+    if (e.key >= '1' && e.key <= '7') {
+      const modeName = MODE_NAMES[parseInt(e.key, 10) - 1];
+      if (modeName) {
+        if (activeModes.includes(modeName)) {
+          activeModes = activeModes.filter(m => m !== modeName);
+        } else {
+          activeModes = [...activeModes, modeName];
+          if (activeModes.length > 3) activeModes.shift();
+        }
+        renderModePicker();
+        renderChartGroups();
+      }
+      return;
+    }
+    if (e.key.toLowerCase() === 'p') { playProgressionThrough(); return; }
+    if (e.key.toLowerCase() === 's' || e.key === 'Escape') { stopPlayback(); return; }
+    if (e.key.toLowerCase() === 'l') { loopToggle.checked = !loopToggle.checked; return; }
+    if (e.key.toLowerCase() === 'm') { metronomeToggle.checked = !metronomeToggle.checked; return; }
+    if (e.key === '+' || e.key === '=') {
+      tempoInput.value = Math.min(220, (parseInt(tempoInput.value, 10) || 90) + 5);
+      return;
+    }
+    if (e.key === '-') {
+      tempoInput.value = Math.max(40, (parseInt(tempoInput.value, 10) || 90) - 5);
+      return;
+    }
+  }
+});
 </script>
 </body>
 </html>
