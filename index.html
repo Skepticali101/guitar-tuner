@@ -129,7 +129,7 @@
     box-shadow:inset 0 1px 1px rgba(255,255,255,0.3), 0 0 10px rgba(232,149,46,0.4), 0 2px 0 rgba(0,0,0,0.3);
   }
 
-  .tone-picker{ display:flex; align-items:center; gap:8px; width:100%; max-width:280px; }
+  .tone-picker{ display:flex; align-items:center; flex-wrap:wrap; gap:8px; width:100%; max-width:320px; }
   .tone-picker-label{
     font-family:'JetBrains Mono', monospace;
     font-size:11px;
@@ -705,6 +705,10 @@
       <option value="sawtooth">Sawtooth (Bright)</option>
       <option value="square">Square (Buzzy)</option>
     </select>
+    <label class="playback-setting checkbox" style="margin-left:6px;">
+      <input type="checkbox" id="arpeggiateToggle">
+      <span>Arpeggiate</span>
+    </label>
   </div>
 
   <div id="tuneMode">
@@ -830,6 +834,13 @@
   toneTypeSelect.value = window.__toneType;
   toneTypeSelect.addEventListener('change', function(){
     window.__toneType = toneTypeSelect.value;
+  });
+
+  window.__arpeggiate = window.__arpeggiate || false;
+  var arpeggiateToggle = document.getElementById('arpeggiateToggle');
+  arpeggiateToggle.checked = window.__arpeggiate;
+  arpeggiateToggle.addEventListener('change', function(){
+    window.__arpeggiate = arpeggiateToggle.checked;
   });
 
   var STRINGS = [
@@ -2016,14 +2027,29 @@ function playChordShape(shape, cardEl){
   const now = ctx.currentTime;
   const dur = 1.4;
   const toneType = window.__toneType || 'triangle';
-  const activeStrings = shape.frets.filter(f => f !== -1);
-  if (activeStrings.length === 0) return;
-  const noteGain = Math.min(0.32, 1.4 / activeStrings.length);
+  const arpeggiate = !!window.__arpeggiate;
 
+  // compute the real frequency for every active string first -- needed for
+  // arpeggiate mode, since a fretted low string can occasionally sit HIGHER
+  // in pitch than an open higher string, so string order alone isn't
+  // reliable for a genuine low-to-high sweep
+  const notes = [];
   shape.frets.forEach((f, i) => {
     if (f === -1) return;
-    const freq = OPEN_STRING_FREQS[i] * Math.pow(2, f / 12);
-    const startAt = now + i * 0.02;
+    notes.push({ stringIdx: i, freq: OPEN_STRING_FREQS[i] * Math.pow(2, f / 12) });
+  });
+  if (notes.length === 0) return;
+
+  if (arpeggiate) notes.sort((a, b) => a.freq - b.freq);
+  const STRUM_STAGGER = 0.02;   // tight, simultaneous-feeling strum (existing default)
+  const ARPEGGIO_STAGGER = 0.16; // real spacing between distinct notes
+
+  const noteGain = Math.min(0.32, 1.4 / notes.length);
+
+  notes.forEach((note, idx) => {
+    const freq = note.freq;
+    const stagger = arpeggiate ? idx * ARPEGGIO_STAGGER : idx * STRUM_STAGGER;
+    const startAt = now + stagger;
     const octaveGain = (freq < 100 ? 0.42 : freq < 130 ? 0.36 : freq < 170 ? 0.28 : 0.14) * (noteGain / 0.32);
 
     const osc = ctx.createOscillator();
@@ -2049,9 +2075,10 @@ function playChordShape(shape, cardEl){
     osc2.start(startAt); osc2.stop(startAt + dur + 0.05);
   });
 
+  const totalDurMs = (dur + (arpeggiate ? notes.length * ARPEGGIO_STAGGER : 0)) * 1000;
   if (cardEl) {
     cardEl.classList.add('playing');
-    setTimeout(() => cardEl.classList.remove('playing'), dur * 1000);
+    setTimeout(() => cardEl.classList.remove('playing'), totalDurMs);
   }
 }
 
