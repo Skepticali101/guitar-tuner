@@ -1916,6 +1916,11 @@ function renderProgression(){
   progression.forEach((entry, idx) => {
     const chip = document.createElement('div');
     chip.className = 'progression-chip';
+    chip.style.cursor = 'pointer';
+    chip.addEventListener('click', () => {
+      const shape = lookupChordShape(entry.rootIndex, entry.suffix);
+      if (shape) playChordShape(shape, chip);
+    });
 
     const nameEl = document.createElement('span');
     nameEl.className = 'progression-chip-name';
@@ -1930,7 +1935,8 @@ function renderProgression(){
     const removeEl = document.createElement('span');
     removeEl.className = 'progression-chip-remove';
     removeEl.textContent = '×';
-    removeEl.addEventListener('click', () => {
+    removeEl.addEventListener('click', (e) => {
+      e.stopPropagation(); // don't also trigger the chip's play-on-click
       progression = progression.filter((_, i) => i !== idx);
       saveProgression();
       renderProgression();
@@ -1953,25 +1959,205 @@ progressionClearBtn.addEventListener('click', () => {
   renderProgression();
 });
 
-progressionDownloadBtn.addEventListener('click', () => {
-  if (progression.length === 0) return;
+// ---- Canvas-rendered chord diagram, for the exported image (Canvas can't
+// read CSS variables like the inline SVG diagrams do, so colors are literal
+// hex values here, matching the app's amber/dark palette). ----
+function drawChordDiagramOnCanvas(ctx, originX, originY, shape){
+  const { frets, fingers, baseFret, barres } = shape;
+  const numStrings = 6;
+  const relFrets = frets.map(f => (f > 0 ? f - baseFret + 1 : f));
+  const maxRel = Math.max(4, ...relFrets.filter(f => f > 0));
+  const numFretRows = maxRel;
+
+  const width = 140, topPad = 26, leftPad = 14, rightPad = 14;
+  const gridWidth = width - leftPad - rightPad;
+  const rowHeight = 22;
+  const gridHeight = numFretRows * rowHeight;
+  const stringX = (i) => originX + leftPad + (gridWidth / (numStrings - 1)) * i;
+  const fretY = (row) => originY + topPad + row * rowHeight;
+
+  const AMBER = '#e8952e', AMBER_DIM = '#8a5f28', CREAM = '#e8e2d0', OFF = '#c1372a';
+
+  ctx.strokeStyle = AMBER_DIM;
+  for (let i = 0; i < numStrings; i++) {
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(stringX(i), originY + topPad);
+    ctx.lineTo(stringX(i), originY + topPad + gridHeight);
+    ctx.stroke();
+  }
+  for (let row = 0; row <= numFretRows; row++) {
+    ctx.lineWidth = (row === 0 && baseFret === 1) ? 2.5 : 1.2;
+    ctx.beginPath();
+    ctx.moveTo(originX + leftPad, fretY(row));
+    ctx.lineTo(originX + leftPad + gridWidth, fretY(row));
+    ctx.stroke();
+  }
+  if (baseFret > 1) {
+    ctx.fillStyle = AMBER;
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(baseFret + 'fr', originX + leftPad - 8, fretY(0) + rowHeight * 0.65);
+  }
+  (barres || []).forEach(barreFret => {
+    const relBarre = barreFret - baseFret + 1;
+    const stringsAt = [];
+    frets.forEach((f, i) => { if (f === barreFret) stringsAt.push(i); });
+    if (stringsAt.length >= 2) {
+      ctx.strokeStyle = AMBER;
+      ctx.lineWidth = 7;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(stringX(Math.min(...stringsAt)), fretY(relBarre - 1) + rowHeight / 2);
+      ctx.lineTo(stringX(Math.max(...stringsAt)), fretY(relBarre - 1) + rowHeight / 2);
+      ctx.stroke();
+    }
+  });
+  frets.forEach((f, i) => {
+    const x = stringX(i);
+    if (f === -1) {
+      ctx.fillStyle = OFF;
+      ctx.font = '12px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('x', x, originY + topPad - 8);
+    } else if (f === 0) {
+      ctx.strokeStyle = CREAM;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(x, originY + topPad - 12, 4.5, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      const row = f - baseFret + 1;
+      const y = fretY(row - 1) + rowHeight / 2;
+      ctx.fillStyle = AMBER;
+      ctx.beginPath();
+      ctx.arc(x, y, 7.5, 0, Math.PI * 2);
+      ctx.fill();
+      const fingerNum = fingers ? fingers[i] : 0;
+      if (fingerNum > 0) {
+        ctx.fillStyle = '#2a1c08';
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(String(fingerNum), x, y + 3.5);
+      }
+    }
+  });
+  return originY + topPad + gridHeight; // bottom edge, for layout stacking
+}
+
+function generateProgressionCanvas(){
+  const cols = 3;
+  const cellW = 190, cellH = 210;
+  const padding = 24, headerH = 90, footerH = 30;
+  const rows = Math.ceil(progression.length / cols);
+  const logicalW = padding * 2 + cols * cellW;
+  const logicalH = padding * 2 + headerH + rows * cellH + footerH;
+
+  const SCALE = 2; // retina-sharp export
+  const canvas = document.createElement('canvas');
+  canvas.width = logicalW * SCALE;
+  canvas.height = logicalH * SCALE;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(SCALE, SCALE);
+
+  ctx.fillStyle = '#141210';
+  ctx.fillRect(0, 0, logicalW, logicalH);
+
   const keyName = chartKeySelect.options[chartKeySelect.selectedIndex].textContent;
   const modesUsed = [...new Set(progression.map(p => p.modeName))].join(', ');
-  const lines = [
-    'Frequency Target Replicator -- Chord Progression',
-    'Key: ' + keyName,
-    'Modes used: ' + modesUsed,
-    '',
-    'Progression:',
-    ...progression.map((p, i) => (i + 1) + '. ' + p.chordName + '  (' + p.label + ', ' + p.modeName + ')'),
-  ];
-  const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'progression-' + keyName.replace('#','sharp') + '.txt';
-  a.click();
-  URL.revokeObjectURL(url);
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#e8952e';
+  ctx.font = 'bold 20px sans-serif';
+  ctx.fillText('Frequency Target Replicator', padding, padding + 22);
+  ctx.fillStyle = '#e8e2d0';
+  ctx.font = '13px monospace';
+  ctx.fillText('Key: ' + keyName + '   \u00b7   Modes: ' + modesUsed, padding, padding + 44);
+  ctx.strokeStyle = 'rgba(232,226,208,0.15)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padding, padding + 58);
+  ctx.lineTo(logicalW - padding, padding + 58);
+  ctx.stroke();
+
+  progression.forEach((entry, i) => {
+    const col = i % cols, row = Math.floor(i / cols);
+    const cellX = padding + col * cellW;
+    const cellY = padding + headerH + row * cellH;
+
+    ctx.fillStyle = 'rgba(232,149,46,0.05)';
+    ctx.fillRect(cellX + 4, cellY, cellW - 16, cellH - 16);
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#e8952e';
+    ctx.font = 'bold 26px monospace';
+    ctx.fillText((i + 1) + '. ' + entry.chordName, cellX + 12, cellY + 30);
+    ctx.fillStyle = '#e8e2d0';
+    ctx.font = '11px monospace';
+    ctx.fillText(entry.label + ' \u00b7 ' + entry.modeName, cellX + 12, cellY + 48);
+
+    const shape = lookupChordShape(entry.rootIndex, entry.suffix);
+    if (shape) drawChordDiagramOnCanvas(ctx, cellX + 12, cellY + 58, shape);
+  });
+
+  ctx.fillStyle = 'rgba(232,226,208,0.35)';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('Generated with Frequency Target Replicator', logicalW / 2, logicalH - 12);
+
+  return canvas;
+}
+
+progressionDownloadBtn.textContent = 'Save Image';
+progressionDownloadBtn.addEventListener('click', () => {
+  if (progression.length === 0) return;
+  const canvas = generateProgressionCanvas();
+  canvas.toBlob((blob) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'progression.png';
+    a.click();
+    URL.revokeObjectURL(url);
+  }, 'image/png');
+});
+
+const progressionCopyBtn = document.createElement('button');
+progressionCopyBtn.className = 'mini-btn';
+progressionCopyBtn.textContent = 'Copy';
+progressionDownloadBtn.parentElement.insertBefore(progressionCopyBtn, progressionDownloadBtn);
+progressionCopyBtn.addEventListener('click', async () => {
+  if (progression.length === 0) return;
+  const canvas = generateProgressionCanvas();
+  canvas.toBlob(async (blob) => {
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      progressionCopyBtn.textContent = 'Copied!';
+      setTimeout(() => { progressionCopyBtn.textContent = 'Copy'; }, 1200);
+    } catch (err) {
+      progressionCopyBtn.textContent = 'Use Save instead';
+      setTimeout(() => { progressionCopyBtn.textContent = 'Copy'; }, 1600);
+    }
+  }, 'image/png');
+});
+
+// ---- play through the whole progression in order ----
+const progressionPlayBtn = document.createElement('button');
+progressionPlayBtn.className = 'mini-btn';
+progressionPlayBtn.textContent = 'Play';
+progressionDownloadBtn.parentElement.insertBefore(progressionPlayBtn, progressionCopyBtn);
+progressionPlayBtn.addEventListener('click', () => {
+  if (progression.length === 0) return;
+  const GAP_MS = 1500;
+  progression.forEach((entry, i) => {
+    setTimeout(() => {
+      const shape = lookupChordShape(entry.rootIndex, entry.suffix);
+      if (shape) {
+        const chip = progressionRow.children[i];
+        playChordShape(shape, chip);
+      }
+    }, i * GAP_MS);
+  });
 });
 
 function renderChartGroups(){
