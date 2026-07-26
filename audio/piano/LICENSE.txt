@@ -1,0 +1,9 @@
+Piano samples: Salamander Grand Piano V3 (Yamaha C5), recorded by Alexander Holm
+Source: https://archive.org/details/SalamanderGrandPianoV3
+License: CC BY 3.0 (http://creativecommons.org/licenses/by/3.0/)
+
+Repackaged as MP3 by Jan Forst (@audio-samples/piano-mp3-velocity8, MIT license)
+https://github.com/darosh/samples-piano-mp3
+
+This is a trimmed subset (velocity layer 8, octaves 1-6) selected to cover
+the practical pitch range needed for guitar chord playback.

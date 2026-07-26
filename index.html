@@ -42,7 +42,7 @@
      this just strips the browser's default button chrome so nothing leaks
      through, and gives every keyboard-focusable control a consistent,
      visible focus ring -- amber to match the app's accent color. */
-  button{ font-family:inherit; margin:0; text-align:inherit; }
+  button{ font-family:inherit; margin:0; }
   button:focus-visible,
   select:focus-visible,
   input:focus-visible,
@@ -435,6 +435,26 @@
     color:var(--off);
     cursor:pointer;
     padding:0 2px;
+    background:none;
+    border:none;
+  }
+  .progression-chip-arp{
+    width:20px; height:20px;
+    flex-shrink:0;
+    border-radius:5px;
+    border:1px solid rgba(0,0,0,0.4);
+    background:linear-gradient(180deg, var(--cap), var(--cap-dark));
+    color:var(--plaque);
+    font-size:12px;
+    line-height:1;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+  .progression-chip-arp:active{ transform:scale(0.9); }
+  .progression-chip-arp.active{
+    background:linear-gradient(180deg, #f0b878, var(--amber));
+    color:#2a1c08;
+    box-shadow:0 0 6px rgba(232,149,46,0.5);
   }
   .progression-chip-beats{
     font-family:'JetBrains Mono', monospace;
@@ -806,6 +826,9 @@
       <option value="sine">Sine (Soft)</option>
       <option value="sawtooth">Sawtooth (Bright)</option>
       <option value="square">Square (Buzzy)</option>
+      <option value="piano">Piano</option>
+      <option value="rhodes">Electric Piano (Rhodes)</option>
+      <option value="organ">Organ</option>
     </select>
     <label class="playback-setting checkbox" style="margin-left:6px;">
       <input type="checkbox" id="arpeggiateToggle">
@@ -947,6 +970,9 @@
   toneTypeSelect.value = window.__toneType;
   toneTypeSelect.addEventListener('change', function(){
     window.__toneType = toneTypeSelect.value;
+    if(toneTypeSelect.value === 'piano'){
+      window.__toneEngine.ensurePianoLoaded(window.__getSharedToneCtx());
+    }
   });
 
   window.__arpeggiate = window.__arpeggiate || false;
@@ -966,6 +992,133 @@
     if(window.__sharedToneCtx.state === 'suspended') window.__sharedToneCtx.resume();
     return window.__sharedToneCtx;
   };
+
+  // ============================================================
+  // Shared instrument-voice engine -- one implementation used by both this
+  // script (tuner reference tones) and the Chart mode module script (chord
+  // playback), instead of duplicating piano-sample-loading and synthesis
+  // code in two places.
+  //
+  // Three instrument voices beyond the plain oscillator waveforms:
+  //   'piano'  -- real sampled Salamander Grand Piano notes (24 samples,
+  //               A/C/D#/F# every octave 1-6), pitch-shifted between
+  //               sampled notes via playbackRate -- the standard sparse
+  //               multisampling technique.
+  //   'rhodes' -- FM synthesis. Real Rhodes tone comes from a struck metal
+  //               tine picked up electromagnetically; FM synthesis (one
+  //               oscillator modulating another's frequency) is the classic,
+  //               well-established way to approximate that bell-like
+  //               "bark into a pure tone" character without needing samples.
+  //   'organ'  -- additive synthesis, stacking harmonics at fixed amplitude
+  //               ratios with a fast on/off envelope, matching a real
+  //               organ's sustained (not decaying) character.
+  // ============================================================
+  window.__toneEngine = (function(){
+    var PIANO_NOTE_NAMES = [];
+    ['A','C','D#','F#'].forEach(function(base){
+      for(var oct=1; oct<=6; oct++) PIANO_NOTE_NAMES.push(base + oct);
+    });
+    var NOTE_SEMITONE = {'C':-9,'C#':-8,'D':-7,'D#':-6,'E':-5,'F':-4,'F#':-3,'G':-2,'G#':-1,'A':0,'A#':1,'B':2};
+    function noteNameToFreq(name){
+      // parse e.g. "D#4" -> base "D#", octave 4
+      var m = name.match(/^([A-G]#?)(\d)$/);
+      var base = m[1], octave = parseInt(m[2], 10);
+      var semitoneFromA4 = NOTE_SEMITONE[base] + (octave - 4) * 12;
+      return 440 * Math.pow(2, semitoneFromA4 / 12);
+    }
+    var PIANO_FREQS = {};
+    PIANO_NOTE_NAMES.forEach(function(n){ PIANO_FREQS[n] = noteNameToFreq(n); });
+
+    var pianoBuffers = {};
+    var pianoLoadPromise = null;
+    function ensurePianoLoaded(ctx){
+      if(pianoLoadPromise) return pianoLoadPromise;
+      pianoLoadPromise = Promise.all(PIANO_NOTE_NAMES.map(function(n){
+        var fileName = n.replace('#', '%23') + 'v8.mp3';
+        return fetch('./audio/piano/' + fileName)
+          .then(function(r){ return r.arrayBuffer(); })
+          .then(function(buf){ return ctx.decodeAudioData(buf); })
+          .then(function(audioBuffer){ pianoBuffers[n] = audioBuffer; })
+          .catch(function(err){ console.error('Failed to load piano sample', n, err); });
+      }));
+      return pianoLoadPromise;
+    }
+    function nearestPianoSample(freq){
+      var best = null, bestDiff = Infinity;
+      PIANO_NOTE_NAMES.forEach(function(n){
+        var diff = Math.abs(Math.log2(freq / PIANO_FREQS[n]));
+        if(diff < bestDiff){ bestDiff = diff; best = n; }
+      });
+      return best;
+    }
+
+    function playPianoNote(ctx, freq, startAt, gain, duration){
+      var nearest = nearestPianoSample(freq);
+      var buffer = pianoBuffers[nearest];
+      if(!buffer) return; // not loaded yet -- caller is expected to await ensurePianoLoaded first
+      var src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.playbackRate.value = freq / PIANO_FREQS[nearest];
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0, startAt);
+      g.gain.linearRampToValueAtTime(gain, startAt + 0.008);
+      g.gain.setValueAtTime(gain, startAt + Math.max(0.05, duration - 0.15));
+      g.gain.linearRampToValueAtTime(0, startAt + duration);
+      src.connect(g); g.connect(ctx.destination);
+      src.start(startAt);
+      src.stop(startAt + duration + 0.05);
+    }
+
+    function playRhodesNote(ctx, freq, startAt, gain, duration){
+      var modRatio = 1.4; // slightly inharmonic ratio -- part of what gives FM electric piano its bell-like character
+      var carrier = ctx.createOscillator();
+      carrier.type = 'sine'; carrier.frequency.value = freq;
+      var modulator = ctx.createOscillator();
+      modulator.type = 'sine'; modulator.frequency.value = freq * modRatio;
+      var modGain = ctx.createGain(); // controls modulation depth over time
+      modGain.gain.setValueAtTime(freq * 2.2, startAt);
+      modGain.gain.exponentialRampToValueAtTime(Math.max(1, freq * 0.04), startAt + 0.35); // fast "bark" decay into a purer tone
+      modulator.connect(modGain);
+      modGain.connect(carrier.frequency);
+      var outGain = ctx.createGain();
+      outGain.gain.setValueAtTime(0, startAt);
+      outGain.gain.linearRampToValueAtTime(gain, startAt + 0.008);
+      outGain.gain.setValueAtTime(gain * 0.8, startAt + Math.max(0.05, duration - 0.2));
+      outGain.gain.linearRampToValueAtTime(0, startAt + duration);
+      carrier.connect(outGain); outGain.connect(ctx.destination);
+      modulator.start(startAt); carrier.start(startAt);
+      modulator.stop(startAt + duration + 0.05); carrier.stop(startAt + duration + 0.05);
+    }
+
+    function playOrganNote(ctx, freq, startAt, gain, duration){
+      // drawbar-style stacked harmonics, fast percussive-click attack then
+      // sustained (real organs don't decay the way a struck/plucked
+      // instrument does -- they sustain until released)
+      var harmonics = [ {mult:1, amp:0.5}, {mult:2, amp:0.22}, {mult:3, amp:0.14}, {mult:4, amp:0.09} ];
+      harmonics.forEach(function(h){
+        var osc = ctx.createOscillator();
+        osc.type = 'sine'; osc.frequency.value = freq * h.mult;
+        var g = ctx.createGain();
+        var amp = gain * h.amp;
+        g.gain.setValueAtTime(0, startAt);
+        g.gain.linearRampToValueAtTime(amp, startAt + 0.015);
+        g.gain.setValueAtTime(amp, startAt + Math.max(0.05, duration - 0.08));
+        g.gain.linearRampToValueAtTime(0, startAt + duration);
+        osc.connect(g); g.connect(ctx.destination);
+        osc.start(startAt); osc.stop(startAt + duration + 0.05);
+      });
+    }
+
+    return {
+      isInstrument: function(type){ return type === 'piano' || type === 'rhodes' || type === 'organ'; },
+      ensurePianoLoaded: ensurePianoLoaded,
+      playNote: function(ctx, type, freq, startAt, gain, duration){
+        if(type === 'piano') playPianoNote(ctx, freq, startAt, gain, duration);
+        else if(type === 'rhodes') playRhodesNote(ctx, freq, startAt, gain, duration);
+        else if(type === 'organ') playOrganNote(ctx, freq, startAt, gain, duration);
+      }
+    };
+  })();
 
   var STRINGS = [
     {note:'E2', freq:82.41, label:'E'},
@@ -1124,37 +1277,48 @@
     var dur = 1.4;
     var toneType = window.__toneType || 'triangle';
 
-    // The lower the string, the harder a phone speaker struggles with the
-    // fundamental -- so scale how present the octave-up companion tone is
-    // based on how low this particular string sits. E2/A2/D3 get a much
-    // stronger octave blend; G3/B3/E4 are already audible on their own.
-    var octaveGain;
-    if(freq < 100) octaveGain = 0.42;       // E2
-    else if(freq < 130) octaveGain = 0.36;  // A2
-    else if(freq < 170) octaveGain = 0.28;  // D3
-    else octaveGain = 0.14;                 // G3, B3, E4
+    if(window.__toneEngine.isInstrument(toneType)){
+      var playIt = function(){
+        window.__toneEngine.playNote(ctx, toneType, freq, ctx.currentTime, 0.55, dur);
+      };
+      if(toneType === 'piano'){
+        window.__toneEngine.ensurePianoLoaded(ctx).then(playIt);
+      } else {
+        playIt();
+      }
+    } else {
+      // The lower the string, the harder a phone speaker struggles with the
+      // fundamental -- so scale how present the octave-up companion tone is
+      // based on how low this particular string sits. E2/A2/D3 get a much
+      // stronger octave blend; G3/B3/E4 are already audible on their own.
+      var octaveGain;
+      if(freq < 100) octaveGain = 0.42;       // E2
+      else if(freq < 130) octaveGain = 0.36;  // A2
+      else if(freq < 170) octaveGain = 0.28;  // D3
+      else octaveGain = 0.14;                 // G3, B3, E4
 
-    var osc = ctx.createOscillator();
-    var gain = ctx.createGain();
-    osc.type = toneType;
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.5, now + 0.04);
-    gain.gain.linearRampToValueAtTime(0.5, now + dur - 0.15);
-    gain.gain.linearRampToValueAtTime(0, now + dur);
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.start(now); osc.stop(now + dur + 0.05);
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = toneType;
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.5, now + 0.04);
+      gain.gain.linearRampToValueAtTime(0.5, now + dur - 0.15);
+      gain.gain.linearRampToValueAtTime(0, now + dur);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(now); osc.stop(now + dur + 0.05);
 
-    var osc2 = ctx.createOscillator();
-    var gain2 = ctx.createGain();
-    osc2.type = toneType;
-    osc2.frequency.value = freq * 2;
-    gain2.gain.setValueAtTime(0, now);
-    gain2.gain.linearRampToValueAtTime(octaveGain, now + 0.04);
-    gain2.gain.linearRampToValueAtTime(octaveGain, now + dur - 0.15);
-    gain2.gain.linearRampToValueAtTime(0, now + dur);
-    osc2.connect(gain2); gain2.connect(ctx.destination);
-    osc2.start(now); osc2.stop(now + dur + 0.05);
+      var osc2 = ctx.createOscillator();
+      var gain2 = ctx.createGain();
+      osc2.type = toneType;
+      osc2.frequency.value = freq * 2;
+      gain2.gain.setValueAtTime(0, now);
+      gain2.gain.linearRampToValueAtTime(octaveGain, now + 0.04);
+      gain2.gain.linearRampToValueAtTime(octaveGain, now + dur - 0.15);
+      gain2.gain.linearRampToValueAtTime(0, now + dur);
+      osc2.connect(gain2); gain2.connect(ctx.destination);
+      osc2.start(now); osc2.stop(now + dur + 0.05);
+    }
 
     if(pegEl){
       pegEl.classList.add('playing');
@@ -2167,10 +2331,9 @@ function getChartToneCtx(){
 }
 function playChordShape(shape, cardEl, forceArpeggiate){
   const ctx = getChartToneCtx();
-  const now = ctx.currentTime;
-  const dur = 1.4;
   const toneType = window.__toneType || 'triangle';
   const arpeggiate = !!window.__arpeggiate || !!forceArpeggiate;
+  const isInstrument = window.__toneEngine.isInstrument(toneType);
 
   // compute the real frequency for every active string first -- needed for
   // arpeggiate mode, since a fretted low string can occasionally sit HIGHER
@@ -2186,37 +2349,53 @@ function playChordShape(shape, cardEl, forceArpeggiate){
   if (arpeggiate) notes.sort((a, b) => a.freq - b.freq);
   const STRUM_STAGGER = 0.02;   // tight, simultaneous-feeling strum (existing default)
   const ARPEGGIO_STAGGER = 0.16; // real spacing between distinct notes
+  const dur = isInstrument ? 1.8 : 1.4; // sampled/synthesized instrument voices ring out a bit longer than the plain oscillator tones
 
   const noteGain = Math.min(0.32, 1.4 / notes.length);
 
-  notes.forEach((note, idx) => {
-    const freq = note.freq;
-    const stagger = arpeggiate ? idx * ARPEGGIO_STAGGER : idx * STRUM_STAGGER;
-    const startAt = now + stagger;
-    const octaveGain = (freq < 100 ? 0.42 : freq < 130 ? 0.36 : freq < 170 ? 0.28 : 0.14) * (noteGain / 0.32);
+  function scheduleNotes(){
+    const now = ctx.currentTime;
+    notes.forEach((note, idx) => {
+      const freq = note.freq;
+      const stagger = arpeggiate ? idx * ARPEGGIO_STAGGER : idx * STRUM_STAGGER;
+      const startAt = now + stagger;
 
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = toneType;
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0, startAt);
-    gain.gain.linearRampToValueAtTime(noteGain, startAt + 0.03);
-    gain.gain.linearRampToValueAtTime(noteGain, startAt + dur - 0.15);
-    gain.gain.linearRampToValueAtTime(0, startAt + dur);
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.start(startAt); osc.stop(startAt + dur + 0.05);
+      if (isInstrument) {
+        window.__toneEngine.playNote(ctx, toneType, freq, startAt, noteGain * 1.7, dur);
+        return;
+      }
 
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.type = toneType;
-    osc2.frequency.value = freq * 2;
-    gain2.gain.setValueAtTime(0, startAt);
-    gain2.gain.linearRampToValueAtTime(octaveGain, startAt + 0.03);
-    gain2.gain.linearRampToValueAtTime(octaveGain, startAt + dur - 0.15);
-    gain2.gain.linearRampToValueAtTime(0, startAt + dur);
-    osc2.connect(gain2); gain2.connect(ctx.destination);
-    osc2.start(startAt); osc2.stop(startAt + dur + 0.05);
-  });
+      const octaveGain = (freq < 100 ? 0.42 : freq < 130 ? 0.36 : freq < 170 ? 0.28 : 0.14) * (noteGain / 0.32);
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = toneType;
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, startAt);
+      gain.gain.linearRampToValueAtTime(noteGain, startAt + 0.03);
+      gain.gain.linearRampToValueAtTime(noteGain, startAt + dur - 0.15);
+      gain.gain.linearRampToValueAtTime(0, startAt + dur);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(startAt); osc.stop(startAt + dur + 0.05);
+
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = toneType;
+      osc2.frequency.value = freq * 2;
+      gain2.gain.setValueAtTime(0, startAt);
+      gain2.gain.linearRampToValueAtTime(octaveGain, startAt + 0.03);
+      gain2.gain.linearRampToValueAtTime(octaveGain, startAt + dur - 0.15);
+      gain2.gain.linearRampToValueAtTime(0, startAt + dur);
+      osc2.connect(gain2); gain2.connect(ctx.destination);
+      osc2.start(startAt); osc2.stop(startAt + dur + 0.05);
+    });
+  }
+
+  if (toneType === 'piano') {
+    window.__toneEngine.ensurePianoLoaded(ctx).then(scheduleNotes);
+  } else {
+    scheduleNotes();
+  }
 
   const totalDurMs = (dur + (arpeggiate ? notes.length * ARPEGGIO_STAGGER : 0)) * 1000;
   if (cardEl) {
@@ -2281,14 +2460,14 @@ function renderProgression(){
     chip.setAttribute('aria-label', entry.chordName + ', ' + entry.label + ', ' + entry.modeName + '. Press Enter to preview, Delete to remove.');
     chip.addEventListener('click', () => {
       const shape = lookupChordShape(entry.rootIndex, entry.suffix);
-      if (shape) playChordShape(shape, chip);
+      if (shape) playChordShape(shape, chip, progression[idx].arpeggiate);
     });
     chip.addEventListener('keydown', (e) => {
       if (e.target !== chip) return; // let the nested select/button handle their own keys
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         const shape = lookupChordShape(entry.rootIndex, entry.suffix);
-        if (shape) playChordShape(shape, chip);
+        if (shape) playChordShape(shape, chip, progression[idx].arpeggiate);
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
         progression = progression.filter((_, i) => i !== idx);
@@ -2325,6 +2504,22 @@ function renderProgression(){
     });
     chip.appendChild(beatsSelect);
 
+    const chipArpBtn = document.createElement('button');
+    chipArpBtn.type = 'button';
+    chipArpBtn.className = 'progression-chip-arp' + (entry.arpeggiate ? ' active' : '');
+    chipArpBtn.textContent = '\u2933';
+    chipArpBtn.title = 'Arpeggiate this chord';
+    chipArpBtn.setAttribute('aria-pressed', entry.arpeggiate ? 'true' : 'false');
+    chipArpBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const nowOn = !progression[idx].arpeggiate;
+      progression[idx] = { ...progression[idx], arpeggiate: nowOn };
+      saveProgression();
+      chipArpBtn.classList.toggle('active', nowOn);
+      chipArpBtn.setAttribute('aria-pressed', nowOn ? 'true' : 'false');
+    });
+    chip.appendChild(chipArpBtn);
+
     const removeEl = document.createElement('button');
     removeEl.type = 'button';
     removeEl.className = 'progression-chip-remove';
@@ -2357,7 +2552,7 @@ function renderTimeline(){
 
 
 function addToProgression(entry){
-  progression = [...progression, { ...entry, beats: 4 }]; // default to a full 4-beat measure per chord
+  progression = [...progression, { ...entry, beats: 4, arpeggiate: false }]; // default to a full 4-beat measure, strummed
   saveProgression();
   renderProgression();
 }
@@ -2611,7 +2806,7 @@ function playProgressionThrough(){
         currentPlayIndex = i;
         updateTimelineHighlight();
         const shape = lookupChordShape(entry.rootIndex, entry.suffix);
-        if (shape) playChordShape(shape, progressionRow.children[i]);
+        if (shape) playChordShape(shape, progressionRow.children[i], entry.arpeggiate);
       }, elapsed);
       activeTimeoutIds.push(id);
       elapsed += durMs;
