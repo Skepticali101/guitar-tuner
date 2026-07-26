@@ -192,31 +192,36 @@
     width:100%;
     max-width:420px;
     display:flex;
+    flex-wrap:wrap;
     gap:10px;
-    overflow-x:auto;
-    padding-bottom:6px;
-    -webkit-overflow-scrolling:touch;
+    justify-content:center;
   }
   .chart-card{
-    flex:0 0 100px;
+    flex:1 1 calc(33.333% - 10px);
+    min-width:110px;
+    max-width:150px;
     background:var(--meter-bg);
-    border-radius:6px;
+    border-radius:8px;
     border:1px solid rgba(0,0,0,0.5);
-    padding:10px 8px;
+    padding:14px 10px;
     text-align:center;
     box-shadow:inset 0 2px 5px rgba(0,0,0,0.6);
+    cursor:pointer;
+    transition:box-shadow .15s ease, transform .1s ease;
   }
+  .chart-card:active{ transform:scale(0.97); }
+  .chart-card.playing{ box-shadow:inset 0 2px 5px rgba(0,0,0,0.6), 0 0 12px 2px rgba(232,149,46,0.6); }
   .chart-card-degree{
     font-family:'JetBrains Mono', monospace;
-    font-size:11px;
+    font-size:13px;
     color:var(--amber-dim);
     letter-spacing:0.06em;
   }
   .chart-card-name{
     font-family:'VT323', monospace;
-    font-size:20px;
+    font-size:26px;
     color:var(--amber);
-    margin:2px 0 4px;
+    margin:4px 0 6px;
   }
   .chart-card svg{ width:100%; height:auto; }
   .chart-card-empty{
@@ -619,6 +624,9 @@
   // Target readout flashes a quick burst whenever a NEW string is acquired
   // (idle float animation runs continuously via CSS regardless)
   var lastTargetStrIdx = null;
+  var pendingTargetStrIdx = null;
+  var pendingTargetSince = null;
+  var TARGET_LOCK_MS = 1600; // a candidate string must stay closest-match for this long before the Target display commits to it
   var flashTimeoutId = null;
   function flashTarget(){
     targetValueEl.classList.remove('flash');
@@ -734,6 +742,8 @@
       outOfGreenSince = null;
       lastValidReadingAt = null;
       lastTargetStrIdx = null;
+      pendingTargetStrIdx = null;
+      pendingTargetSince = null;
       return;
     }
     lastValidReadingAt = now;
@@ -758,10 +768,16 @@
     else if(absCents <= 20) zone = 'yellow';
 
     if(strIdx !== null){
-      targetValueEl.textContent = STRINGS[strIdx].label + ' string \u00b7 ' + STRINGS[strIdx].freq.toFixed(2) + ' Hz';
-      if(strIdx !== lastTargetStrIdx){
+      if(strIdx === lastTargetStrIdx){
+        pendingTargetStrIdx = null; // already locked onto this string, nothing pending
+      } else if(strIdx !== pendingTargetStrIdx){
+        pendingTargetStrIdx = strIdx;   // new candidate -- start its hold timer fresh
+        pendingTargetSince = now;
+      } else if(now - pendingTargetSince >= TARGET_LOCK_MS){
+        lastTargetStrIdx = strIdx;      // candidate has held steady long enough -- commit
+        targetValueEl.textContent = STRINGS[strIdx].label + ' string \u00b7 ' + STRINGS[strIdx].freq.toFixed(2) + ' Hz';
         flashTarget();
-        lastTargetStrIdx = strIdx;
+        pendingTargetStrIdx = null;
       }
     }
     liveValueEl.textContent = trueFreq.toFixed(2) + ' Hz';
@@ -993,6 +1009,8 @@
       outOfGreenSince = null;
       lastValidReadingAt = null;
       lastTargetStrIdx = null;
+      pendingTargetStrIdx = null;
+      pendingTargetSince = null;
       targetPx = 0;
       currentPx = 0;
       statusDot.classList.add('live');
@@ -1043,6 +1061,8 @@
     outOfGreenSince = null;
     lastValidReadingAt = null;
     lastTargetStrIdx = null;
+    pendingTargetStrIdx = null;
+    pendingTargetSince = null;
     if(flashTimeoutId){ clearTimeout(flashTimeoutId); flashTimeoutId = null; }
     targetValueEl.classList.remove('flash');
     targetPx = 0;
@@ -1604,6 +1624,62 @@ Object.keys(MODES_TABLE).forEach(modeName => {
 chartKeySelect.value = 7;  // default to G, a friendly starting key
 chartModeSelect.value = 'Ionian';
 
+// ---- click-to-play for chart cards -- same triangle-wave approach as the
+// tuner's string reference tones (not square wave, despite the resemblance --
+// triangle has cleaner harmonics and was already tuned for phone-speaker
+// audibility on the low strings; reused here for consistency). ----
+const OPEN_STRING_FREQS = [82.41, 110.00, 146.83, 196.00, 246.94, 329.63]; // low E to high E
+let chartToneCtx = null;
+function getChartToneCtx(){
+  if (!chartToneCtx) chartToneCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (chartToneCtx.state === 'suspended') chartToneCtx.resume();
+  return chartToneCtx;
+}
+function playChordShape(shape, cardEl){
+  const ctx = getChartToneCtx();
+  const now = ctx.currentTime;
+  const dur = 1.4;
+  const activeStrings = shape.frets.filter(f => f !== -1);
+  if (activeStrings.length === 0) return;
+  // scale per-note gain down as more strings sound together, so a full
+  // 6-string chord doesn't clip from summing too many simultaneous oscillators
+  const noteGain = Math.min(0.32, 1.4 / activeStrings.length);
+
+  shape.frets.forEach((f, i) => {
+    if (f === -1) return; // muted string
+    const freq = OPEN_STRING_FREQS[i] * Math.pow(2, f / 12);
+    const startAt = now + i * 0.02; // slight stagger, like an actual strum
+    const octaveGain = (freq < 100 ? 0.42 : freq < 130 ? 0.36 : freq < 170 ? 0.28 : 0.14) * (noteGain / 0.32);
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, startAt);
+    gain.gain.linearRampToValueAtTime(noteGain, startAt + 0.03);
+    gain.gain.linearRampToValueAtTime(noteGain, startAt + dur - 0.15);
+    gain.gain.linearRampToValueAtTime(0, startAt + dur);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(startAt); osc.stop(startAt + dur + 0.05);
+
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'triangle';
+    osc2.frequency.value = freq * 2;
+    gain2.gain.setValueAtTime(0, startAt);
+    gain2.gain.linearRampToValueAtTime(octaveGain, startAt + 0.03);
+    gain2.gain.linearRampToValueAtTime(octaveGain, startAt + dur - 0.15);
+    gain2.gain.linearRampToValueAtTime(0, startAt + dur);
+    osc2.connect(gain2); gain2.connect(ctx.destination);
+    osc2.start(startAt); osc2.stop(startAt + dur + 0.05);
+  });
+
+  if (cardEl) {
+    cardEl.classList.add('playing');
+    setTimeout(() => cardEl.classList.remove('playing'), dur * 1000);
+  }
+}
+
 function renderChart(){
   const tonicIndex = parseInt(chartKeySelect.value, 10);
   const modeData = MODES_TABLE[chartModeSelect.value];
@@ -1634,6 +1710,7 @@ function renderChart(){
       const diagramHolder = document.createElement('div');
       diagramHolder.innerHTML = renderChordDiagramSVG(shape);
       card.appendChild(diagramHolder.firstChild);
+      card.addEventListener('click', () => playChordShape(shape, card));
     } else {
       const empty = document.createElement('div');
       empty.className = 'chart-card-empty';
