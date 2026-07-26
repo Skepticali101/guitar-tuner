@@ -1094,7 +1094,11 @@
     function ensurePianoLoaded(ctx){
       if(pianoLoadPromise) return pianoLoadPromise;
       pianoLoadPromise = Promise.all(PIANO_NOTE_NAMES.map(function(n){
-        var fileName = n.replace('#', '%23') + 'v8.mp3';
+        // File names on disk use 's' for sharp instead of a literal '#' --
+        // GitHub Pages tolerated '#' in filenames, but Netlify (and some
+        // other static hosts) reject it outright, so the files were renamed
+        // to avoid the problem rather than working around it per-host.
+        var fileName = n.replace('#', 's') + 'v8.mp3';
         return fetch('./audio/piano/' + fileName)
           .then(function(r){ return r.arrayBuffer(); })
           .then(function(buf){ return ctx.decodeAudioData(buf); })
