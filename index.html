@@ -1129,13 +1129,21 @@
       var modGain = ctx.createGain(); // controls modulation depth over time
       modGain.gain.setValueAtTime(freq * 2.2, startAt);
       modGain.gain.exponentialRampToValueAtTime(Math.max(1, freq * 0.04), startAt + 0.35); // fast "bark" decay into a purer tone
+      // The floor above used to just hold for the rest of the note -- meaning
+      // a low-level frequency-wobble kept running underneath the fade-out
+      // all the way to the end, becoming the last audible thing as the
+      // volume got quiet (heard as a bit of "static" right at the tail).
+      // Continuing the decay to true zero, timed to land exactly when the
+      // note ends, lets it settle into a clean tone instead.
+      modGain.gain.linearRampToValueAtTime(0, startAt + duration);
+
       modulator.connect(modGain);
       modGain.connect(carrier.frequency);
       var outGain = ctx.createGain();
       outGain.gain.setValueAtTime(0, startAt);
       outGain.gain.linearRampToValueAtTime(gain, startAt + 0.008);
-      outGain.gain.setValueAtTime(gain * 0.8, startAt + Math.max(0.05, duration - 0.2));
-      outGain.gain.linearRampToValueAtTime(0, startAt + duration);
+      outGain.gain.setValueAtTime(gain * 0.8, startAt + Math.max(0.05, duration - 0.3));
+      outGain.gain.linearRampToValueAtTime(0, startAt + duration); // slightly longer, gentler final taper (was 0.2s, now 0.3s)
       carrier.connect(outGain); outGain.connect(window.__getMasterBus(ctx));
       modulator.start(startAt); carrier.start(startAt);
       modulator.stop(startAt + duration + 0.05); carrier.stop(startAt + duration + 0.05);
