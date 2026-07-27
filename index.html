@@ -2585,7 +2585,7 @@ const OPEN_STRING_FREQS = [82.41, 110.00, 146.83, 196.00, 246.94, 329.63]; // lo
 function getChartToneCtx(){
   return window.__getSharedToneCtx();
 }
-function playChordShape(shape, cardEl, forceArpeggiate){
+function playChordShape(shape, cardEl, forceArpeggiate, durationOverrideSeconds){
   const ctx = getChartToneCtx();
   const toneType = window.__toneType || 'triangle';
   const arpeggiate = !!window.__arpeggiate || !!forceArpeggiate;
@@ -2605,7 +2605,9 @@ function playChordShape(shape, cardEl, forceArpeggiate){
   if (arpeggiate) notes.sort((a, b) => a.freq - b.freq);
   const STRUM_STAGGER = 0.02;   // tight, simultaneous-feeling strum (existing default)
   const ARPEGGIO_STAGGER = 0.16; // real spacing between distinct notes
-  const dur = isInstrument ? 1.8 : 1.4; // sampled/synthesized instrument voices ring out a bit longer than the plain oscillator tones
+  const dur = durationOverrideSeconds
+    ? Math.max(0.3, durationOverrideSeconds) // tied to the chord's actual beat-slot when known (progression playback/preview); floored so a very short slot at a fast tempo still gets an audible attack/release
+    : (isInstrument ? 1.8 : 1.4); // no beat context (chart-card browsing preview) -- fixed default as before
 
   const noteGain = Math.min(0.26, 1.0 / notes.length);
 
@@ -2753,14 +2755,17 @@ function renderProgression(){
     chip.setAttribute('aria-label', entry.chordName + ', ' + entry.label + ', ' + entry.modeName + '. Press Enter to preview, Delete to remove.');
     chip.addEventListener('click', () => {
       const shape = lookupChordShape(entry.rootIndex, entry.suffix);
-      if (shape) playChordShape(shape, chip, progression[idx].arpeggiate);
+      // Preview for exactly as long as this chord's own beat count represents
+      // at the current tempo -- not a fixed length -- so clicking a chip
+      // actually previews how it will sound in context, not a generic blip.
+      if (shape) playChordShape(shape, chip, progression[idx].arpeggiate, (progression[idx].beats || 4) * beatMs() / 1000);
     });
     chip.addEventListener('keydown', (e) => {
       if (e.target !== chip) return; // let the nested select/button handle their own keys
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         const shape = lookupChordShape(entry.rootIndex, entry.suffix);
-        if (shape) playChordShape(shape, chip, progression[idx].arpeggiate);
+        if (shape) playChordShape(shape, chip, progression[idx].arpeggiate, (progression[idx].beats || 4) * beatMs() / 1000);
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
         activePresetIndex = null;
@@ -3188,7 +3193,7 @@ function playProgressionThrough(){
         currentPlayIndex = i;
         updateTimelineHighlight();
         const shape = lookupChordShape(entry.rootIndex, entry.suffix);
-        if (shape) playChordShape(shape, progressionRow.children[i], entry.arpeggiate);
+        if (shape) playChordShape(shape, progressionRow.children[i], entry.arpeggiate, durMs / 1000);
       }, elapsed);
       activeTimeoutIds.push(id);
       elapsed += durMs;
