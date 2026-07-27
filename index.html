@@ -1924,7 +1924,12 @@ let chordsDbData = null;
 let chordsDbLoadPromise = null;
 
 // chords-db spells three roots with flats rather than sharps; everything else matches our NOTE_NAMES directly
-const ROOT_TO_DB_KEY = ['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+// chords-db's own metadata claims these keys are spelled 'C#'/'F#', but the
+// ACTUAL data object uses 'Csharp'/'Fsharp' as the real property names --
+// confirmed by inspecting the vendored file directly. Every C# and F#
+// lookup was silently failing (always "no diagram", never playable) until
+// this was traced down.
+const ROOT_TO_DB_KEY = ['C','Csharp','D','Eb','E','F','Fsharp','G','Ab','A','Bb','B'];
 
 // our internal chord-template suffixes -> chords-db's suffix spelling (mostly identical)
 const SUFFIX_TO_DB = {
