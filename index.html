@@ -450,16 +450,21 @@
     background:none;
     border:none;
   }
-  .progression-chip-handle{
-    color:var(--fg);
-    opacity:0.4;
-    cursor:grab;
-    touch-action:none; /* stop the browser's own touch-scroll from fighting the drag gesture */
-    padding:0 2px;
-    font-size:13px;
+  .progression-chip-move{
+    width:18px; height:18px;
+    flex-shrink:0;
+    border-radius:4px;
+    border:1px solid rgba(0,0,0,0.4);
+    background:linear-gradient(180deg, var(--cap), var(--cap-dark));
+    color:var(--plaque);
+    font-size:11px;
     line-height:1;
-    user-select:none;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    padding:0;
   }
+  .progression-chip-move:active{ transform:scale(0.9); }
+  .progression-chip-move:disabled{ opacity:0.25; cursor:default; }
   .progression-chip-duplicate{
     font-size:12px;
     color:var(--fg);
@@ -470,10 +475,6 @@
     border:none;
   }
   .progression-chip-duplicate:hover{ opacity:0.9; }
-  .progression-chip.dragging{
-    opacity:0.5;
-    box-shadow:0 0 0 2px var(--amber);
-  }
   .progression-chip-arp{
     width:20px; height:20px;
     flex-shrink:0;
@@ -2641,47 +2642,22 @@ function syncCardSelectionStates(){
 // used on. The dragged chip's DOM node moves live as you drag over other
 // chips (immediate visual feedback); on release, the final DOM order is
 // read back and used to rebuild the actual progression array.
-function startChipDrag(e, chip, handle){
-  e.preventDefault();
-  handle.setPointerCapture(e.pointerId);
-  chip.classList.add('dragging');
-
-  function onMove(ev){
-    if (ev.pointerId !== e.pointerId) return;
-    const siblings = Array.from(progressionRow.children).filter(el => el !== chip);
-    let target = null, insertBefore = true;
-    for (const sib of siblings) {
-      const rect = sib.getBoundingClientRect();
-      if (ev.clientX < rect.left + rect.width / 2) { target = sib; insertBefore = true; break; }
-    }
-    if (!target && siblings.length) { target = siblings[siblings.length - 1]; insertBefore = false; }
-    if (target) {
-      if (insertBefore) progressionRow.insertBefore(chip, target);
-      else progressionRow.insertBefore(chip, target.nextSibling);
-    }
-  }
-
-  function onUp(ev){
-    if (ev.pointerId !== e.pointerId) return;
-    chip.classList.remove('dragging');
-    try { handle.releasePointerCapture(ev.pointerId); } catch (err) {}
-    handle.removeEventListener('pointermove', onMove);
-    handle.removeEventListener('pointerup', onUp);
-    handle.removeEventListener('pointercancel', onUp);
-
-    const newOrder = Array.from(progressionRow.children).map(el => el._entry).filter(Boolean);
-    if (newOrder.length === progression.length) {
-      activePresetIndex = null; // reordering is a manual edit, same as any other
-      progression = newOrder;
-      saveProgression();
-      renderProgression(); // clean rebuild -- drops any transient drag state/classes
-      syncCardSelectionStates();
-    }
-  }
-
-  handle.addEventListener('pointermove', onMove);
-  handle.addEventListener('pointerup', onUp);
-  handle.addEventListener('pointercancel', onUp);
+// Reorder by discrete position swap -- used by both the arrow buttons on
+// each chip and the ArrowLeft/ArrowRight keyboard handler below. Deliberately
+// NOT drag-based: a custom pointer-tracking drag (tried in the previous
+// round) turned out to be unreliable across devices, particularly touch --
+// a simple index swap on a click/keypress has no continuous gesture state
+// to get into a bad state in the first place.
+function moveChip(idx, direction){
+  const newIdx = idx + direction;
+  if (newIdx < 0 || newIdx >= progression.length) return false;
+  activePresetIndex = null; // reordering is a manual edit, same as any other
+  const [moved] = progression.splice(idx, 1);
+  progression.splice(newIdx, 0, moved);
+  saveProgression();
+  renderProgression();
+  syncCardSelectionStates();
+  return true;
 }
 
 function renderProgression(){
@@ -2725,20 +2701,44 @@ function renderProgression(){
         saveProgression();
         renderProgression();
         syncCardSelectionStates();
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        const newIdx = idx + (e.key === 'ArrowLeft' ? -1 : 1);
+        if (moveChip(idx, e.key === 'ArrowLeft' ? -1 : 1)) {
+          // refocus the same chord at its new position so repeated arrow
+          // presses keep moving it further, instead of losing focus
+          const movedChip = progressionRow.children[newIdx];
+          if (movedChip) movedChip.focus();
+        }
       }
     });
 
-    // Dedicated drag handle -- NOT the whole chip -- so dragging doesn't
-    // fight with the chip's own tap-to-preview, or with the nested select/
-    // buttons. Built on Pointer Events (not native HTML5 drag-and-drop,
-    // which barely works on iOS Safari) so it works identically with touch
-    // and mouse.
-    const dragHandle = document.createElement('span');
-    dragHandle.className = 'progression-chip-handle';
-    dragHandle.textContent = '\u22ee\u22ee';
-    dragHandle.setAttribute('aria-hidden', 'true'); // decorative -- reordering isn't reachable via this handle for keyboard/screen-reader users yet
-    dragHandle.addEventListener('pointerdown', (e) => startChipDrag(e, chip, dragHandle));
-    chip.appendChild(dragHandle);
+    // Two small buttons instead of a drag handle -- move left/right one
+    // position at a time. Simple, discrete, and fully keyboard-reachable
+    // as real buttons (no separate accessibility work needed for these).
+    const moveLeftBtn = document.createElement('button');
+    moveLeftBtn.type = 'button';
+    moveLeftBtn.className = 'progression-chip-move';
+    moveLeftBtn.textContent = '\u2190';
+    moveLeftBtn.disabled = (idx === 0);
+    moveLeftBtn.setAttribute('aria-label', 'Move ' + entry.chordName + ' earlier');
+    moveLeftBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      moveChip(idx, -1);
+    });
+    chip.appendChild(moveLeftBtn);
+
+    const moveRightBtn = document.createElement('button');
+    moveRightBtn.type = 'button';
+    moveRightBtn.className = 'progression-chip-move';
+    moveRightBtn.textContent = '\u2192';
+    moveRightBtn.disabled = (idx === progression.length - 1);
+    moveRightBtn.setAttribute('aria-label', 'Move ' + entry.chordName + ' later');
+    moveRightBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      moveChip(idx, 1);
+    });
+    chip.appendChild(moveRightBtn);
 
     const nameEl = document.createElement('span');
     nameEl.className = 'progression-chip-name';
@@ -2818,7 +2818,6 @@ function renderProgression(){
     });
     chip.appendChild(removeEl);
 
-    chip._entry = entry; // reference used by drag-reorder to rebuild the array in the new order
     progressionRow.appendChild(chip);
   });
   renderTimeline();
