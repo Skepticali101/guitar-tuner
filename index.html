@@ -247,6 +247,11 @@
     box-shadow:inset 0 2px 5px rgba(0,0,0,0.6), 0 0 0 2px var(--locked);
   }
   .chart-card.selected.playing{ box-shadow:inset 0 2px 5px rgba(0,0,0,0.6), 0 0 0 2px var(--locked), 0 0 12px 2px rgba(232,149,46,0.6); }
+  .chart-card.selected.selected-no-diagram{
+    border-color:var(--amber);
+    box-shadow:inset 0 2px 5px rgba(0,0,0,0.6), 0 0 0 2px var(--amber);
+  }
+  .chart-card.selected.selected-no-diagram.playing{ box-shadow:inset 0 2px 5px rgba(0,0,0,0.6), 0 0 0 2px var(--amber), 0 0 12px 2px rgba(232,149,46,0.6); }
   .chart-card-degree{
     font-family:'JetBrains Mono', monospace;
     font-size:13px;
@@ -2714,7 +2719,11 @@ function syncCardSelectionStates(){
   renderedChartCards.forEach(entry => {
     const linked = findLinkedEntry(entry.rootIndex);
     entry.card.classList.toggle('selected', !!linked);
-    if (linked && entry.followLinkedSuffix) entry.followLinkedSuffix(linked.suffix);
+    if (linked && entry.followLinkedSuffix) {
+      entry.followLinkedSuffix(linked.suffix);
+    } else if (!linked && entry.resetToBaseSuffix) {
+      entry.resetToBaseSuffix();
+    }
     if (entry.refreshToggleBtn) entry.refreshToggleBtn();
   });
 }
@@ -3268,7 +3277,6 @@ function renderChartGroups(){
       const quality = modeData.qualities[degreeIdx]; // 'maj' | 'min' | 'dim' -- the diatonic default
       const baseSuffix = QUALITY_TO_SUFFIX[quality];
       const label = modeData.labels[degreeIdx];
-      const modOptions = MOD_OPTIONS[quality];
 
       // mutable per-card state -- the mod dropdown changes this, and
       // everything else on the card (name, diagram, sound, add-to-progression)
@@ -3304,13 +3312,27 @@ function renderChartGroups(){
 
       const modSelect = document.createElement('select');
       modSelect.className = 'chart-card-mod';
-      modOptions.forEach(opt => {
-        const o = document.createElement('option');
-        o.value = opt.value;
-        o.textContent = opt.label;
-        if (opt.value === baseSuffix) o.selected = true;
-        modSelect.appendChild(o);
-      });
+      // Rebuilds the dropdown's actual option list from whichever quality
+      // bucket the given suffix belongs to (reusing the same helper the
+      // progression chips already use), instead of a fixed list decided
+      // once at creation from this card's own native diatonic quality.
+      // Needed because a linked card can end up following a suffix from a
+      // totally different family (e.g. a plain major triad on a card whose
+      // native degree is minor) -- without this, setting .value to that
+      // suffix would silently select nothing, since it was never rendered
+      // as an option in the first place.
+      function rebuildModOptions(suffixToSelect){
+        const bucket = suffixToQualityBucket(suffixToSelect);
+        modSelect.innerHTML = '';
+        MOD_OPTIONS[bucket].forEach(opt => {
+          const o = document.createElement('option');
+          o.value = opt.value;
+          o.textContent = opt.label;
+          if (opt.value === suffixToSelect) o.selected = true;
+          modSelect.appendChild(o);
+        });
+      }
+      rebuildModOptions(baseSuffix);
       modSelect.addEventListener('click', (e) => e.stopPropagation());
       card.appendChild(modSelect);
 
@@ -3377,7 +3399,14 @@ function renderChartGroups(){
           empty.textContent = 'no diagram';
           diagramSlot.appendChild(empty);
         }
-        card.classList.toggle('selected', !!findLinkedEntry(rootIndex));
+        const isLinked = !!findLinkedEntry(rootIndex);
+        card.classList.toggle('selected', isLinked);
+        // Distinct color when linked but we genuinely have no fingering
+        // diagram for this exact voicing -- this is a real, separate signal
+        // from "cleanly matched", not just decoration: it tells you the
+        // chord is in your progression, but you're on your own for how to
+        // actually play it.
+        card.classList.toggle('selected-no-diagram', isLinked && !currentShape);
         refreshToggleBtn();
       }
       // followLinkedSuffix: called by syncCardSelectionStates whenever this
@@ -3385,13 +3414,28 @@ function renderChartGroups(){
       // dropdown/diagram/name follow whatever variant is actually in the
       // tray right now -- this is what keeps the two views from drifting
       // apart, instead of the card just going dark the moment they differ.
+      // Rebuilds the dropdown's options for the new suffix's bucket first --
+      // a followed suffix can belong to a completely different family than
+      // this card's own native quality (e.g. a plain major triad landing on
+      // a card whose native degree is minor), and just setting .value
+      // without rebuilding the option list first would silently select
+      // nothing, since that value was never rendered as an option.
       function followLinkedSuffix(linkedSuffix){
         if (linkedSuffix === currentSuffix) return; // already showing it, nothing to do
         currentSuffix = linkedSuffix;
-        modSelect.value = linkedSuffix;
+        rebuildModOptions(currentSuffix);
         refreshCard();
       }
-      renderedChartCards.push({ card, rootIndex, getCurrentSuffix: () => currentSuffix, followLinkedSuffix, refreshToggleBtn });
+      // Called when this card is no longer linked to anything in the
+      // progression -- resets back to its own native diatonic default
+      // instead of staying stuck showing whatever it was last following.
+      function resetToBaseSuffix(){
+        if (currentSuffix === baseSuffix) return;
+        currentSuffix = baseSuffix;
+        rebuildModOptions(currentSuffix);
+        refreshCard();
+      }
+      renderedChartCards.push({ card, rootIndex, getCurrentSuffix: () => currentSuffix, followLinkedSuffix, resetToBaseSuffix, refreshToggleBtn });
       refreshCard();
 
       modSelect.addEventListener('change', () => {
