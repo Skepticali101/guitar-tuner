@@ -253,6 +253,11 @@
     box-shadow:inset 0 2px 5px rgba(0,0,0,0.6), 0 0 0 2px var(--amber);
   }
   .chart-card.selected.selected-no-diagram.playing{ box-shadow:inset 0 2px 5px rgba(0,0,0,0.6), 0 0 0 2px var(--amber), 0 0 12px 2px rgba(232,149,46,0.6); }
+  .chart-card.resolution-target{
+    border-color:#7fd8e8;
+    box-shadow:inset 0 2px 5px rgba(0,0,0,0.6), 0 0 0 3px #7fd8e8, 0 0 16px 3px rgba(127,216,232,0.5);
+    transition:box-shadow 0.15s ease, border-color 0.15s ease;
+  }
   .chart-card-degree{
     font-family:'JetBrains Mono', monospace;
     font-size:13px;
@@ -2113,15 +2118,21 @@ function getVoicingCount(rootIndex, ourSuffix){
 // semitone pitch-class from C.
 const STRING_PITCH_CLASS = [4,9,2,7,11,4];
 function describeBassNote(shape, rootIndex){
+  const fretNote = shape.baseFret > 1 ? (' \u00b7 ' + ordinal(shape.baseFret) + ' fret') : '';
   for (let i = 0; i < shape.frets.length; i++) {
     const f = shape.frets[i];
     if (f !== -1) {
       const absoluteFret = f > 0 ? shape.baseFret + f - 1 : 0;
       const bassPitchClass = (STRING_PITCH_CLASS[i] + absoluteFret) % 12;
-      return bassPitchClass === rootIndex ? 'Root Position' : (NOTE_NAMES[bassPitchClass] + ' in Bass');
+      return (bassPitchClass === rootIndex ? 'Root Position' : (NOTE_NAMES[bassPitchClass] + ' in Bass')) + fretNote;
     }
   }
-  return 'Root Position';
+  return 'Root Position' + fretNote;
+}
+function ordinal(n){
+  const s = ['th','st','nd','rd'];
+  const v = n % 100;
+  return n + (s[(v-20)%10] || s[v] || s[0]);
 }
 
 // Hand-drawn SVG fretboard diagram -- deliberately not using an external
@@ -2175,7 +2186,7 @@ function renderChordDiagramSVG(position, rootIndex){
   }
   // base fret label if not starting at the nut
   if (baseFret > 1) {
-    svg += `<text x="${leftPad - 8}" y="${fretY(0) + rowHeight * 0.65}" font-size="10" fill="var(--amber)" text-anchor="end" font-family="JetBrains Mono, monospace">${baseFret}fr</text>`;
+    svg += `<text x="${leftPad - 8}" y="${fretY(0) + rowHeight * 0.65}" font-size="11" font-weight="700" fill="var(--amber)" text-anchor="end" font-family="JetBrains Mono, monospace">${baseFret}fr</text>`;
   }
   // barres
   (barres || []).forEach(barreFret => {
@@ -3496,6 +3507,7 @@ function computeSecondaryDominants(tonicIndex, modeName){
       rootIndex: dominantRoot,
       suffix: '7',
       label: 'V7/' + modeData.labels[i],
+      targetDegreeIdx: i,
     });
   });
   return results;
@@ -3538,7 +3550,7 @@ function computeBorrowedChords(tonicIndex, currentModeName){
   return results;
 }
 
-function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degreeIdx, explanation }){
+function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degreeIdx, explanation, linkedTargetCard }){
   // mutable per-card state -- the mod dropdown changes this, and
   // everything else on the card (name, diagram, sound, add-to-progression)
   // stays in sync with whatever it's currently set to
@@ -3766,6 +3778,7 @@ function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degre
       }
     }
     currentSuffix = newSuffix;
+    voicingIndex = 0; // a different chord type has its own separate set of voicings -- start from its simplest, not wherever the previous chord's cycling happened to land
     refreshCard();
   });
 
@@ -3790,9 +3803,23 @@ function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degre
       const nextIndex = Math.max(0, Math.min(modSelect.options.length - 1, modSelect.selectedIndex + dir));
       modSelect.selectedIndex = nextIndex;
       currentSuffix = modSelect.value;
+      voicingIndex = 0;
       refreshCard();
     }
   });
+
+  // Hover/focus-to-highlight: a secondary dominant's label ("V7/vi") tells
+  // you WHAT it resolves to in text, but scanning a whole column to find
+  // "which card is actually vi" is exactly the kind of friction that makes
+  // this feel more confusing than it needs to. Hovering (or tabbing to,
+  // for keyboard users) the secondary dominant card lights up its real
+  // target card directly, no reading required.
+  if (linkedTargetCard) {
+    card.addEventListener('mouseenter', () => linkedTargetCard.classList.add('resolution-target'));
+    card.addEventListener('mouseleave', () => linkedTargetCard.classList.remove('resolution-target'));
+    card.addEventListener('focus', () => linkedTargetCard.classList.add('resolution-target'));
+    card.addEventListener('blur', () => linkedTargetCard.classList.remove('resolution-target'));
+  }
 
   return card;
 }
@@ -3824,12 +3851,14 @@ function renderChartGroups(){
     row.className = 'chart-row';
     row.style.marginTop = '10px';
 
+    const diatonicCardsByDegreeIdx = []; // used below to link each secondary dominant to its real resolution target
     modeData.intervals.forEach((interval, degreeIdx) => {
       const rootIndex = (tonicIndex + interval) % 12;
       const quality = modeData.qualities[degreeIdx];
       const baseSuffix = QUALITY_TO_SUFFIX[quality];
       const label = modeData.labels[degreeIdx];
       const card = createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degreeIdx });
+      diatonicCardsByDegreeIdx[degreeIdx] = card;
       row.appendChild(card);
     });
 
@@ -3849,7 +3878,8 @@ function renderChartGroups(){
           const card = createChartCard({
             rootIndex: sd.rootIndex, suffix: sd.suffix, label: sd.label,
             modeName: modeName + ' (sec. dom.)',
-            explanation: SECONDARY_DOMINANT_EXPLANATION
+            explanation: SECONDARY_DOMINANT_EXPLANATION,
+            linkedTargetCard: diatonicCardsByDegreeIdx[sd.targetDegreeIdx]
           });
           secRow.appendChild(card);
         });
