@@ -2433,31 +2433,31 @@ const MODE_NAMES = Object.keys(MODES_TABLE);
 // straight from MODES_TABLE. Each entry also carries a "style" category,
 // used to split the single dropdown into a Style -> Pattern pair below.
 const POPULAR_PROGRESSIONS = [
-  { name: 'Pop Progression (I-V-vi-IV)', style: 'Pop', degrees: [0,4,5,3] },
-  { name: '50s Progression (I-vi-IV-V)', style: 'Pop', degrees: [0,5,3,4] },
-  { name: 'Minor Pop (vi-IV-I-V)', style: 'Pop', degrees: [5,3,0,4] },
-  { name: 'Simple Pop (I-ii-IV-I)', style: 'Pop', degrees: [0,1,3,0] },
+  { name: 'Pop Progression (I-V-vi-IV)', style: 'Pop', defaultMode: 'Ionian', degrees: [0,4,5,3] },
+  { name: '50s Progression (I-vi-IV-V)', style: 'Pop', defaultMode: 'Ionian', degrees: [0,5,3,4] },
+  { name: 'Minor Pop (vi-IV-I-V)', style: 'Pop', defaultMode: 'Ionian', degrees: [5,3,0,4] },
+  { name: 'Simple Pop (I-ii-IV-I)', style: 'Pop', defaultMode: 'Ionian', degrees: [0,1,3,0] },
 
-  { name: 'Minor Rock (i-bVII-bVI-bVII)', style: 'Rock', degrees: [0,6,5,6] },
-  { name: 'Mixolydian Rock (I-bVII-IV)', style: 'Rock', degrees: [0,6,3] },
-  { name: 'La Bamba (I-IV-V-IV)', style: 'Rock', degrees: [0,3,4,3] },
-  { name: 'Rock Anthem (I-V-IV-I)', style: 'Rock', degrees: [0,4,3,0] },
+  { name: 'Minor Rock (i-bVII-bVI-bVII)', style: 'Rock', defaultMode: 'Aeolian', degrees: [0,6,5,6] },
+  { name: 'Mixolydian Rock (I-bVII-IV)', style: 'Rock', defaultMode: 'Mixolydian', degrees: [0,6,3] },
+  { name: 'La Bamba (I-IV-V-IV)', style: 'Rock', defaultMode: 'Ionian', degrees: [0,3,4,3] },
+  { name: 'Rock Anthem (I-V-IV-I)', style: 'Rock', defaultMode: 'Ionian', degrees: [0,4,3,0] },
 
-  { name: 'Three-Chord Blues (I-IV-V)', style: 'Blues', degrees: [0,3,4] },
-  { name: '12-Bar Blues', style: 'Blues', degrees: [0,0,0,0,3,3,0,0,4,3,0,0] },
-  { name: 'Extended Blues Turnaround', style: 'Blues', degrees: [0,3,0,4,3,0] },
+  { name: 'Three-Chord Blues (I-IV-V)', style: 'Blues', defaultMode: 'Ionian', degrees: [0,3,4] },
+  { name: '12-Bar Blues', style: 'Blues', defaultMode: 'Ionian', degrees: [0,0,0,0,3,3,0,0,4,3,0,0] },
+  { name: 'Extended Blues Turnaround', style: 'Blues', defaultMode: 'Ionian', degrees: [0,3,0,4,3,0] },
 
-  { name: 'Jazz Turnaround (ii-V-I)', style: 'Jazz', degrees: [1,4,0] },
-  { name: 'Circle Progression (vi-ii-V-I)', style: 'Jazz', degrees: [5,1,4,0] },
-  { name: 'Ragtime Turnaround (I-vi-ii-V)', style: 'Jazz', degrees: [0,5,1,4] },
-  { name: 'Descending Fifths (full circle)', style: 'Jazz', degrees: [0,3,6,2,5,1,4,0] },
+  { name: 'Jazz Turnaround (ii-V-I)', style: 'Jazz', defaultMode: 'Ionian', degrees: [1,4,0] },
+  { name: 'Circle Progression (vi-ii-V-I)', style: 'Jazz', defaultMode: 'Ionian', degrees: [5,1,4,0] },
+  { name: 'Ragtime Turnaround (I-vi-ii-V)', style: 'Jazz', defaultMode: 'Ionian', degrees: [0,5,1,4] },
+  { name: 'Descending Fifths (full circle)', style: 'Jazz', defaultMode: 'Ionian', degrees: [0,3,6,2,5,1,4,0] },
 
-  { name: 'Simple Folk (I-IV-I-V)', style: 'Folk', degrees: [0,3,0,4] },
-  { name: 'Andalusian Cadence', style: 'Folk', degrees: [0,6,5,4] },
+  { name: 'Simple Folk (I-IV-I-V)', style: 'Folk', defaultMode: 'Ionian', degrees: [0,3,0,4] },
+  { name: 'Andalusian Cadence', style: 'Folk', defaultMode: 'Aeolian', degrees: [0,6,5,4] },
 
-  { name: 'Canon Progression', style: 'Classical', degrees: [0,4,5,2,3,0,3,4] },
+  { name: 'Canon Progression', style: 'Classical', defaultMode: 'Ionian', degrees: [0,4,5,2,3,0,3,4] },
 
-  { name: 'Minor Ballad (i-VI-III-VII)', style: 'Ballad', degrees: [0,5,2,6] },
+  { name: 'Minor Ballad (i-VI-III-VII)', style: 'Ballad', defaultMode: 'Aeolian', degrees: [0,5,2,6] },
 ];
 
 const PROGRESSION_STYLES = [...new Set(POPULAR_PROGRESSIONS.map(p => p.style))];
@@ -2498,7 +2498,15 @@ function resolvePresetIntoTray(presetIndex){
   const preset = POPULAR_PROGRESSIONS[presetIndex];
   if (!preset) return;
   const tonicIndex = parseInt(chartKeySelect.value, 10);
-  const modeName = activeModes[0] || 'Ionian'; // resolve against the first active mode, defaulting to Ionian if none selected
+  // Use this progression's own intended mode if it's currently active --
+  // NOT just "whichever mode happened to be selected first". A "Minor
+  // Ballad" needs a minor tonic; if Aeolian is active but isn't first in
+  // the list, activeModes[0] alone would silently resolve it against a
+  // major mode instead, flipping every chord's quality without anything
+  // about it looking wrong in the UI.
+  const modeName = (preset.defaultMode && activeModes.includes(preset.defaultMode))
+    ? preset.defaultMode
+    : (activeModes[0] || preset.defaultMode || 'Ionian');
   const modeData = MODES_TABLE[modeName];
 
   progression = preset.degrees.map(degreeIdx => {
