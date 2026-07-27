@@ -450,6 +450,30 @@
     background:none;
     border:none;
   }
+  .progression-chip-handle{
+    color:var(--fg);
+    opacity:0.4;
+    cursor:grab;
+    touch-action:none; /* stop the browser's own touch-scroll from fighting the drag gesture */
+    padding:0 2px;
+    font-size:13px;
+    line-height:1;
+    user-select:none;
+  }
+  .progression-chip-duplicate{
+    font-size:12px;
+    color:var(--fg);
+    opacity:0.55;
+    cursor:pointer;
+    padding:0 3px;
+    background:none;
+    border:none;
+  }
+  .progression-chip-duplicate:hover{ opacity:0.9; }
+  .progression-chip.dragging{
+    opacity:0.5;
+    box-shadow:0 0 0 2px var(--amber);
+  }
   .progression-chip-arp{
     width:20px; height:20px;
     flex-shrink:0;
@@ -2611,6 +2635,55 @@ function syncCardSelectionStates(){
   });
 }
 
+// Drag-to-reorder for progression chips, built on Pointer Events (unifies
+// mouse and touch) rather than native HTML5 drag-and-drop, which doesn't
+// work reliably on iOS Safari -- the primary device this app is actually
+// used on. The dragged chip's DOM node moves live as you drag over other
+// chips (immediate visual feedback); on release, the final DOM order is
+// read back and used to rebuild the actual progression array.
+function startChipDrag(e, chip, handle){
+  e.preventDefault();
+  handle.setPointerCapture(e.pointerId);
+  chip.classList.add('dragging');
+
+  function onMove(ev){
+    if (ev.pointerId !== e.pointerId) return;
+    const siblings = Array.from(progressionRow.children).filter(el => el !== chip);
+    let target = null, insertBefore = true;
+    for (const sib of siblings) {
+      const rect = sib.getBoundingClientRect();
+      if (ev.clientX < rect.left + rect.width / 2) { target = sib; insertBefore = true; break; }
+    }
+    if (!target && siblings.length) { target = siblings[siblings.length - 1]; insertBefore = false; }
+    if (target) {
+      if (insertBefore) progressionRow.insertBefore(chip, target);
+      else progressionRow.insertBefore(chip, target.nextSibling);
+    }
+  }
+
+  function onUp(ev){
+    if (ev.pointerId !== e.pointerId) return;
+    chip.classList.remove('dragging');
+    try { handle.releasePointerCapture(ev.pointerId); } catch (err) {}
+    handle.removeEventListener('pointermove', onMove);
+    handle.removeEventListener('pointerup', onUp);
+    handle.removeEventListener('pointercancel', onUp);
+
+    const newOrder = Array.from(progressionRow.children).map(el => el._entry).filter(Boolean);
+    if (newOrder.length === progression.length) {
+      activePresetIndex = null; // reordering is a manual edit, same as any other
+      progression = newOrder;
+      saveProgression();
+      renderProgression(); // clean rebuild -- drops any transient drag state/classes
+      syncCardSelectionStates();
+    }
+  }
+
+  handle.addEventListener('pointermove', onMove);
+  handle.addEventListener('pointerup', onUp);
+  handle.addEventListener('pointercancel', onUp);
+}
+
 function renderProgression(){
   if (activePresetIndex !== null && POPULAR_PROGRESSIONS[activePresetIndex]) {
     progressionStatus.style.display = '';
@@ -2654,6 +2727,18 @@ function renderProgression(){
         syncCardSelectionStates();
       }
     });
+
+    // Dedicated drag handle -- NOT the whole chip -- so dragging doesn't
+    // fight with the chip's own tap-to-preview, or with the nested select/
+    // buttons. Built on Pointer Events (not native HTML5 drag-and-drop,
+    // which barely works on iOS Safari) so it works identically with touch
+    // and mouse.
+    const dragHandle = document.createElement('span');
+    dragHandle.className = 'progression-chip-handle';
+    dragHandle.textContent = '\u22ee\u22ee';
+    dragHandle.setAttribute('aria-hidden', 'true'); // decorative -- reordering isn't reachable via this handle for keyboard/screen-reader users yet
+    dragHandle.addEventListener('pointerdown', (e) => startChipDrag(e, chip, dragHandle));
+    chip.appendChild(dragHandle);
 
     const nameEl = document.createElement('span');
     nameEl.className = 'progression-chip-name';
@@ -2701,6 +2786,23 @@ function renderProgression(){
     });
     chip.appendChild(chipArpBtn);
 
+    const duplicateEl = document.createElement('button');
+    duplicateEl.type = 'button';
+    duplicateEl.className = 'progression-chip-duplicate';
+    duplicateEl.textContent = '\u29C9'; // two-squares "copy" glyph
+    duplicateEl.setAttribute('aria-label', 'Duplicate ' + entry.chordName);
+    duplicateEl.title = 'Duplicate this chord';
+    duplicateEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      activePresetIndex = null;
+      const copy = { ...progression[idx] };
+      progression = [...progression.slice(0, idx + 1), copy, ...progression.slice(idx + 1)];
+      saveProgression();
+      renderProgression();
+      syncCardSelectionStates();
+    });
+    chip.appendChild(duplicateEl);
+
     const removeEl = document.createElement('button');
     removeEl.type = 'button';
     removeEl.className = 'progression-chip-remove';
@@ -2716,6 +2818,7 @@ function renderProgression(){
     });
     chip.appendChild(removeEl);
 
+    chip._entry = entry; // reference used by drag-reorder to rebuild the array in the new order
     progressionRow.appendChild(chip);
   });
   renderTimeline();
@@ -3170,7 +3273,32 @@ function renderChartGroups(){
       refreshCard();
 
       modSelect.addEventListener('change', () => {
-        currentSuffix = modSelect.value;
+        const oldSuffix = currentSuffix;
+        const newSuffix = modSelect.value;
+        const wasSelected = isChordInProgression(rootIndex, oldSuffix);
+
+        if (wasSelected) {
+          // Update the existing entry in place (keeping its position and
+          // beat count) instead of leaving it stale or just losing the
+          // highlight -- this is what makes "load a progression, then tweak
+          // a chord to add a 9th" actually work as one continuous edit.
+          const matchIdx = progression.map(en => en.rootIndex === rootIndex && en.suffix === oldSuffix)
+            .lastIndexOf(true);
+          if (matchIdx !== -1) {
+            const newLabel = label; // the roman-numeral/degree label for this card never changes, only its suffix
+            progression[matchIdx] = {
+              ...progression[matchIdx],
+              suffix: newSuffix,
+              chordName: NOTE_NAMES[rootIndex] + newSuffix,
+              label: newLabel
+            };
+            activePresetIndex = null; // this is now a customized chord, not the untouched preset
+            saveProgression();
+            renderProgression();
+          }
+        }
+
+        currentSuffix = newSuffix;
         refreshCard();
       });
 
