@@ -2692,15 +2692,29 @@ function saveProgression(){
   try { localStorage.setItem(PROGRESSION_STORAGE_KEY, JSON.stringify(progression)); } catch (e) {}
 }
 
-// ---- persistent "already in progression" highlight on chart cards, kept in
-// sync without needing a full grid re-render every time the tray changes ----
-let renderedChartCards = []; // { card, rootIndex, getCurrentSuffix } for every card currently on screen
-function isChordInProgression(rootIndex, suffix){
-  return progression.some(e => e.rootIndex === rootIndex && e.suffix === suffix);
+// ---- persistent "in progression" highlight on chart cards, tracked by ROOT
+// rather than exact (root+suffix) pair -- so editing a chord's mod on either
+// side (the card or its matching chip in the tray) keeps the card linked and
+// highlighted, following whatever variant is currently in the progression,
+// instead of silently losing the highlight the moment the two diverge.
+// Only an actual removal from the progression breaks the link. ----
+let renderedChartCards = []; // { card, rootIndex, getCurrentSuffix, followLinkedSuffix, refreshToggleBtn } for every card currently on screen
+
+function findLinkedEntry(rootIndex){
+  // most recently added/edited entry with this root; if you have two
+  // different variants of the same root chord in your progression, the
+  // card follows whichever one was touched most recently.
+  for (let i = progression.length - 1; i >= 0; i--) {
+    if (progression[i].rootIndex === rootIndex) return progression[i];
+  }
+  return null;
 }
+
 function syncCardSelectionStates(){
   renderedChartCards.forEach(entry => {
-    entry.card.classList.toggle('selected', isChordInProgression(entry.rootIndex, entry.getCurrentSuffix()));
+    const linked = findLinkedEntry(entry.rootIndex);
+    entry.card.classList.toggle('selected', !!linked);
+    if (linked && entry.followLinkedSuffix) entry.followLinkedSuffix(linked.suffix);
     if (entry.refreshToggleBtn) entry.refreshToggleBtn();
   });
 }
@@ -3308,23 +3322,23 @@ function renderChartGroups(){
       toggleBtn.type = 'button';
       toggleBtn.className = 'chart-card-add';
       function refreshToggleBtn(){
-        const inProg = isChordInProgression(rootIndex, currentSuffix);
-        toggleBtn.textContent = inProg ? '\u2212' : '+';
-        toggleBtn.setAttribute('aria-label', inProg ? 'Remove from progression' : 'Add to progression');
-        toggleBtn.setAttribute('aria-pressed', inProg ? 'true' : 'false');
-        toggleBtn.classList.toggle('remove-mode', inProg);
+        const linked = findLinkedEntry(rootIndex);
+        toggleBtn.textContent = linked ? '\u2212' : '+';
+        toggleBtn.setAttribute('aria-label', linked ? 'Remove from progression' : 'Add to progression');
+        toggleBtn.setAttribute('aria-pressed', linked ? 'true' : 'false');
+        toggleBtn.classList.toggle('remove-mode', !!linked);
       }
       toggleBtn.addEventListener('click', (e) => {
         e.stopPropagation(); // don't also trigger the card's play-on-click
-        if (isChordInProgression(rootIndex, currentSuffix)) {
-          // Remove one matching instance -- the most recently added one --
-          // not every occurrence, since the same chord can legitimately
-          // appear more than once in a real progression.
-          const lastMatchIdx = progression.map(en => en.rootIndex === rootIndex && en.suffix === currentSuffix)
-            .lastIndexOf(true);
-          if (lastMatchIdx === -1) return;
+        const linked = findLinkedEntry(rootIndex);
+        if (linked) {
+          // Remove the specific linked entry -- the one this card is
+          // currently tracking -- not just any match on suffix, since the
+          // card's own displayed suffix always follows the linked entry now.
+          const linkedIdx = progression.indexOf(linked);
+          if (linkedIdx === -1) return;
           activePresetIndex = null;
-          progression = progression.filter((_, i) => i !== lastMatchIdx);
+          progression = progression.filter((_, i) => i !== linkedIdx);
           saveProgression();
           renderProgression();
         } else {
@@ -3363,31 +3377,38 @@ function renderChartGroups(){
           empty.textContent = 'no diagram';
           diagramSlot.appendChild(empty);
         }
-        card.classList.toggle('selected', isChordInProgression(rootIndex, currentSuffix));
+        card.classList.toggle('selected', !!findLinkedEntry(rootIndex));
         refreshToggleBtn();
       }
-      renderedChartCards.push({ card, rootIndex, getCurrentSuffix: () => currentSuffix, refreshToggleBtn });
+      // followLinkedSuffix: called by syncCardSelectionStates whenever this
+      // card is linked to a progression entry, so the card's own mod
+      // dropdown/diagram/name follow whatever variant is actually in the
+      // tray right now -- this is what keeps the two views from drifting
+      // apart, instead of the card just going dark the moment they differ.
+      function followLinkedSuffix(linkedSuffix){
+        if (linkedSuffix === currentSuffix) return; // already showing it, nothing to do
+        currentSuffix = linkedSuffix;
+        modSelect.value = linkedSuffix;
+        refreshCard();
+      }
+      renderedChartCards.push({ card, rootIndex, getCurrentSuffix: () => currentSuffix, followLinkedSuffix, refreshToggleBtn });
       refreshCard();
 
       modSelect.addEventListener('change', () => {
-        const oldSuffix = currentSuffix;
         const newSuffix = modSelect.value;
-        const wasSelected = isChordInProgression(rootIndex, oldSuffix);
+        const linked = findLinkedEntry(rootIndex);
 
-        if (wasSelected) {
-          // Update the existing entry in place (keeping its position and
-          // beat count) instead of leaving it stale or just losing the
-          // highlight -- this is what makes "load a progression, then tweak
-          // a chord to add a 9th" actually work as one continuous edit.
-          const matchIdx = progression.map(en => en.rootIndex === rootIndex && en.suffix === oldSuffix)
-            .lastIndexOf(true);
-          if (matchIdx !== -1) {
-            const newLabel = label; // the roman-numeral/degree label for this card never changes, only its suffix
-            progression[matchIdx] = {
-              ...progression[matchIdx],
+        if (linked) {
+          // Update the linked entry in place (keeping its position and beat
+          // count) instead of leaving it stale or losing the highlight --
+          // this is what makes "load a progression, then tweak a chord to
+          // add a 9th" actually work as one continuous edit.
+          const linkedIdx = progression.indexOf(linked);
+          if (linkedIdx !== -1) {
+            progression[linkedIdx] = {
+              ...progression[linkedIdx],
               suffix: newSuffix,
-              chordName: NOTE_NAMES[rootIndex] + newSuffix,
-              label: newLabel
+              chordName: NOTE_NAMES[rootIndex] + newSuffix
             };
             activePresetIndex = null; // this is now a customized chord, not the untouched preset
             saveProgression();
