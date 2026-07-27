@@ -503,6 +503,16 @@
     padding:1px 3px;
     width:32px;
   }
+  .progression-chip-mod{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    color:var(--amber);
+    background:var(--panel-mid);
+    border:1px solid rgba(0,0,0,0.4);
+    border-radius:3px;
+    padding:1px 3px;
+    max-width:80px;
+  }
 
   /* timeline strip -- block width proportional to each chord's beat count */
   .progression-timeline{
@@ -1957,6 +1967,16 @@ const MOD_OPTIONS = {
   ],
 };
 
+// A progression chip's current suffix could be almost anything by the time
+// you're looking at it (loaded from a preset, edited from a chart card,
+// duplicated, etc.) -- this figures out which MOD_OPTIONS list actually
+// applies to it, so the chip's own mod dropdown always shows a sensible set.
+function suffixToQualityBucket(suffix){
+  if (suffix === 'dim' || suffix === 'dim7' || suffix === 'm7b5') return 'dim';
+  if (suffix.startsWith('m') && !suffix.startsWith('maj')) return 'min';
+  return 'maj';
+}
+
 function ensureChordsDbLoaded(){
   if (chordsDbLoadPromise) return chordsDbLoadPromise;
   chordsDbLoadPromise = fetch('./vendor/chords-db/guitar.json')
@@ -2791,6 +2811,32 @@ function renderProgression(){
     nameEl.className = 'progression-chip-name';
     nameEl.textContent = entry.chordName;
     chip.appendChild(nameEl);
+
+    const chipModSelect = document.createElement('select');
+    chipModSelect.className = 'progression-chip-mod';
+    chipModSelect.setAttribute('aria-label', 'Change ' + entry.chordName + ' to a different extension');
+    const bucket = suffixToQualityBucket(entry.suffix);
+    MOD_OPTIONS[bucket].forEach(opt => {
+      const o = document.createElement('option');
+      o.value = opt.value;
+      o.textContent = opt.label;
+      if (opt.value === entry.suffix) o.selected = true;
+      chipModSelect.appendChild(o);
+    });
+    chipModSelect.addEventListener('click', (e) => e.stopPropagation());
+    chipModSelect.addEventListener('change', () => {
+      activePresetIndex = null; // per-chord customization, same as any other manual chip edit
+      const newSuffix = chipModSelect.value;
+      progression[idx] = {
+        ...progression[idx],
+        suffix: newSuffix,
+        chordName: NOTE_NAMES[entry.rootIndex] + newSuffix
+      };
+      saveProgression();
+      renderProgression(); // chordName affects the chip label AND the timeline block text, so a full rebuild is the safe choice here
+      syncCardSelectionStates();
+    });
+    chip.appendChild(chipModSelect);
 
     const labelEl = document.createElement('span');
     labelEl.className = 'progression-chip-label';
