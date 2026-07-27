@@ -815,38 +815,43 @@
      grids (chart cards, mode pills, progression chips) naturally fit more
      per row -- no structural redesign needed, just more room to breathe. */
   @media (min-width: 760px){
-    header{ max-width:900px; }
-    main{ max-width:900px; }
+    /* Chart mode is the one section explicitly meant to be desktop-first --
+       Tune and Chord ID stay phone-sized even here (mode-toggle, tone-picker,
+       readout-numbers, gauge-wrap, mic-btn below all keep their existing
+       narrower widths on purpose), since those are used one-handed mid-
+       practice, not browsed at a desk. */
+    header{ max-width:1200px; }
+    main{ max-width:1200px; }
     .mode-toggle{ max-width:420px; }
     .tone-picker{ max-width:420px; }
     .readout-numbers{ max-width:480px; }
-    .chart-controls{ max-width:560px; }
+    .chart-controls{ max-width:680px; }
     .chord-readout{ max-width:640px; }
-    .mode-picker{ max-width:900px; }
+    .mode-picker{ max-width:1200px; }
     .chart-groups{
-      max-width:900px;
+      max-width:1200px;
       flex-direction:row;
       flex-wrap:nowrap;
       align-items:flex-start;
-      gap:16px;
+      gap:20px;
       overflow-x:auto;
       -webkit-overflow-scrolling:touch;
       padding-bottom:8px;
     }
     .chart-mode-group{
-      flex:0 0 calc((100% - 32px) / 3); /* exactly 3 columns fit the container width; a 4th+ scrolls */
-      min-width:260px;
+      flex:0 0 calc((100% - 40px) / 3); /* exactly 3 wider columns fit the container width; a 4th+ scrolls */
+      min-width:320px;
     }
     .chart-mode-group + .chart-mode-group{
       border-left:1px solid var(--hairline);
-      padding-left:16px;
+      padding-left:20px;
     }
-    .progression-panel{ max-width:900px; }
+    .progression-panel{ max-width:1200px; }
     .gauge-wrap{ max-width:480px; }
     .mic-btn{ max-width:420px; }
     footer{ max-width:480px; }
     body{ padding:36px 24px; }
-    .chart-card{ max-width:170px; }
+    .chart-card{ max-width:200px; }
     .note-name{ font-size:92px; }
   }
 </style>
@@ -955,6 +960,7 @@
 
     <div class="chart-controls">
       <select class="chart-select" id="chartKeySelect"></select>
+      <select class="chart-select" id="progressionStyleSelect"></select>
       <select class="chart-select" id="popularProgressionSelect">
         <option value="">Popular Progressions...</option>
       </select>
@@ -2424,28 +2430,61 @@ const MODE_NAMES = Object.keys(MODES_TABLE);
 // classic "I-V-vi-IV" pop progression in Ionian becomes a genuinely
 // different, mode-appropriate set of chords if loaded while Dorian or
 // Mixolydian is selected instead, since the quality at each degree comes
-// straight from MODES_TABLE.
+// straight from MODES_TABLE. Each entry also carries a "style" category,
+// used to split the single dropdown into a Style -> Pattern pair below.
 const POPULAR_PROGRESSIONS = [
-  { name: 'Pop Progression (I-V-vi-IV)', degrees: [0,4,5,3] },
-  { name: "50s Progression (I-vi-IV-V)", degrees: [0,5,3,4] },
-  { name: 'Jazz Turnaround (ii-V-I)', degrees: [1,4,0] },
-  { name: 'Three-Chord Blues (I-IV-V)', degrees: [0,3,4] },
-  { name: '12-Bar Blues', degrees: [0,0,0,0,3,3,0,0,4,3,0,0] },
-  { name: "Canon Progression", degrees: [0,4,5,2,3,0,3,4] },
-  { name: 'Minor Rock (i-bVII-bVI-bVII)', degrees: [0,6,5,6] },
-  { name: 'Andalusian Cadence', degrees: [0,6,5,4] },
-  { name: 'Simple Folk (I-IV-I-V)', degrees: [0,3,0,4] },
-  { name: 'Minor Pop (vi-IV-I-V)', degrees: [5,3,0,4] },
+  { name: 'Pop Progression (I-V-vi-IV)', style: 'Pop', degrees: [0,4,5,3] },
+  { name: '50s Progression (I-vi-IV-V)', style: 'Pop', degrees: [0,5,3,4] },
+  { name: 'Minor Pop (vi-IV-I-V)', style: 'Pop', degrees: [5,3,0,4] },
+  { name: 'Simple Pop (I-ii-IV-I)', style: 'Pop', degrees: [0,1,3,0] },
+
+  { name: 'Minor Rock (i-bVII-bVI-bVII)', style: 'Rock', degrees: [0,6,5,6] },
+  { name: 'Mixolydian Rock (I-bVII-IV)', style: 'Rock', degrees: [0,6,3] },
+  { name: 'La Bamba (I-IV-V-IV)', style: 'Rock', degrees: [0,3,4,3] },
+  { name: 'Rock Anthem (I-V-IV-I)', style: 'Rock', degrees: [0,4,3,0] },
+
+  { name: 'Three-Chord Blues (I-IV-V)', style: 'Blues', degrees: [0,3,4] },
+  { name: '12-Bar Blues', style: 'Blues', degrees: [0,0,0,0,3,3,0,0,4,3,0,0] },
+  { name: 'Extended Blues Turnaround', style: 'Blues', degrees: [0,3,0,4,3,0] },
+
+  { name: 'Jazz Turnaround (ii-V-I)', style: 'Jazz', degrees: [1,4,0] },
+  { name: 'Circle Progression (vi-ii-V-I)', style: 'Jazz', degrees: [5,1,4,0] },
+  { name: 'Ragtime Turnaround (I-vi-ii-V)', style: 'Jazz', degrees: [0,5,1,4] },
+  { name: 'Descending Fifths (full circle)', style: 'Jazz', degrees: [0,3,6,2,5,1,4,0] },
+
+  { name: 'Simple Folk (I-IV-I-V)', style: 'Folk', degrees: [0,3,0,4] },
+  { name: 'Andalusian Cadence', style: 'Folk', degrees: [0,6,5,4] },
+
+  { name: 'Canon Progression', style: 'Classical', degrees: [0,4,5,2,3,0,3,4] },
+
+  { name: 'Minor Ballad (i-VI-III-VII)', style: 'Ballad', degrees: [0,5,2,6] },
 ];
 
+const PROGRESSION_STYLES = [...new Set(POPULAR_PROGRESSIONS.map(p => p.style))];
+
+const progressionStyleSelect = document.getElementById('progressionStyleSelect');
 const popularProgressionSelect = document.getElementById('popularProgressionSelect');
 const loadProgressionBtn = document.getElementById('loadProgressionBtn');
-POPULAR_PROGRESSIONS.forEach((p, i) => {
+
+PROGRESSION_STYLES.forEach(style => {
   const opt = document.createElement('option');
-  opt.value = i;
-  opt.textContent = p.name;
-  popularProgressionSelect.appendChild(opt);
+  opt.value = style;
+  opt.textContent = style;
+  progressionStyleSelect.appendChild(opt);
 });
+
+function populatePatternsForStyle(style){
+  popularProgressionSelect.innerHTML = '';
+  POPULAR_PROGRESSIONS.forEach((p, i) => {
+    if (p.style !== style) return;
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = p.name;
+    popularProgressionSelect.appendChild(opt);
+  });
+}
+populatePatternsForStyle(PROGRESSION_STYLES[0]);
+progressionStyleSelect.addEventListener('change', () => populatePatternsForStyle(progressionStyleSelect.value));
 
 // Tracks which preset (if any) currently populated the tray, so changing the
 // key or toggling a mode can automatically re-resolve the SAME preset against
@@ -2772,7 +2811,7 @@ function renderProgression(){
     const chipArpBtn = document.createElement('button');
     chipArpBtn.type = 'button';
     chipArpBtn.className = 'progression-chip-arp' + (entry.arpeggiate ? ' active' : '');
-    chipArpBtn.textContent = '\u2933';
+    chipArpBtn.textContent = 'A';
     chipArpBtn.title = 'Arpeggiate this chord';
     chipArpBtn.setAttribute('aria-pressed', entry.arpeggiate ? 'true' : 'false');
     chipArpBtn.addEventListener('click', (e) => {
@@ -3179,7 +3218,7 @@ function renderChartGroups(){
       const arpBtn = document.createElement('button');
       arpBtn.type = 'button';
       arpBtn.className = 'chart-card-arp';
-      arpBtn.textContent = '\u2933'; // small arpeggio/sweep glyph
+      arpBtn.textContent = 'A'; // plain letter -- was an arrow-like glyph, now confusable with the chip's move-left/right buttons
       arpBtn.title = 'Arpeggiate this chord';
       arpBtn.setAttribute('aria-pressed', 'false');
       arpBtn.addEventListener('click', (e) => {
