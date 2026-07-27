@@ -207,6 +207,7 @@
 
   /* chart mode -- key/mode selectors + a scrollable row of 7 diatonic chords */
   .chart-controls{ display:flex; flex-wrap:wrap; gap:10px; width:100%; max-width:320px; }
+  .chart-theory-toggles{ display:flex; flex-wrap:wrap; gap:16px; width:100%; max-width:320px; margin-top:6px; }
   .chart-select{
     flex:1;
     padding:10px 8px;
@@ -258,6 +259,42 @@
     color:var(--amber-dim);
     letter-spacing:0.06em;
   }
+  .chart-card-function{
+    font-family:'JetBrains Mono', monospace;
+    font-size:8px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    opacity:0.75;
+    margin-top:2px;
+  }
+  .chart-card-function-tonic{ color:var(--locked); }
+  .chart-card-function-subdominant{ color:#7fb3d5; }
+  .chart-card-function-dominant{ color:var(--amber); }
+  .chart-card-info-btn{
+    background:none;
+    border:none;
+    color:var(--fg);
+    opacity:0.4;
+    font-size:13px;
+    line-height:1;
+    cursor:pointer;
+    padding:2px 0;
+    margin-top:2px;
+  }
+  .chart-card-info-btn:hover{ opacity:0.7; }
+  .chart-card-info-btn.active{ opacity:1; color:var(--amber); }
+  .chart-card-explanation{
+    font-family:'JetBrains Mono', monospace;
+    font-size:9.5px;
+    line-height:1.4;
+    color:var(--fg);
+    opacity:0.8;
+    text-align:left;
+    background:rgba(0,0,0,0.25);
+    border-radius:4px;
+    padding:6px 7px;
+    margin:4px 0 2px;
+  }
   .chart-card-name{
     font-family:'VT323', monospace;
     font-size:26px;
@@ -271,6 +308,34 @@
     color:var(--fg);
     opacity:0.4;
     padding:20px 0;
+  }
+  .chart-card-voicing-row{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    margin-top:6px;
+  }
+  .chart-card-voicing-nav{
+    width:16px; height:16px;
+    border-radius:3px;
+    border:1px solid rgba(0,0,0,0.4);
+    background:linear-gradient(180deg, var(--cap), var(--cap-dark));
+    color:var(--plaque);
+    font-size:8px;
+    line-height:1;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    padding:0;
+  }
+  .chart-card-voicing-nav:disabled{ opacity:0.25; cursor:default; }
+  .chart-card-voicing-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:9px;
+    color:var(--amber-dim);
+    letter-spacing:0.03em;
+    min-width:70px;
+    text-align:center;
   }
 
   /* multi-mode picker -- up to 3 active at once, oldest evicted on a 4th pick */
@@ -316,6 +381,16 @@
     opacity:0.85;
     border-bottom:1px solid var(--hairline);
     padding-bottom:4px;
+  }
+  .chart-subgroup-header{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--fg);
+    opacity:0.55;
+    margin-top:14px;
+    margin-bottom:4px;
   }
 
   .chart-card{ position:relative; padding-top:34px; }
@@ -841,6 +916,7 @@
     .tone-picker{ max-width:420px; }
     .readout-numbers{ max-width:480px; }
     .chart-controls{ max-width:680px; }
+    .chart-theory-toggles{ max-width:680px; }
     .chord-readout{ max-width:640px; }
     .mode-picker{ max-width:1200px; }
     .chart-groups{
@@ -982,6 +1058,17 @@
       <button type="button" class="mini-btn" id="loadProgressionBtn">Load</button>
     </div>
 
+    <div class="chart-theory-toggles">
+      <label class="playback-setting checkbox">
+        <input type="checkbox" id="secondaryDominantsToggle">
+        Secondary Dominants
+      </label>
+      <label class="playback-setting checkbox">
+        <input type="checkbox" id="borrowedChordsToggle">
+        Borrowed Chords
+      </label>
+    </div>
+
     <div class="mode-picker" id="modePicker"></div>
 
     <div class="chart-groups" id="chartGroups"></div>
@@ -990,6 +1077,8 @@
       <div class="progression-header">
         <span class="progression-title">Your Progression</span>
         <div class="progression-actions">
+          <button class="mini-btn" id="transposeDownBtn" title="Transpose down a semitone">♭</button>
+          <button class="mini-btn" id="transposeUpBtn" title="Transpose up a semitone">♯</button>
           <button class="mini-btn" id="progressionDownloadBtn">Save Image</button>
           <button class="mini-btn" id="progressionClearBtn">Clear</button>
         </div>
@@ -1995,7 +2084,7 @@ function ensureChordsDbLoaded(){
   return chordsDbLoadPromise;
 }
 
-function lookupChordShape(rootIndex, ourSuffix){
+function lookupChordShape(rootIndex, ourSuffix, voicingIndex){
   if (!chordsDbData) return null;
   const dbKey = ROOT_TO_DB_KEY[rootIndex];
   const dbSuffix = SUFFIX_TO_DB[ourSuffix];
@@ -2004,13 +2093,61 @@ function lookupChordShape(rootIndex, ourSuffix){
   if (!entries) return null;
   const match = entries.find(e => e.suffix === dbSuffix);
   if (!match || !match.positions || match.positions.length === 0) return null;
-  return match.positions[0]; // first position is consistently the simplest/most common voicing in this dataset
+  const idx = Math.min(voicingIndex || 0, match.positions.length - 1);
+  return match.positions[idx];
+}
+
+function getVoicingCount(rootIndex, ourSuffix){
+  if (!chordsDbData) return 0;
+  const dbKey = ROOT_TO_DB_KEY[rootIndex];
+  const dbSuffix = SUFFIX_TO_DB[ourSuffix];
+  if (!dbSuffix) return 0;
+  const entries = chordsDbData.chords[dbKey];
+  if (!entries) return 0;
+  const match = entries.find(e => e.suffix === dbSuffix);
+  return (match && match.positions) ? match.positions.length : 0;
+}
+
+// Standard tuning, low string to high (matches chords-db's own fret-array
+// ordering, confirmed against real data): E2 A2 D3 G3 B3 E4, expressed as
+// semitone pitch-class from C.
+const STRING_PITCH_CLASS = [4,9,2,7,11,4];
+function describeBassNote(shape, rootIndex){
+  for (let i = 0; i < shape.frets.length; i++) {
+    const f = shape.frets[i];
+    if (f !== -1) {
+      const absoluteFret = f > 0 ? shape.baseFret + f - 1 : 0;
+      const bassPitchClass = (STRING_PITCH_CLASS[i] + absoluteFret) % 12;
+      return bassPitchClass === rootIndex ? 'Root Position' : (NOTE_NAMES[bassPitchClass] + ' in Bass');
+    }
+  }
+  return 'Root Position';
 }
 
 // Hand-drawn SVG fretboard diagram -- deliberately not using an external
 // rendering library, same "vendor data, build our own visuals" approach
 // as the rest of this app.
-function renderChordDiagramSVG(position){
+// Maps a semitone interval from the chord root to a practical chord-tone
+// name and a distinct color family, so fretboard diagrams can show WHAT
+// each fretted note actually is (root/3rd/5th/7th/extension), not just
+// where to put your fingers. Root stays the app's amber accent for
+// consistency with everywhere else; everything else gets its own hue.
+function getIntervalRole(interval){
+  if (interval === 0) return { name: 'R', color: 'var(--amber)' };
+  if (interval === 3) return { name: 'm3', color: '#7fd88f' };
+  if (interval === 4) return { name: 'M3', color: '#7fd88f' };
+  if (interval === 6) return { name: 'b5', color: '#7fb3d5' };
+  if (interval === 7) return { name: '5', color: '#7fb3d5' };
+  if (interval === 8) return { name: '#5', color: '#7fb3d5' };
+  if (interval === 9) return { name: '6', color: '#c58fd8' };
+  if (interval === 10) return { name: 'b7', color: '#c58fd8' };
+  if (interval === 11) return { name: '7', color: '#c58fd8' };
+  if (interval === 1) return { name: 'b9', color: '#e88fa8' };
+  if (interval === 2) return { name: '9', color: '#e88fa8' };
+  return { name: '11', color: '#e88fa8' }; // interval === 5
+}
+
+function renderChordDiagramSVG(position, rootIndex){
   const { frets, fingers, baseFret, barres } = position;
   const numStrings = 6;
   const relFrets = frets.map(f => (f > 0 ? f - baseFret + 1 : f));
@@ -2058,11 +2195,16 @@ function renderChordDiagramSVG(position){
     if (f === -1) {
       svg += `<text x="${x}" y="${topPad - 10}" font-size="12" fill="var(--off)" text-anchor="middle" font-family="JetBrains Mono, monospace">x</text>`;
     } else if (f === 0) {
-      svg += `<circle cx="${x}" cy="${topPad - 13}" r="4.5" fill="none" stroke="var(--live-white)" stroke-width="1.5" />`;
+      const role = (rootIndex !== undefined) ? getIntervalRole((STRING_PITCH_CLASS[i] - rootIndex + 12) % 12) : null;
+      const strokeColor = role ? role.color : 'var(--live-white)';
+      svg += `<circle cx="${x}" cy="${topPad - 13}" r="4.5" fill="none" stroke="${strokeColor}" stroke-width="1.5" />`;
     } else {
       const row = f - baseFret + 1;
       const y = fretY(row - 1) + rowHeight / 2;
-      svg += `<circle cx="${x}" cy="${y}" r="8" fill="var(--amber)" />`;
+      const absoluteFret = baseFret + f - 1;
+      const role = (rootIndex !== undefined) ? getIntervalRole((STRING_PITCH_CLASS[i] + absoluteFret - rootIndex + 1200) % 12) : null;
+      const dotColor = role ? role.color : 'var(--amber)';
+      svg += `<circle cx="${x}" cy="${y}" r="8" fill="${dotColor}" />`;
       const fingerNum = fingers ? fingers[i] : 0;
       if (fingerNum > 0) {
         svg += `<text x="${x}" y="${y + 3.5}" font-size="9" fill="#2a1c08" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="700">${fingerNum}</text>`;
@@ -2082,7 +2224,7 @@ function updateChordDiagram(rootIndex, ourSuffix){
       chordDiagramWrap.innerHTML = '<div class="chord-diagram-caption">no diagram available for this voicing</div>';
       return;
     }
-    chordDiagramWrap.innerHTML = renderChordDiagramSVG(shape) + '<div class="chord-diagram-caption">common voicing</div>';
+    chordDiagramWrap.innerHTML = renderChordDiagramSVG(shape, rootIndex) + '<div class="chord-diagram-caption">common voicing</div>';
   }).catch(() => {
     chordDiagramWrap.innerHTML = '';
   });
@@ -2450,8 +2592,41 @@ const MODES_TABLE = {
   Mixolydian: { intervals:[0,2,4,5,7,9,10], qualities:['maj','min','dim','maj','min','min','maj'], labels:['I','ii','iii°','IV','v','vi','bVII'] },
   Aeolian:    { intervals:[0,2,3,5,7,8,10], qualities:['min','dim','maj','min','min','maj','maj'], labels:['i','ii°','bIII','iv','v','bVI','bVII'] },
   Locrian:    { intervals:[0,1,3,5,6,8,10], qualities:['dim','maj','min','min','maj','maj','min'], labels:['i°','bII','biii','iv','bV','bVI','bvii'] },
+  'Harmonic Minor': { intervals:[0,2,3,5,7,8,11], qualities:['min','dim','aug','min','maj','maj','dim'], labels:['i','ii°','bIII+','iv','V','bVI','vii°'] },
+  'Melodic Minor':  { intervals:[0,2,3,5,7,9,11], qualities:['min','min','aug','maj','maj','dim','dim'], labels:['i','ii','bIII+','IV','V','vi°','vii°'] },
 };
-const QUALITY_TO_SUFFIX = { maj: '', min: 'm', dim: 'dim' };
+const QUALITY_TO_SUFFIX = { maj: '', min: 'm', dim: 'dim', aug: 'aug' };
+
+// Harmonic function by scale-degree index -- Tonic (stable/"home"),
+// Subdominant (movement away from home), Dominant (tension wanting to
+// resolve back). This is about each degree's relationship to the tonic in
+// the circle of fifths, which holds true regardless of which mode you're
+// in or whether a given degree happens to be major/minor/diminished --
+// degree ii is always subdominant-family, degree V is always
+// dominant-family, in every mode.
+// Traditional per-degree name (Supertonic, Mediant, Submediant, Leading
+// Tone, etc.) -- more precise than a 3-way grouping, and standard music
+// theory terminology. FUNCTION_COLOR_FAMILY below still groups these into
+// the same 3 functional families (tonic/subdominant/dominant) purely for
+// the badge's color, so the visual grouping from before is preserved
+// alongside the more specific name.
+const DEGREE_NAME = ['Tonic','Supertonic','Mediant','Subdominant','Dominant','Submediant','Leading Tone'];
+
+// Short, practical explanations for the "explain this chord" popup. Phrased
+// generically (no "major"/"minor" specifics) since the same structural role
+// holds true regardless of which mode gives this degree its actual quality.
+const DEGREE_EXPLANATION = [
+  "The \u201chome\u201d chord \u2014 stable and resolved. Progressions often start and end here.",
+  "Frequently moves toward the Dominant, especially as part of a ii\u2013V\u2013I motion.",
+  "Shares two notes with the tonic, so it can substitute for it or add a different color in its place.",
+  "Creates a sense of moving away from home. Commonly leads to the Dominant, or back to the Tonic directly.",
+  "The strongest pull back to the Tonic \u2014 full of tension that wants to resolve.",
+  "Tonic-family color chord, often used for a \u201cdeceptive\u201d resolution instead of the expected Tonic.",
+  "Sits a half-step below the tonic, naturally pulling upward into it. Often replaced by a dominant 7th chord in practice.",
+];
+const SECONDARY_DOMINANT_EXPLANATION = "Temporarily borrows the \u201cV of X\u201d relationship to create a stronger pull toward a specific chord, without actually changing key.";
+const BORROWED_CHORD_EXPLANATION = "Brought in from the parallel mode with the opposite major/minor character \u2014 adds color and variety without changing the key you're in.";
+const FUNCTION_COLOR_FAMILY = ['tonic','subdominant','tonic','subdominant','dominant','tonic','dominant'];
 const MODE_NAMES = Object.keys(MODES_TABLE);
 
 // Well-known progressions, defined as scale-degree indices (0 = degree 1,
@@ -2488,6 +2663,22 @@ const POPULAR_PROGRESSIONS = [
   { name: 'Canon Progression', style: 'Classical', defaultMode: 'Ionian', degrees: [0,4,5,2,3,0,3,4] },
 
   { name: 'Minor Ballad (i-VI-III-VII)', style: 'Ballad', defaultMode: 'Aeolian', degrees: [0,5,2,6] },
+
+  { name: 'Latin Minor Vamp (i-iv-v-i)', style: 'Latin', defaultMode: 'Aeolian', degrees: [0,3,4,0] },
+  { name: 'Bolero (I-vi-ii-V-I)', style: 'Latin', defaultMode: 'Ionian', degrees: [0,5,1,4,0] },
+  { name: 'Latin Pop (I-IV-vi-V)', style: 'Latin', defaultMode: 'Ionian', degrees: [0,3,5,4] },
+
+  { name: 'One Drop (I-V)', style: 'Reggae', defaultMode: 'Ionian', degrees: [0,4] },
+  { name: 'Reggae Skank (I-IV-I-IV-V)', style: 'Reggae', defaultMode: 'Ionian', degrees: [0,3,0,3,4] },
+  { name: 'Minor Roots (i-iv-bVII)', style: 'Reggae', defaultMode: 'Aeolian', degrees: [0,3,6] },
+
+  { name: 'Phrygian Riff (i-bII)', style: 'Metal', defaultMode: 'Phrygian', degrees: [0,1] },
+  { name: 'Metal Minor (i-VI-VII)', style: 'Metal', defaultMode: 'Aeolian', degrees: [0,5,6] },
+  { name: 'Power Trio (i-iv-VI)', style: 'Metal', defaultMode: 'Aeolian', degrees: [0,3,5] },
+
+  { name: 'Soul Vamp (ii-V)', style: 'R&B/Soul', defaultMode: 'Ionian', degrees: [1,4] },
+  { name: 'R&B Turnaround (I-IV-ii-V)', style: 'R&B/Soul', defaultMode: 'Ionian', degrees: [0,3,1,4] },
+  { name: 'Neo-Soul (I-iii-vi-IV)', style: 'R&B/Soul', defaultMode: 'Ionian', degrees: [0,2,5,3] },
 ];
 
 const PROGRESSION_STYLES = [...new Set(POPULAR_PROGRESSIONS.map(p => p.style))];
@@ -2605,10 +2796,21 @@ function playChordShape(shape, cardEl, forceArpeggiate, durationOverrideSeconds)
   // arpeggiate mode, since a fretted low string can occasionally sit HIGHER
   // in pitch than an open higher string, so string order alone isn't
   // reliable for a genuine low-to-high sweep
+  //
+  // IMPORTANT: a non-zero fret value from chords-db is relative to
+  // baseFret, not an absolute fret number -- verified empirically against
+  // real data (a raw, unadjusted value produces completely wrong notes for
+  // any voicing where baseFret > 1). Absolute fret = baseFret + f - 1.
+  // Open strings (f === 0) need no adjustment. This bug was invisible the
+  // whole time position 0 (which almost always has baseFret 1) was the
+  // only voicing ever played -- 1 + f - 1 === f, so the bug and the fix
+  // coincidentally agreed. It would have played the wrong pitch entirely
+  // for any other voicing.
   const notes = [];
   shape.frets.forEach((f, i) => {
     if (f === -1) return;
-    notes.push({ stringIdx: i, freq: OPEN_STRING_FREQS[i] * Math.pow(2, f / 12) });
+    const absoluteFret = f > 0 ? shape.baseFret + f - 1 : 0;
+    notes.push({ stringIdx: i, freq: OPEN_STRING_FREQS[i] * Math.pow(2, absoluteFret / 12) });
   });
   if (notes.length === 0) return;
 
@@ -2978,6 +3180,22 @@ progressionClearBtn.addEventListener('click', () => {
   syncCardSelectionStates();
 });
 
+const transposeDownBtn = document.getElementById('transposeDownBtn');
+const transposeUpBtn = document.getElementById('transposeUpBtn');
+function transposeProgression(semitones){
+  if (progression.length === 0) return;
+  activePresetIndex = null; // shifting every chord is a manual edit, same as any other
+  progression = progression.map(entry => {
+    const newRootIndex = ((entry.rootIndex + semitones) % 12 + 12) % 12; // safe modulo, handles negative shifts
+    return { ...entry, rootIndex: newRootIndex, chordName: NOTE_NAMES[newRootIndex] + entry.suffix };
+  });
+  saveProgression();
+  renderProgression();
+  syncCardSelectionStates();
+}
+transposeDownBtn.addEventListener('click', () => transposeProgression(-1));
+transposeUpBtn.addEventListener('click', () => transposeProgression(1));
+
 // ---- Canvas-rendered chord diagram, for the exported image (Canvas can't
 // read CSS variables like the inline SVG diagrams do, so colors are literal
 // hex values here, matching the app's amber/dark palette). ----
@@ -3250,6 +3468,335 @@ function playProgressionThrough(){
 progressionPlayBtn.addEventListener('click', playProgressionThrough);
 progressionStopBtn.addEventListener('click', stopPlayback);
 
+// Builds one fully-wired chart card: diagram, mod dropdown, arp toggle,
+// add/remove toggle, keyboard handling, highlight-tracking registration --
+// everything. Used for normal diatonic degrees, and designed so secondary
+// dominants, borrowed chords, and inversions can all be built from this
+// same function later instead of duplicating this logic per feature.
+//
+// degreeIdx is optional -- diatonic cards pass their real 0-6 index (used
+// for the Tonic/Subdominant/Dominant function badge); non-diatonic cards
+// (a secondary dominant, a borrowed chord) can omit it, and the badge is
+// simply skipped, since "function" in the classical sense doesn't cleanly
+// apply to a chord that isn't a plain diatonic degree.
+// Secondary dominants: the V7 that would tonicize a given diatonic degree,
+// borrowed temporarily for stronger motion toward it. Skips the tonic
+// itself (there's no "V of I" in this sense -- that's just the plain V)
+// and any degree whose own diatonic quality is diminished (standard
+// practice doesn't tonicize a diminished chord this way).
+function computeSecondaryDominants(tonicIndex, modeName){
+  const modeData = MODES_TABLE[modeName];
+  const results = [];
+  modeData.intervals.forEach((interval, i) => {
+    if (i === 0) return;
+    if (modeData.qualities[i] === 'dim') return;
+    const targetRoot = (tonicIndex + interval) % 12;
+    const dominantRoot = (targetRoot + 7) % 12; // a fifth above the target
+    results.push({
+      rootIndex: dominantRoot,
+      suffix: '7',
+      label: 'V7/' + modeData.labels[i],
+    });
+  });
+  return results;
+}
+
+// Borrowed chords (modal interchange): contrasts the mode you're browsing
+// against the single most pedagogically relevant opposite-quality
+// reference -- Aeolian for major-family modes (Ionian/Lydian/Mixolydian),
+// Ionian for everything else -- rather than cross-referencing all 9 modes,
+// which would be overwhelming. Only chords that are genuinely DIFFERENT
+// from what's already diatonically available in the current mode are
+// shown; this is computed by comparing actual (root, suffix) pairs, not
+// hardcoded per mode, so it's automatically correct no matter which mode
+// you're browsing.
+function getBorrowedReferenceMode(currentModeName){
+  return ['Ionian','Lydian','Mixolydian'].includes(currentModeName) ? 'Aeolian' : 'Ionian';
+}
+function computeBorrowedChords(tonicIndex, currentModeName){
+  const currentModeData = MODES_TABLE[currentModeName];
+  const currentPairs = new Set(currentModeData.intervals.map((interval, i) => {
+    const root = (tonicIndex + interval) % 12;
+    return root + ':' + QUALITY_TO_SUFFIX[currentModeData.qualities[i]];
+  }));
+  const refModeName = getBorrowedReferenceMode(currentModeName);
+  if (refModeName === currentModeName) return [];
+  const refModeData = MODES_TABLE[refModeName];
+  const results = [];
+  refModeData.intervals.forEach((interval, i) => {
+    if (i === 0) return; // replacing the tonic itself is a mode change, not "borrowing a color chord" -- same treatment as secondary dominants
+    const root = (tonicIndex + interval) % 12;
+    const suffix = QUALITY_TO_SUFFIX[refModeData.qualities[i]];
+    if (currentPairs.has(root + ':' + suffix)) return; // already diatonically available, not actually "borrowed"
+    results.push({
+      rootIndex: root,
+      suffix,
+      label: refModeData.labels[i],
+      sourceModeName: refModeName,
+    });
+  });
+  return results;
+}
+
+function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degreeIdx, explanation }){
+  // mutable per-card state -- the mod dropdown changes this, and
+  // everything else on the card (name, diagram, sound, add-to-progression)
+  // stays in sync with whatever it's currently set to
+  let currentSuffix = baseSuffix;
+  let currentShape = null;
+  let cardArpeggiate = false; // per-card override -- ORs with the global toggle, so this only needs to force it ON
+  let voicingIndex = 0; // which alternate voicing/inversion is currently shown; reset to 0 whenever the suffix changes
+
+  // Deliberately NOT a real <button> for the card itself -- it contains
+  // nested interactive children (the mod select, the add/arp buttons),
+  // and a <button> is not allowed to contain other interactive content
+  // per the HTML spec (browsers will mishandle the nesting). role="button"
+  // + tabindex + explicit key handling gives the same keyboard behavior
+  // without that invalid nesting.
+  const card = document.createElement('div');
+  card.className = 'chart-card';
+  card.setAttribute('role', 'button');
+  card.setAttribute('tabindex', '0');
+
+  const arpBtn = document.createElement('button');
+  arpBtn.type = 'button';
+  arpBtn.className = 'chart-card-arp';
+  arpBtn.textContent = 'A';
+  arpBtn.title = 'Arpeggiate this chord';
+  arpBtn.setAttribute('aria-pressed', 'false');
+  arpBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    cardArpeggiate = !cardArpeggiate;
+    arpBtn.classList.toggle('active', cardArpeggiate);
+    arpBtn.setAttribute('aria-pressed', cardArpeggiate ? 'true' : 'false');
+  });
+  card.appendChild(arpBtn);
+
+  const modSelect = document.createElement('select');
+  modSelect.className = 'chart-card-mod';
+  function rebuildModOptions(suffixToSelect){
+    const bucket = suffixToQualityBucket(suffixToSelect);
+    modSelect.innerHTML = '';
+    MOD_OPTIONS[bucket].forEach(opt => {
+      const o = document.createElement('option');
+      o.value = opt.value;
+      o.textContent = opt.label;
+      if (opt.value === suffixToSelect) o.selected = true;
+      modSelect.appendChild(o);
+    });
+  }
+  rebuildModOptions(baseSuffix);
+  modSelect.addEventListener('click', (e) => e.stopPropagation());
+  card.appendChild(modSelect);
+
+  // Single toggling button, not two separate ones: shows '+' and adds
+  // when this chord isn't in the progression yet, swaps to a minus and
+  // removes when it already is.
+  const toggleBtn = document.createElement('button');
+  toggleBtn.type = 'button';
+  toggleBtn.className = 'chart-card-add';
+  function refreshToggleBtn(){
+    const linked = findLinkedEntry(rootIndex);
+    toggleBtn.textContent = linked ? '\u2212' : '+';
+    toggleBtn.setAttribute('aria-label', linked ? 'Remove from progression' : 'Add to progression');
+    toggleBtn.setAttribute('aria-pressed', linked ? 'true' : 'false');
+    toggleBtn.classList.toggle('remove-mode', !!linked);
+  }
+  toggleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const linked = findLinkedEntry(rootIndex);
+    if (linked) {
+      const linkedIdx = progression.indexOf(linked);
+      if (linkedIdx === -1) return;
+      activePresetIndex = null;
+      progression = progression.filter((_, i) => i !== linkedIdx);
+      saveProgression();
+      renderProgression();
+    } else {
+      const chordName = NOTE_NAMES[rootIndex] + currentSuffix;
+      addToProgression({ chordName, label, modeName, rootIndex, suffix: currentSuffix });
+    }
+    syncCardSelectionStates();
+  });
+  card.appendChild(toggleBtn);
+
+  const degreeEl = document.createElement('div');
+  degreeEl.className = 'chart-card-degree';
+  degreeEl.textContent = label;
+  card.appendChild(degreeEl);
+
+  if (degreeIdx !== undefined && degreeIdx !== null) {
+    const degreeName = DEGREE_NAME[degreeIdx];
+    const colorFamily = FUNCTION_COLOR_FAMILY[degreeIdx];
+    const functionEl = document.createElement('div');
+    functionEl.className = 'chart-card-function chart-card-function-' + colorFamily;
+    functionEl.textContent = degreeName;
+    card.appendChild(functionEl);
+  }
+
+  // "Explain this chord" -- a short, always-available bit of context on
+  // what this chord's role actually is and how it tends to behave, not
+  // just its name. Uses the per-degree explanation when this is a plain
+  // diatonic card; non-diatonic cards (secondary dominants, borrowed
+  // chords) get whatever generic explanation the caller passed in instead.
+  const resolvedExplanation = explanation || (degreeIdx !== undefined && degreeIdx !== null ? DEGREE_EXPLANATION[degreeIdx] : null);
+  if (resolvedExplanation) {
+    const infoBtn = document.createElement('button');
+    infoBtn.type = 'button';
+    infoBtn.className = 'chart-card-info-btn';
+    infoBtn.textContent = '\u24d8'; // circled letter i
+    infoBtn.setAttribute('aria-label', 'Explain this chord');
+    infoBtn.setAttribute('aria-expanded', 'false');
+    const explanationEl = document.createElement('div');
+    explanationEl.className = 'chart-card-explanation';
+    explanationEl.textContent = resolvedExplanation;
+    explanationEl.style.display = 'none';
+    infoBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const showing = explanationEl.style.display !== 'none';
+      explanationEl.style.display = showing ? 'none' : 'block';
+      infoBtn.setAttribute('aria-expanded', showing ? 'false' : 'true');
+      infoBtn.classList.toggle('active', !showing);
+    });
+    card.appendChild(infoBtn);
+    card.appendChild(explanationEl);
+  }
+
+  const nameEl = document.createElement('div');
+  nameEl.className = 'chart-card-name';
+  card.appendChild(nameEl);
+
+  const diagramSlot = document.createElement('div');
+  card.appendChild(diagramSlot);
+
+  // Alternate voicings/inversions -- chords-db has real, distinct fingerings
+  // for the same chord at different neck positions (up to 4 for a plain
+  // triad); previously only the first one was ever shown. Cycling through
+  // them and labeling the actual bass note turns "here's *a* shape" into
+  // "here's every way to play this, including which ones are inversions."
+  const voicingRow = document.createElement('div');
+  voicingRow.className = 'chart-card-voicing-row';
+  const voicingPrevBtn = document.createElement('button');
+  voicingPrevBtn.type = 'button';
+  voicingPrevBtn.className = 'chart-card-voicing-nav';
+  voicingPrevBtn.textContent = '\u25c0';
+  voicingPrevBtn.setAttribute('aria-label', 'Previous voicing');
+  const voicingLabel = document.createElement('span');
+  voicingLabel.className = 'chart-card-voicing-label';
+  const voicingNextBtn = document.createElement('button');
+  voicingNextBtn.type = 'button';
+  voicingNextBtn.className = 'chart-card-voicing-nav';
+  voicingNextBtn.textContent = '\u25b6';
+  voicingNextBtn.setAttribute('aria-label', 'Next voicing');
+  voicingPrevBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (voicingIndex > 0) { voicingIndex--; refreshCard(); }
+  });
+  voicingNextBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    voicingIndex++; refreshCard();
+  });
+  voicingRow.appendChild(voicingPrevBtn);
+  voicingRow.appendChild(voicingLabel);
+  voicingRow.appendChild(voicingNextBtn);
+  card.appendChild(voicingRow);
+
+  function refreshCard(){
+    const chordName = NOTE_NAMES[rootIndex] + currentSuffix;
+    nameEl.textContent = chordName;
+    card.setAttribute('aria-label', chordName + ', chord ' + label + ', ' + modeName + '. Press Enter to play, Shift+Enter to add to progression.');
+    const voicingCount = getVoicingCount(rootIndex, currentSuffix);
+    if (voicingIndex >= voicingCount) voicingIndex = Math.max(0, voicingCount - 1);
+    currentShape = lookupChordShape(rootIndex, currentSuffix, voicingIndex);
+    diagramSlot.innerHTML = '';
+    if (currentShape) {
+      const holder = document.createElement('div');
+      holder.innerHTML = renderChordDiagramSVG(currentShape, rootIndex);
+      diagramSlot.appendChild(holder.firstChild);
+    } else {
+      const empty = document.createElement('div');
+      empty.className = 'chart-card-empty';
+      empty.textContent = 'no diagram';
+      diagramSlot.appendChild(empty);
+    }
+    if (voicingCount > 1) {
+      voicingRow.style.visibility = 'visible';
+      voicingPrevBtn.disabled = (voicingIndex === 0);
+      voicingNextBtn.disabled = (voicingIndex === voicingCount - 1);
+      voicingLabel.textContent = currentShape ? describeBassNote(currentShape, rootIndex) : '';
+    } else {
+      voicingRow.style.visibility = 'hidden'; // reserves the layout space so cards in the same row stay the same height, rather than jumping
+    }
+    const isLinked = !!findLinkedEntry(rootIndex);
+    card.classList.toggle('selected', isLinked);
+    card.classList.toggle('selected-no-diagram', isLinked && !currentShape);
+    refreshToggleBtn();
+  }
+  function followLinkedSuffix(linkedSuffix){
+    if (linkedSuffix === currentSuffix) return;
+    currentSuffix = linkedSuffix;
+    voicingIndex = 0; // a different chord variant has its own separate set of voicings, start from its first
+    rebuildModOptions(currentSuffix);
+    refreshCard();
+  }
+  function resetToBaseSuffix(){
+    if (currentSuffix === baseSuffix) return;
+    currentSuffix = baseSuffix;
+    voicingIndex = 0;
+    rebuildModOptions(currentSuffix);
+    refreshCard();
+  }
+  renderedChartCards.push({ card, rootIndex, getCurrentSuffix: () => currentSuffix, followLinkedSuffix, resetToBaseSuffix, refreshToggleBtn });
+  refreshCard();
+
+  modSelect.addEventListener('change', () => {
+    const newSuffix = modSelect.value;
+    const linked = findLinkedEntry(rootIndex);
+    if (linked) {
+      const linkedIdx = progression.indexOf(linked);
+      if (linkedIdx !== -1) {
+        progression[linkedIdx] = {
+          ...progression[linkedIdx],
+          suffix: newSuffix,
+          chordName: NOTE_NAMES[rootIndex] + newSuffix
+        };
+        activePresetIndex = null;
+        saveProgression();
+        renderProgression();
+      }
+    }
+    currentSuffix = newSuffix;
+    refreshCard();
+  });
+
+  card.addEventListener('click', () => {
+    if (currentShape) playChordShape(currentShape, card, cardArpeggiate);
+  });
+
+  card.addEventListener('keydown', (e) => {
+    if (e.target !== card) return;
+    if (e.key === 'Enter' && e.shiftKey) {
+      e.preventDefault();
+      toggleBtn.click(); // was `addBtn.click()` -- addBtn was renamed to toggleBtn a few rounds back when add/remove merged into one button; this call was never updated, so Shift+Enter has been throwing since then
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (currentShape) playChordShape(currentShape, card, cardArpeggiate);
+    } else if (e.key.toLowerCase() === 'a') {
+      e.preventDefault();
+      arpBtn.click();
+    } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      const dir = e.key === 'ArrowUp' ? -1 : 1;
+      const nextIndex = Math.max(0, Math.min(modSelect.options.length - 1, modSelect.selectedIndex + dir));
+      modSelect.selectedIndex = nextIndex;
+      currentSuffix = modSelect.value;
+      refreshCard();
+    }
+  });
+
+  return card;
+}
+
 function renderChartGroups(){
   const tonicIndex = parseInt(chartKeySelect.value, 10);
   chartGroups.innerHTML = '';
@@ -3279,228 +3826,67 @@ function renderChartGroups(){
 
     modeData.intervals.forEach((interval, degreeIdx) => {
       const rootIndex = (tonicIndex + interval) % 12;
-      const quality = modeData.qualities[degreeIdx]; // 'maj' | 'min' | 'dim' -- the diatonic default
+      const quality = modeData.qualities[degreeIdx];
       const baseSuffix = QUALITY_TO_SUFFIX[quality];
       const label = modeData.labels[degreeIdx];
-
-      // mutable per-card state -- the mod dropdown changes this, and
-      // everything else on the card (name, diagram, sound, add-to-progression)
-      // stays in sync with whatever it's currently set to
-      let currentSuffix = baseSuffix;
-      let currentShape = null;
-      let cardArpeggiate = false; // per-card override -- ORs with the global toggle, so this only needs to force it ON
-
-      // Deliberately NOT a real <button> for the card itself -- it contains
-      // nested interactive children (the mod select, the add/arp buttons),
-      // and a <button> is not allowed to contain other interactive content
-      // per the HTML spec (browsers will mishandle the nesting). role="button"
-      // + tabindex + explicit key handling gives the same keyboard behavior
-      // without that invalid nesting.
-      const card = document.createElement('div');
-      card.className = 'chart-card';
-      card.setAttribute('role', 'button');
-      card.setAttribute('tabindex', '0');
-
-      const arpBtn = document.createElement('button');
-      arpBtn.type = 'button';
-      arpBtn.className = 'chart-card-arp';
-      arpBtn.textContent = 'A'; // plain letter -- was an arrow-like glyph, now confusable with the chip's move-left/right buttons
-      arpBtn.title = 'Arpeggiate this chord';
-      arpBtn.setAttribute('aria-pressed', 'false');
-      arpBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        cardArpeggiate = !cardArpeggiate;
-        arpBtn.classList.toggle('active', cardArpeggiate);
-        arpBtn.setAttribute('aria-pressed', cardArpeggiate ? 'true' : 'false');
-      });
-      card.appendChild(arpBtn);
-
-      const modSelect = document.createElement('select');
-      modSelect.className = 'chart-card-mod';
-      // Rebuilds the dropdown's actual option list from whichever quality
-      // bucket the given suffix belongs to (reusing the same helper the
-      // progression chips already use), instead of a fixed list decided
-      // once at creation from this card's own native diatonic quality.
-      // Needed because a linked card can end up following a suffix from a
-      // totally different family (e.g. a plain major triad on a card whose
-      // native degree is minor) -- without this, setting .value to that
-      // suffix would silently select nothing, since it was never rendered
-      // as an option in the first place.
-      function rebuildModOptions(suffixToSelect){
-        const bucket = suffixToQualityBucket(suffixToSelect);
-        modSelect.innerHTML = '';
-        MOD_OPTIONS[bucket].forEach(opt => {
-          const o = document.createElement('option');
-          o.value = opt.value;
-          o.textContent = opt.label;
-          if (opt.value === suffixToSelect) o.selected = true;
-          modSelect.appendChild(o);
-        });
-      }
-      rebuildModOptions(baseSuffix);
-      modSelect.addEventListener('click', (e) => e.stopPropagation());
-      card.appendChild(modSelect);
-
-      // Single toggling button, not two separate ones: shows '+' and adds
-      // when this chord isn't in the progression yet, swaps to a minus and
-      // removes when it already is. Mirrors the same highlight state the
-      // card's green border already reflects, so the two stay in sync.
-      const toggleBtn = document.createElement('button');
-      toggleBtn.type = 'button';
-      toggleBtn.className = 'chart-card-add';
-      function refreshToggleBtn(){
-        const linked = findLinkedEntry(rootIndex);
-        toggleBtn.textContent = linked ? '\u2212' : '+';
-        toggleBtn.setAttribute('aria-label', linked ? 'Remove from progression' : 'Add to progression');
-        toggleBtn.setAttribute('aria-pressed', linked ? 'true' : 'false');
-        toggleBtn.classList.toggle('remove-mode', !!linked);
-      }
-      toggleBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); // don't also trigger the card's play-on-click
-        const linked = findLinkedEntry(rootIndex);
-        if (linked) {
-          // Remove the specific linked entry -- the one this card is
-          // currently tracking -- not just any match on suffix, since the
-          // card's own displayed suffix always follows the linked entry now.
-          const linkedIdx = progression.indexOf(linked);
-          if (linkedIdx === -1) return;
-          activePresetIndex = null;
-          progression = progression.filter((_, i) => i !== linkedIdx);
-          saveProgression();
-          renderProgression();
-        } else {
-          const chordName = NOTE_NAMES[rootIndex] + currentSuffix;
-          addToProgression({ chordName, label, modeName, rootIndex, suffix: currentSuffix });
-        }
-        syncCardSelectionStates();
-      });
-      card.appendChild(toggleBtn);
-
-      const degreeEl = document.createElement('div');
-      degreeEl.className = 'chart-card-degree';
-      degreeEl.textContent = label;
-      card.appendChild(degreeEl);
-
-      const nameEl = document.createElement('div');
-      nameEl.className = 'chart-card-name';
-      card.appendChild(nameEl);
-
-      const diagramSlot = document.createElement('div');
-      card.appendChild(diagramSlot);
-
-      function refreshCard(){
-        const chordName = NOTE_NAMES[rootIndex] + currentSuffix;
-        nameEl.textContent = chordName;
-        card.setAttribute('aria-label', chordName + ', chord ' + label + ', ' + modeName + '. Press Enter to play, Shift+Enter to add to progression.');
-        currentShape = lookupChordShape(rootIndex, currentSuffix);
-        diagramSlot.innerHTML = '';
-        if (currentShape) {
-          const holder = document.createElement('div');
-          holder.innerHTML = renderChordDiagramSVG(currentShape);
-          diagramSlot.appendChild(holder.firstChild);
-        } else {
-          const empty = document.createElement('div');
-          empty.className = 'chart-card-empty';
-          empty.textContent = 'no diagram';
-          diagramSlot.appendChild(empty);
-        }
-        const isLinked = !!findLinkedEntry(rootIndex);
-        card.classList.toggle('selected', isLinked);
-        // Distinct color when linked but we genuinely have no fingering
-        // diagram for this exact voicing -- this is a real, separate signal
-        // from "cleanly matched", not just decoration: it tells you the
-        // chord is in your progression, but you're on your own for how to
-        // actually play it.
-        card.classList.toggle('selected-no-diagram', isLinked && !currentShape);
-        refreshToggleBtn();
-      }
-      // followLinkedSuffix: called by syncCardSelectionStates whenever this
-      // card is linked to a progression entry, so the card's own mod
-      // dropdown/diagram/name follow whatever variant is actually in the
-      // tray right now -- this is what keeps the two views from drifting
-      // apart, instead of the card just going dark the moment they differ.
-      // Rebuilds the dropdown's options for the new suffix's bucket first --
-      // a followed suffix can belong to a completely different family than
-      // this card's own native quality (e.g. a plain major triad landing on
-      // a card whose native degree is minor), and just setting .value
-      // without rebuilding the option list first would silently select
-      // nothing, since that value was never rendered as an option.
-      function followLinkedSuffix(linkedSuffix){
-        if (linkedSuffix === currentSuffix) return; // already showing it, nothing to do
-        currentSuffix = linkedSuffix;
-        rebuildModOptions(currentSuffix);
-        refreshCard();
-      }
-      // Called when this card is no longer linked to anything in the
-      // progression -- resets back to its own native diatonic default
-      // instead of staying stuck showing whatever it was last following.
-      function resetToBaseSuffix(){
-        if (currentSuffix === baseSuffix) return;
-        currentSuffix = baseSuffix;
-        rebuildModOptions(currentSuffix);
-        refreshCard();
-      }
-      renderedChartCards.push({ card, rootIndex, getCurrentSuffix: () => currentSuffix, followLinkedSuffix, resetToBaseSuffix, refreshToggleBtn });
-      refreshCard();
-
-      modSelect.addEventListener('change', () => {
-        const newSuffix = modSelect.value;
-        const linked = findLinkedEntry(rootIndex);
-
-        if (linked) {
-          // Update the linked entry in place (keeping its position and beat
-          // count) instead of leaving it stale or losing the highlight --
-          // this is what makes "load a progression, then tweak a chord to
-          // add a 9th" actually work as one continuous edit.
-          const linkedIdx = progression.indexOf(linked);
-          if (linkedIdx !== -1) {
-            progression[linkedIdx] = {
-              ...progression[linkedIdx],
-              suffix: newSuffix,
-              chordName: NOTE_NAMES[rootIndex] + newSuffix
-            };
-            activePresetIndex = null; // this is now a customized chord, not the untouched preset
-            saveProgression();
-            renderProgression();
-          }
-        }
-
-        currentSuffix = newSuffix;
-        refreshCard();
-      });
-
-      card.addEventListener('click', () => {
-        if (currentShape) playChordShape(currentShape, card, cardArpeggiate);
-      });
-
-      card.addEventListener('keydown', (e) => {
-        if (e.target !== card) return; // let the nested select/buttons handle their own keys
-        if (e.key === 'Enter' && e.shiftKey) {
-          e.preventDefault();
-          addBtn.click();
-        } else if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          if (currentShape) playChordShape(currentShape, card, cardArpeggiate);
-        } else if (e.key.toLowerCase() === 'a') {
-          e.preventDefault();
-          arpBtn.click();
-        } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-          e.preventDefault();
-          const dir = e.key === 'ArrowUp' ? -1 : 1;
-          const nextIndex = Math.max(0, Math.min(modSelect.options.length - 1, modSelect.selectedIndex + dir));
-          modSelect.selectedIndex = nextIndex;
-          currentSuffix = modSelect.value;
-          refreshCard();
-        }
-      });
-
+      const card = createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degreeIdx });
       row.appendChild(card);
     });
 
     group.appendChild(row);
+
+    if (secondaryDominantsToggle.checked) {
+      const secDoms = computeSecondaryDominants(tonicIndex, modeName);
+      if (secDoms.length > 0) {
+        const subHeader = document.createElement('div');
+        subHeader.className = 'chart-subgroup-header';
+        subHeader.textContent = 'Secondary Dominants';
+        group.appendChild(subHeader);
+
+        const secRow = document.createElement('div');
+        secRow.className = 'chart-row';
+        secDoms.forEach(sd => {
+          const card = createChartCard({
+            rootIndex: sd.rootIndex, suffix: sd.suffix, label: sd.label,
+            modeName: modeName + ' (sec. dom.)',
+            explanation: SECONDARY_DOMINANT_EXPLANATION
+          });
+          secRow.appendChild(card);
+        });
+        group.appendChild(secRow);
+      }
+    }
+
+    if (borrowedChordsToggle.checked) {
+      const borrowed = computeBorrowedChords(tonicIndex, modeName);
+      if (borrowed.length > 0) {
+        const subHeader = document.createElement('div');
+        subHeader.className = 'chart-subgroup-header';
+        subHeader.textContent = 'Borrowed from ' + getBorrowedReferenceMode(modeName);
+        group.appendChild(subHeader);
+
+        const borrowRow = document.createElement('div');
+        borrowRow.className = 'chart-row';
+        borrowed.forEach(bc => {
+          const card = createChartCard({
+            rootIndex: bc.rootIndex, suffix: bc.suffix, label: bc.label,
+            modeName: bc.sourceModeName + ' (borrowed)',
+            explanation: BORROWED_CHORD_EXPLANATION
+          });
+          borrowRow.appendChild(card);
+        });
+        group.appendChild(borrowRow);
+      }
+    }
+
     chartGroups.appendChild(group);
   });
 }
+
+const secondaryDominantsToggle = document.getElementById('secondaryDominantsToggle');
+const borrowedChordsToggle = document.getElementById('borrowedChordsToggle');
+secondaryDominantsToggle.addEventListener('change', renderChartGroups);
+borrowedChordsToggle.addEventListener('change', renderChartGroups);
 
 chartKeySelect.addEventListener('change', () => {
   renderChartGroups();
@@ -3508,7 +3894,16 @@ chartKeySelect.addEventListener('change', () => {
 });
 renderModePicker();
 renderProgression();
-updatePickerVisibility(tuneModeEl); // Tune is the default active mode on page load
+// Chart mode is the desktop-first section of this app (browsing/building
+// progressions genuinely benefits from a bigger screen and a keyboard);
+// Tune and Chord ID are the phone-first, mid-practice tools. Default to
+// whichever fits the device, using the same 760px breakpoint the CSS
+// already uses everywhere else.
+if (window.matchMedia('(min-width: 760px)').matches) {
+  showChartMode();
+} else {
+  updatePickerVisibility(tuneModeEl); // Tune is the default active mode on mobile
+}
 
 // ============================================================
 // Keyboard shortcuts -- desktop only, doesn't affect phone/touch use at all.
@@ -3530,7 +3925,7 @@ const SHORTCUTS = [
   ]},
   { section: 'Chart', items: [
     { keys: '\u2190 / \u2192', desc: 'Change key' },
-    { keys: '1\u20137', desc: 'Toggle mode pill (Ionian\u2026Locrian)' },
+    { keys: '1\u20139', desc: 'Toggle mode pill (Ionian\u2026Melodic Minor)' },
     { keys: 'P', desc: 'Play progression' },
     { keys: 'S or Esc', desc: 'Stop playback' },
     { keys: 'L', desc: 'Toggle loop' },
@@ -3629,7 +4024,7 @@ document.addEventListener('keydown', (e) => {
       applyActivePresetIfAny();
       return;
     }
-    if (e.key >= '1' && e.key <= '7') {
+    if (e.key >= '1' && e.key <= '9') {
       const modeName = MODE_NAMES[parseInt(e.key, 10) - 1];
       if (modeName) {
         if (activeModes.includes(modeName)) {
