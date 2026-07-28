@@ -537,6 +537,7 @@
     opacity:0.6;
   }
   #sectionNameInput{ max-width:180px; }
+  #sectionDefinitionSelect{ max-width:200px; }
   .progression-actions{ display:flex; gap:6px; }
   .mini-btn{
     padding:5px 10px;
@@ -566,6 +567,9 @@
     min-height:52px;
   }
   .progression-section-header{
+    display:flex;
+    align-items:center;
+    gap:6px;
     font-family:'JetBrains Mono', monospace;
     font-size:10px;
     letter-spacing:0.08em;
@@ -576,6 +580,20 @@
     margin-bottom:4px;
   }
   .progression-section-header:first-child{ margin-top:0; }
+  .progression-section-move-btn{
+    width:16px; height:16px;
+    border-radius:3px;
+    border:1px solid rgba(0,0,0,0.4);
+    background:linear-gradient(180deg, var(--cap), var(--cap-dark));
+    color:var(--plaque);
+    font-size:8px;
+    line-height:1;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    padding:0;
+    text-transform:none;
+  }
+  .progression-section-move-btn:active{ transform:scale(0.9); }
   .progression-empty{
     font-family:'JetBrains Mono', monospace;
     font-size:11px;
@@ -615,6 +633,16 @@
     background:none;
     border:none;
   }
+  .progression-chip-section-tag{
+    font-size:11px;
+    line-height:1;
+    cursor:pointer;
+    padding:0 2px;
+    background:none;
+    border:none;
+    opacity:0.55;
+  }
+  .progression-chip-section-tag:hover{ opacity:1; }
   .progression-chip-move{
     width:18px; height:18px;
     flex-shrink:0;
@@ -718,8 +746,9 @@
   .playback-settings{
     display:flex;
     flex-wrap:wrap;
-    gap:12px;
+    gap:12px 18px;
     align-items:center;
+    row-gap:10px;
   }
   .playback-setting{
     display:flex;
@@ -1075,6 +1104,10 @@
       <input type="checkbox" id="arpeggiateToggle">
       <span>Arpeggiate</span>
     </label>
+    <label class="playback-setting checkbox">
+      <input type="checkbox" id="previewBassNotesToggle">
+      <span>Bass Notes</span>
+    </label>
   </div>
 
   <div id="tuneMode">
@@ -1176,6 +1209,7 @@
           <button class="mini-btn" id="progressionDownloadBtn">Save Image</button>
           <button class="mini-btn" id="exportMidiBtn">Export MIDI</button>
           <button class="mini-btn" id="undoProgressionBtn" disabled>Undo</button>
+          <button class="mini-btn" id="redoProgressionBtn" disabled>Redo</button>
           <button class="mini-btn" id="progressionClearBtn">Clear</button>
         </div>
       </div>
@@ -1186,7 +1220,17 @@
         <label for="sectionNameInput" class="section-row-label">Section:</label>
         <input type="text" id="sectionNameInput" list="sectionNameOptions" placeholder="e.g. Verse, Chorus, Bridge" class="chart-select" />
         <datalist id="sectionNameOptions"></datalist>
-        <button type="button" class="mini-btn" id="duplicateSectionBtn">Duplicate Section</button>
+        <button type="button" class="mini-btn" id="duplicateSectionBtn" title="Copies the section named in the box into a brand new section (e.g. Verse 1 -> Verse 2)">Duplicate Section</button>
+        <button type="button" class="mini-btn" id="tagUntaggedBtn" title="Tag every chord that has no section yet with the current section name">Tag Untagged Chords</button>
+      </div>
+      <div class="section-row">
+        <label for="sectionDefinitionSelect" class="section-row-label">Definitions:</label>
+        <select class="chart-select" id="sectionDefinitionSelect">
+          <option value="">None saved yet...</option>
+        </select>
+        <button type="button" class="mini-btn" id="insertDefinitionBtn">Insert</button>
+        <button type="button" class="mini-btn" id="saveDefinitionBtn" title="Save the current section's chords as this definition">Save As Definition</button>
+        <button type="button" class="mini-btn" id="syncFromDefinitionBtn" title="Replace every instance of the current section with the saved definition">Sync From Definition</button>
       </div>
       <div class="saved-progressions-row">
         <select class="chart-select" id="savedProgressionsSelect">
@@ -1228,6 +1272,10 @@
               <option value="">All</option>
             </select>
           </label>
+          <label class="playback-setting checkbox">
+            <input type="checkbox" id="bassNotesToggle">
+            <span>Bass Notes</span>
+          </label>
         </div>
       </div>
     </div>
@@ -1261,7 +1309,7 @@
 
 <script>
 (function(){
-  window.__toneType = window.__toneType || 'triangle';
+  window.__toneType = window.__toneType || 'piano';
   var toneTypeSelect = document.getElementById('toneTypeSelect');
   toneTypeSelect.value = window.__toneType;
   toneTypeSelect.addEventListener('change', function(){
@@ -1411,23 +1459,42 @@
       var modulator = ctx.createOscillator();
       modulator.type = 'sine'; modulator.frequency.value = freq * modRatio;
       var modGain = ctx.createGain(); // controls modulation depth over time
-      modGain.gain.setValueAtTime(freq * 2.2, startAt);
-      modGain.gain.exponentialRampToValueAtTime(Math.max(1, freq * 0.04), startAt + 0.35); // fast "bark" decay into a purer tone
-      // The floor above used to just hold for the rest of the note -- meaning
-      // a low-level frequency-wobble kept running underneath the fade-out
-      // all the way to the end, becoming the last audible thing as the
-      // volume got quiet (heard as a bit of "static" right at the tail).
-      // Continuing the decay to true zero, timed to land exactly when the
-      // note ends, lets it settle into a clean tone instead.
+      // Both ramp points below are PROPORTIONAL to the actual note duration
+      // (capped at a sensible maximum), not fixed wall-clock times. The
+      // previous fixed-time version scheduled its "bark decay finishes"
+      // point at a hardcoded 0.35s -- for any note shorter than that (very
+      // reachable: a fast tempo with a short beat count, or especially the
+      // bass-note preview path, which passes duration through with no
+      // floor at all), the FINAL ramp-to-zero would need to end BEFORE that
+      // point already happened, an invalid backwards time schedule. Browsers
+      // handle that inconsistently, and it's the likely source of the
+      // "static -- almost like a faint replay of the arp" artifact: each
+      // arpeggiated note stacks its own copy of this glitch at its own
+      // staggered start time, so several of them firing in quick succession
+      // sounds like a repeating pattern. Scaling to the real duration makes
+      // this mathematically impossible regardless of how short a note is.
+      var barkPoint = Math.min(0.35, duration * 0.4);
+      // Peak modulation depth -- previously freq*2.2, which pushed the
+      // carrier's INSTANTANEOUS frequency negative at every realistic guitar
+      // chord pitch (verified: at low E, the swing went as low as -98Hz).
+      // Negative frequency isn't invalid, but it means the waveform's phase
+      // flips every time the sweep crosses zero, which reads as harsh,
+      // static-like noise -- present on every note's attack regardless of
+      // duration or arpeggiate state, matching what was actually reported.
+      // freq*0.8 keeps the excursion contained (about 9x at peak) while
+      // staying comfortably positive across the full guitar range.
+      modGain.gain.setValueAtTime(freq * 0.8, startAt);
+      modGain.gain.exponentialRampToValueAtTime(Math.max(1, freq * 0.04), startAt + barkPoint);
       modGain.gain.linearRampToValueAtTime(0, startAt + duration);
 
       modulator.connect(modGain);
       modGain.connect(carrier.frequency);
       var outGain = ctx.createGain();
+      var fadeStart = duration * 0.75; // EXPERIMENT: hold at full gain until 75% through the note, then fade to true silence for the remaining 25% -- simpler than the previous partial-sustain-drop, to see if an earlier, cleaner fade resolves the reported static
       outGain.gain.setValueAtTime(0, startAt);
-      outGain.gain.linearRampToValueAtTime(gain, startAt + 0.008);
-      outGain.gain.setValueAtTime(gain * 0.8, startAt + Math.max(0.05, duration - 0.3));
-      outGain.gain.linearRampToValueAtTime(0, startAt + duration); // slightly longer, gentler final taper (was 0.2s, now 0.3s)
+      outGain.gain.linearRampToValueAtTime(gain, startAt + Math.min(0.008, duration * 0.1));
+      outGain.gain.setValueAtTime(gain, startAt + fadeStart);
+      outGain.gain.linearRampToValueAtTime(0, startAt + duration);
       carrier.connect(outGain); outGain.connect(window.__getMasterBus(ctx));
       modulator.start(startAt); carrier.start(startAt);
       modulator.stop(startAt + duration + 0.05); carrier.stop(startAt + duration + 0.05);
@@ -1445,15 +1512,19 @@
       var modulator = ctx.createOscillator();
       modulator.type = 'sine'; modulator.frequency.value = freq * modRatio;
       var modGain = ctx.createGain();
-      modGain.gain.setValueAtTime(freq * 1.6, startAt);
-      modGain.gain.exponentialRampToValueAtTime(Math.max(1, freq * 0.06), startAt + 0.22); // faster initial "bark" than Rhodes -- more percussive attack
+      var barkPoint = Math.min(0.22, duration * 0.4); // proportional -- see Rhodes for why (same fix, same reasoning)
+      // Same fix as Rhodes -- freq*1.6 pushed the carrier negative at every
+      // realistic chord pitch; freq*0.6 stays positive with a ~4x excursion.
+      modGain.gain.setValueAtTime(freq * 0.6, startAt);
+      modGain.gain.exponentialRampToValueAtTime(Math.max(1, freq * 0.06), startAt + barkPoint); // faster initial "bark" than Rhodes -- more percussive attack
       modGain.gain.linearRampToValueAtTime(0, startAt + duration);
       modulator.connect(modGain);
       modGain.connect(carrier.frequency);
       var outGain = ctx.createGain();
+      var fadeStart = duration * 0.75; // EXPERIMENT: same fade-earlier approach as Rhodes
       outGain.gain.setValueAtTime(0, startAt);
-      outGain.gain.linearRampToValueAtTime(gain, startAt + 0.006);
-      outGain.gain.setValueAtTime(gain * 0.75, startAt + Math.max(0.05, duration - 0.25));
+      outGain.gain.linearRampToValueAtTime(gain, startAt + Math.min(0.006, duration * 0.1));
+      outGain.gain.setValueAtTime(gain, startAt + fadeStart);
       outGain.gain.linearRampToValueAtTime(0, startAt + duration);
       carrier.connect(outGain); outGain.connect(window.__getMasterBus(ctx));
       modulator.start(startAt); carrier.start(startAt);
@@ -1471,15 +1542,21 @@
       var modulator = ctx.createOscillator();
       modulator.type = 'sine'; modulator.frequency.value = freq * modRatio;
       var modGain = ctx.createGain();
-      modGain.gain.setValueAtTime(freq * 0.9, startAt); // lower peak depth than Rhodes/Wurly -- high ratios need less depth to sound bright
-      modGain.gain.exponentialRampToValueAtTime(Math.max(0.5, freq * 0.015), startAt + 0.15); // very fast initial transient
+      var barkPoint = Math.min(0.15, duration * 0.4); // proportional -- see Rhodes for why (same fix, same reasoning)
+      // freq*0.9 didn't actually go negative, but it's still a huge relative
+      // swing (~20x the fundamental at peak) -- freq*0.4 keeps the same
+      // relative character (still the lowest depth of the three) with a far
+      // more contained, less harsh excursion (~2.3x).
+      modGain.gain.setValueAtTime(freq * 0.4, startAt); // lower peak depth than Rhodes/Wurly -- high ratios need less depth to sound bright
+      modGain.gain.exponentialRampToValueAtTime(Math.max(0.5, freq * 0.015), startAt + barkPoint); // very fast initial transient
       modGain.gain.linearRampToValueAtTime(0, startAt + duration);
       modulator.connect(modGain);
       modGain.connect(carrier.frequency);
       var outGain = ctx.createGain();
+      var fadeStart = duration * 0.75; // EXPERIMENT: same fade-earlier approach as Rhodes
       outGain.gain.setValueAtTime(0, startAt);
-      outGain.gain.linearRampToValueAtTime(gain, startAt + 0.004);
-      outGain.gain.setValueAtTime(gain * 0.7, startAt + Math.max(0.05, duration - 0.3));
+      outGain.gain.linearRampToValueAtTime(gain, startAt + Math.min(0.004, duration * 0.1));
+      outGain.gain.setValueAtTime(gain, startAt + fadeStart);
       outGain.gain.linearRampToValueAtTime(0, startAt + duration);
       carrier.connect(outGain); outGain.connect(window.__getMasterBus(ctx));
       modulator.start(startAt); carrier.start(startAt);
@@ -1668,6 +1745,14 @@
       }
     };
   })();
+
+  // Pre-warm piano samples immediately if that's the default/saved tone --
+  // must come after window.__toneEngine is actually defined above (this used
+  // to be attempted earlier in the script, before the engine existed yet,
+  // which would have thrown on every page load).
+  if (window.__toneType === 'piano' || window.__toneType === 'brightpiano') {
+    window.__toneEngine.ensurePianoLoaded(window.__getSharedToneCtx());
+  }
 
   var STRINGS = [
     {note:'E2', freq:82.41, label:'E'},
@@ -2463,17 +2548,21 @@ function getVoicingCount(rootIndex, ourSuffix){
 // ordering, confirmed against real data): E2 A2 D3 G3 B3 E4, expressed as
 // semitone pitch-class from C.
 const STRING_PITCH_CLASS = [4,9,2,7,11,4];
-function describeBassNote(shape, rootIndex){
-  const fretNote = shape.baseFret > 1 ? (' \u00b7 ' + ordinal(shape.baseFret) + ' fret') : '';
+function getBassPitchClass(shape){
   for (let i = 0; i < shape.frets.length; i++) {
     const f = shape.frets[i];
     if (f !== -1) {
       const absoluteFret = f > 0 ? shape.baseFret + f - 1 : 0;
-      const bassPitchClass = (STRING_PITCH_CLASS[i] + absoluteFret) % 12;
-      return (bassPitchClass === rootIndex ? 'Root Position' : (NOTE_NAMES[bassPitchClass] + ' in Bass')) + fretNote;
+      return (STRING_PITCH_CLASS[i] + absoluteFret) % 12;
     }
   }
-  return 'Root Position' + fretNote;
+  return null;
+}
+function describeBassNote(shape, rootIndex){
+  const fretNote = shape.baseFret > 1 ? (' \u00b7 ' + ordinal(shape.baseFret) + ' fret') : '';
+  const bassPitchClass = getBassPitchClass(shape);
+  if (bassPitchClass === null) return 'Root Position' + fretNote;
+  return (bassPitchClass === rootIndex ? 'Root Position' : (NOTE_NAMES[bassPitchClass] + ' in Bass')) + fretNote;
 }
 function ordinal(n){
   const s = ['th','st','nd','rd'];
@@ -2907,6 +2996,7 @@ const progressionCadence = document.getElementById('progressionCadence');
 const progressionDownloadBtn = document.getElementById('progressionDownloadBtn');
 const progressionClearBtn = document.getElementById('progressionClearBtn');
 const undoProgressionBtn = document.getElementById('undoProgressionBtn');
+const redoProgressionBtn = document.getElementById('redoProgressionBtn');
 
 // ---- MIDI export -- Standard MIDI File, Type 0, single track. The binary
 // encoding below (VLQ delta-times, chunk structure, event bytes) was
@@ -3237,6 +3327,48 @@ function getChartToneCtx(){
 // tied to any chord card, specifically so it never fires from browsing or
 // swapping mods -- that's the whole reason it lives up here instead of
 // being attached to chord clicks.
+// Bass line, Stage A: plays whatever note is ALREADY the bass note of the
+// current voicing (same getBassPitchClass used for the "X in Bass" label),
+// at a real low register clearly separate from the chord itself -- offset
+// of -36 semitones verified to land exactly on real octave-1 frequencies
+// (C1=32.70Hz, E1=41.20Hz, etc.) before being used here.
+function bassNoteFreq(pitchClass){
+  const totalSemitoneFromA4 = (pitchClass - 9) - 36;
+  return 440 * Math.pow(2, totalSemitoneFromA4 / 12);
+}
+function playBassTone(ctx, pitchClass, startAt, duration){
+  const freq = bassNoteFreq(pitchClass);
+  const toneType = window.__toneType || 'triangle';
+  const isInstrument = window.__toneEngine.isInstrument(toneType);
+  if (isInstrument) {
+    window.__toneEngine.playNote(ctx, toneType, freq, startAt, 0.4, duration);
+  } else {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = toneType;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, startAt);
+    gain.gain.linearRampToValueAtTime(0.32, startAt + 0.02);
+    gain.gain.linearRampToValueAtTime(0.32, startAt + duration - 0.08);
+    gain.gain.linearRampToValueAtTime(0, startAt + duration);
+    osc.connect(gain); gain.connect(window.__getMasterBus(ctx));
+    osc.start(startAt); osc.stop(startAt + duration + 0.05);
+  }
+}
+
+// Global preview Bass Notes toggle (near Tone/Arpeggiate) -- deliberately
+// separate from the progression-playback Bass Notes toggle near Play/Stop.
+// This one fires for any individual chord preview (chart cards, chips)
+// regardless of whether that chord belongs to any section or even the
+// progression at all.
+function maybePlayPreviewBassNote(shape, duration){
+  if (!previewBassNotesToggle.checked || !shape) return;
+  const bassPitchClass = getBassPitchClass(shape);
+  if (bassPitchClass === null) return;
+  const ctx = getChartToneCtx();
+  playBassTone(ctx, bassPitchClass, ctx.currentTime, duration);
+}
+
 function playScalePreview(tonicIndex, modeName){
   const modeData = MODES_TABLE[modeName];
   const ctx = getChartToneCtx();
@@ -3495,6 +3627,7 @@ function writeSavedProgressions(list){
 // instead of many places that can quietly drift out of sync with each
 // other over time.
 let progressionUndoStack = [];
+let progressionRedoStack = [];
 const MAX_UNDO_STEPS = 20;
 
 function setProgression(newProgression, options){
@@ -3502,6 +3635,7 @@ function setProgression(newProgression, options){
   if (!options.skipHistory) {
     progressionUndoStack.push(JSON.stringify(progression)); // snapshot from BEFORE this change
     if (progressionUndoStack.length > MAX_UNDO_STEPS) progressionUndoStack.shift();
+    progressionRedoStack = []; // any new edit invalidates the redo history -- standard undo/redo semantics
   }
   progression = newProgression;
   if (!options.keepPreset) activePresetIndex = null; // any manual edit means this is no longer the untouched preset
@@ -3515,8 +3649,20 @@ function setProgression(newProgression, options){
 
 function undoProgression(){
   if (progressionUndoStack.length === 0) return;
+  progressionRedoStack.push(JSON.stringify(progression)); // save current state so redo can restore it
   const prevSnapshot = progressionUndoStack.pop();
   progression = JSON.parse(prevSnapshot);
+  saveProgression();
+  renderProgression();
+  syncCardSelectionStates();
+  updateUndoBtnState();
+}
+
+function redoProgression(){
+  if (progressionRedoStack.length === 0) return;
+  progressionUndoStack.push(JSON.stringify(progression)); // so the redo itself can be undone again if needed
+  const nextSnapshot = progressionRedoStack.pop();
+  progression = JSON.parse(nextSnapshot);
   saveProgression();
   renderProgression();
   syncCardSelectionStates();
@@ -3526,6 +3672,9 @@ function undoProgression(){
 function updateUndoBtnState(){
   if (typeof undoProgressionBtn !== 'undefined' && undoProgressionBtn) {
     undoProgressionBtn.disabled = progressionUndoStack.length === 0;
+  }
+  if (typeof redoProgressionBtn !== 'undefined' && redoProgressionBtn) {
+    redoProgressionBtn.disabled = progressionRedoStack.length === 0;
   }
 }
 
@@ -3541,8 +3690,16 @@ function findLinkedEntry(rootIndex){
   // most recently added/edited entry with this root; if you have two
   // different variants of the same root chord in your progression, the
   // card follows whichever one was touched most recently.
-  for (let i = progression.length - 1; i >= 0; i--) {
-    if (progression[i].rootIndex === rootIndex) return progression[i];
+  //
+  // When a section is currently active, the search is scoped to just that
+  // section's chords -- otherwise a chord already used in a DIFFERENT
+  // section (a very common case -- the same chord often appears in both a
+  // verse and a chorus) would incorrectly show as "already added" while
+  // you're building a new section, forcing an awkward deselect-then-add
+  // dance to add it again for the section you're actually working on.
+  const scope = activeSectionName ? progression.filter(e => e.section === activeSectionName) : progression;
+  for (let i = scope.length - 1; i >= 0; i--) {
+    if (scope[i].rootIndex === rootIndex) return scope[i];
   }
   return null;
 }
@@ -3553,10 +3710,12 @@ function findLinkedEntry(rootIndex){
 // the progression (a secondary dominant's root is literally "a fifth above
 // an existing diatonic root", so overlap is common) -- root-only matching
 // made them show as already-added just from that coincidence, even when
-// that exact chord had never actually been added.
+// that exact chord had never actually been added. Same section-scoping as
+// findLinkedEntry above, for the same reason.
 function findExactEntry(rootIndex, suffix){
-  for (let i = progression.length - 1; i >= 0; i--) {
-    if (progression[i].rootIndex === rootIndex && progression[i].suffix === suffix) return progression[i];
+  const scope = activeSectionName ? progression.filter(e => e.section === activeSectionName) : progression;
+  for (let i = scope.length - 1; i >= 0; i--) {
+    if (scope[i].rootIndex === rootIndex && scope[i].suffix === suffix) return scope[i];
   }
   return null;
 }
@@ -3591,14 +3750,147 @@ function syncCardSelectionStates(){
 function moveChip(idx, direction){
   const newIdx = idx + direction;
   if (newIdx < 0 || newIdx >= progression.length) return false;
-  activePresetIndex = null; // reordering is a manual edit, same as any other
-  const [moved] = progression.splice(idx, 1);
-  progression.splice(newIdx, 0, moved);
-  saveProgression();
-  renderProgression();
-  syncCardSelectionStates();
+  const updated = [...progression];
+  const [moved] = updated.splice(idx, 1); // splice on the COPY, not the real progression array
+  updated.splice(newIdx, 0, moved);
+  setProgression(updated);
   return true;
 }
+
+// Section block reordering -- moves an entire contiguous section run (e.g.
+// all of "Chorus") as one unit, swapping it with its immediate neighbor.
+// Verified against several scenarios (mid-swap, boundary cases) before
+// wiring into the UI.
+// Auto-increments a section name for duplication -- "Verse 1" -> "Verse 2",
+// "Chorus" (no number) -> "Chorus 2". Verified against several realistic
+// naming patterns (double-digit numbers, hyphenated names, no trailing
+// number) before being wired into Duplicate Section.
+function nextSectionName(name){
+  const match = name.match(/^(.*?)(\d+)\s*$/);
+  if (match) {
+    const prefix = match[1];
+    const num = parseInt(match[2], 10);
+    return prefix + (num + 1);
+  }
+  return name + ' 2';
+}
+
+function findBlockBounds(prog, anchorIdx){
+  const section = prog[anchorIdx].section;
+  let start = anchorIdx, end = anchorIdx;
+  while (start > 0 && prog[start - 1].section === section) start--;
+  while (end < prog.length - 1 && prog[end + 1].section === section) end++;
+  return { start, end };
+}
+function moveSectionBlock(anchorIdx, direction){
+  const { start, end } = findBlockBounds(progression, anchorIdx);
+  if (direction === -1) {
+    if (start === 0) return false;
+    const prevBounds = findBlockBounds(progression, start - 1);
+    const updated = [
+      ...progression.slice(0, prevBounds.start),
+      ...progression.slice(start, end + 1),
+      ...progression.slice(prevBounds.start, prevBounds.end + 1),
+      ...progression.slice(end + 1)
+    ];
+    setProgression(updated);
+    return true;
+  } else {
+    if (end === progression.length - 1) return false;
+    const nextBounds = findBlockBounds(progression, end + 1);
+    const updated = [
+      ...progression.slice(0, start),
+      ...progression.slice(nextBounds.start, nextBounds.end + 1),
+      ...progression.slice(start, end + 1),
+      ...progression.slice(nextBounds.end + 1)
+    ];
+    setProgression(updated);
+    return true;
+  }
+}
+// ---- Section definitions: an optional layer ON TOP of the flat progression
+// list, not a replacement for it. The working progression stays the single
+// source of truth (so undo, transpose, playback, MIDI export -- everything
+// already built -- keeps working completely unchanged). A "definition" is
+// just a separately-stored, named snapshot of a section's chords. Syncing
+// between a definition and the chords actually in your progression is
+// always a DELIBERATE, explicit action -- never automatic -- since real
+// songs commonly have small variations between repeats (a different last
+// chord in the final chorus, etc.) that a rigid "must always match" model
+// would fight against.
+const SECTION_DEFINITIONS_KEY = 'ftr-section-definitions-v1';
+function loadSectionDefinitions(){
+  try {
+    const raw = localStorage.getItem(SECTION_DEFINITIONS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.error('Failed to load section definitions:', e);
+    return [];
+  }
+}
+function writeSectionDefinitions(list){
+  try {
+    localStorage.setItem(SECTION_DEFINITIONS_KEY, JSON.stringify(list));
+  } catch (e) {
+    console.error('Failed to save section definitions:', e);
+  }
+}
+
+// Saves (or updates) a definition from the chords currently in the
+// progression under this section name. Deliberately scoped to just the
+// FIRST contiguous run tagged with this name, not every entry matching it
+// anywhere in the progression -- if the same section name appears twice
+// with different content (a real, common case), grabbing all of them would
+// silently blend two different instances into one corrupted definition.
+function saveSectionDefinition(name){
+  const firstIdx = progression.findIndex(e => e.section === name);
+  if (firstIdx === -1) return false;
+  const { start, end } = findBlockBounds(progression, firstIdx);
+  const chords = progression.slice(start, end + 1).map(e => {
+    const { section, ...rest } = e; // stripped -- reapplied fresh at insert/sync time
+    return rest;
+  });
+  const definitions = loadSectionDefinitions();
+  const existingIdx = definitions.findIndex(d => d.name === name);
+  const newDef = { id: existingIdx >= 0 ? definitions[existingIdx].id : Date.now(), name, chords };
+  if (existingIdx >= 0) definitions[existingIdx] = newDef;
+  else definitions.push(newDef);
+  writeSectionDefinitions(definitions);
+  return true;
+}
+
+// Replaces EVERY contiguous run tagged with this section name, anywhere in
+// the progression, with a fresh copy of the definition -- verified against
+// a two-instance scenario (different current content in each) before this
+// was wired into any UI.
+function syncFromDefinition(name){
+  const definitions = loadSectionDefinitions();
+  const def = definitions.find(d => d.name === name);
+  if (!def) return false;
+  const result = [];
+  let i = 0;
+  while (i < progression.length) {
+    if (progression[i].section === name) {
+      result.push(...def.chords.map(c => ({ ...c, section: name })));
+      while (i < progression.length && progression[i].section === name) i++;
+    } else {
+      result.push(progression[i]);
+      i++;
+    }
+  }
+  setProgression(result);
+  return true;
+}
+
+function insertSectionDefinition(definitionId){
+  const definitions = loadSectionDefinitions();
+  const def = definitions.find(d => String(d.id) === String(definitionId));
+  if (!def) return false;
+  const copies = def.chords.map(c => ({ ...c, section: def.name }));
+  setProgression([...progression, ...copies]);
+  return true;
+}
+
 
 // Classifies a chord's roman-numeral label for cadence detection.
 // Deliberately excludes secondary-dominant labels (anything with "/") --
@@ -3658,13 +3950,39 @@ function renderProgression(){
   renderedChipElements = [];
   let lastSection = undefined; // tracks section changes as we walk the list, to know when to start a new row
   let currentRow = null;
-  function ensureRowFor(section){
+  function ensureRowFor(section, idx){
     if (section === lastSection && currentRow) return currentRow;
     lastSection = section;
     if (section) {
       const header = document.createElement('div');
       header.className = 'progression-section-header';
-      header.textContent = section;
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = section;
+      header.appendChild(nameSpan);
+      const playSectionBtn = document.createElement('button');
+      playSectionBtn.type = 'button';
+      playSectionBtn.className = 'progression-section-move-btn';
+      playSectionBtn.textContent = '\u25b6';
+      playSectionBtn.title = 'Play just this section';
+      playSectionBtn.addEventListener('click', () => {
+        loopSectionSelect.value = section;
+        playProgressionThrough();
+      });
+      header.appendChild(playSectionBtn);
+      const moveUpBtn = document.createElement('button');
+      moveUpBtn.type = 'button';
+      moveUpBtn.className = 'progression-section-move-btn';
+      moveUpBtn.textContent = '\u25b2';
+      moveUpBtn.title = 'Move this whole section earlier';
+      moveUpBtn.addEventListener('click', () => moveSectionBlock(idx, -1));
+      header.appendChild(moveUpBtn);
+      const moveDownBtn = document.createElement('button');
+      moveDownBtn.type = 'button';
+      moveDownBtn.className = 'progression-section-move-btn';
+      moveDownBtn.textContent = '\u25bc';
+      moveDownBtn.title = 'Move this whole section later';
+      moveDownBtn.addEventListener('click', () => moveSectionBlock(idx, 1));
+      header.appendChild(moveDownBtn);
       progressionRow.appendChild(header);
     }
     currentRow = document.createElement('div');
@@ -3687,14 +4005,18 @@ function renderProgression(){
       // Preview for exactly as long as this chord's own beat count represents
       // at the current tempo -- not a fixed length -- so clicking a chip
       // actually previews how it will sound in context, not a generic blip.
-      if (shape) playChordShape(shape, chip, progression[idx].arpeggiate, (progression[idx].beats || 4) * beatMs() / 1000);
+      const dur = (progression[idx].beats || 4) * beatMs() / 1000;
+      if (shape) playChordShape(shape, chip, progression[idx].arpeggiate, dur);
+      maybePlayPreviewBassNote(shape, dur);
     });
     chip.addEventListener('keydown', (e) => {
       if (e.target !== chip) return; // let the nested select/button handle their own keys
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         const shape = lookupChordShape(entry.rootIndex, entry.suffix, entry.voicingIndex || 0);
-        if (shape) playChordShape(shape, chip, progression[idx].arpeggiate, (progression[idx].beats || 4) * beatMs() / 1000);
+        const dur = (progression[idx].beats || 4) * beatMs() / 1000;
+        if (shape) playChordShape(shape, chip, progression[idx].arpeggiate, dur);
+        maybePlayPreviewBassNote(shape, dur);
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
         setProgression(progression.filter((_, i) => i !== idx));
@@ -3815,6 +4137,22 @@ function renderProgression(){
     });
     chip.appendChild(duplicateEl);
 
+    const sectionTagEl = document.createElement('button');
+    sectionTagEl.type = 'button';
+    sectionTagEl.className = 'progression-chip-section-tag';
+    sectionTagEl.textContent = '\u{1F3F7}\uFE0F';
+    sectionTagEl.title = entry.section ? ('Section: ' + entry.section + ' -- click to change') : 'No section -- click to assign one';
+    sectionTagEl.setAttribute('aria-label', 'Change section for ' + entry.chordName);
+    sectionTagEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const newSection = window.prompt('Section for this chord (leave blank for none):', entry.section || '');
+      if (newSection === null) return; // cancelled
+      const trimmed = newSection.trim();
+      const updated = progression.map((en, i) => i === idx ? { ...en, section: trimmed || null } : en);
+      setProgression(updated);
+    });
+    chip.appendChild(sectionTagEl);
+
     const removeEl = document.createElement('button');
     removeEl.type = 'button';
     removeEl.className = 'progression-chip-remove';
@@ -3826,7 +4164,7 @@ function renderProgression(){
     });
     chip.appendChild(removeEl);
 
-    ensureRowFor(entry.section).appendChild(chip);
+    ensureRowFor(entry.section, idx).appendChild(chip);
     renderedChipElements[idx] = chip;
   });
   renderTimeline();
@@ -3856,6 +4194,10 @@ progressionClearBtn.addEventListener('click', () => {
 
 undoProgressionBtn.addEventListener('click', () => {
   undoProgression();
+});
+
+redoProgressionBtn.addEventListener('click', () => {
+  redoProgression();
 });
 
 // ---- saved progressions ("song list") UI ----
@@ -3950,9 +4292,12 @@ const duplicateSectionBtn = document.getElementById('duplicateSectionBtn');
 
 sectionNameInput.addEventListener('input', () => {
   activeSectionName = sectionNameInput.value.trim();
+  syncCardSelectionStates();
 });
 
 const loopSectionSelect = document.getElementById('loopSectionSelect');
+const bassNotesToggle = document.getElementById('bassNotesToggle');
+const previewBassNotesToggle = document.getElementById('previewBassNotesToggle');
 function populateLoopSectionSelect(names){
   const previousValue = loopSectionSelect.value;
   loopSectionSelect.innerHTML = '<option value="">All</option>';
@@ -3980,20 +4325,87 @@ populateSectionNameOptions();
 
 duplicateSectionBtn.addEventListener('click', () => {
   if (!activeSectionName) {
-    window.alert('Type a section name first (or pick one that\u2019s already in your progression).');
+    window.alert('Type an existing section name first (e.g. "Verse 1"), then Duplicate Section will create "Verse 2" as a copy of it.');
     return;
   }
   const matching = progression.filter(e => e.section === activeSectionName);
   if (matching.length === 0) {
+    window.alert('No chords are tagged "' + activeSectionName + '" yet -- Duplicate Section copies an EXISTING section into a brand new one, so add some chords to "' + activeSectionName + '" first.');
+    return;
+  }
+  const newName = nextSectionName(activeSectionName);
+  const copies = matching.map(e => ({ ...e, section: newName }));
+  setProgression([...progression, ...copies]);
+  activeSectionName = newName;
+  sectionNameInput.value = newName;
+  syncCardSelectionStates();
+});
+
+const tagUntaggedBtn = document.getElementById('tagUntaggedBtn');
+tagUntaggedBtn.addEventListener('click', () => {
+  if (!activeSectionName) {
+    window.alert('Type a section name first.');
+    return;
+  }
+  const untaggedCount = progression.filter(e => !e.section).length;
+  if (untaggedCount === 0) {
+    window.alert('Every chord already has a section -- nothing untagged to tag.');
+    return;
+  }
+  const updated = progression.map(e => e.section ? e : { ...e, section: activeSectionName });
+  setProgression(updated);
+});
+
+// ---- section definitions UI ----
+const sectionDefinitionSelect = document.getElementById('sectionDefinitionSelect');
+const insertDefinitionBtn = document.getElementById('insertDefinitionBtn');
+const saveDefinitionBtn = document.getElementById('saveDefinitionBtn');
+const syncFromDefinitionBtn = document.getElementById('syncFromDefinitionBtn');
+
+function populateSectionDefinitionSelect(selectId){
+  const definitions = loadSectionDefinitions();
+  sectionDefinitionSelect.innerHTML = definitions.length
+    ? ''
+    : '<option value="">None saved yet...</option>';
+  definitions.forEach(def => {
+    const opt = document.createElement('option');
+    opt.value = def.id;
+    opt.textContent = def.name + ' (' + def.chords.length + ' chords)';
+    if (selectId !== undefined && String(def.id) === String(selectId)) opt.selected = true;
+    sectionDefinitionSelect.appendChild(opt);
+  });
+}
+populateSectionDefinitionSelect();
+
+insertDefinitionBtn.addEventListener('click', () => {
+  const id = sectionDefinitionSelect.value;
+  if (!id) { window.alert('Pick a saved definition first.'); return; }
+  insertSectionDefinition(id);
+});
+
+saveDefinitionBtn.addEventListener('click', () => {
+  if (!activeSectionName) { window.alert('Type a section name first.'); return; }
+  const ok = saveSectionDefinition(activeSectionName);
+  if (!ok) {
     window.alert('No chords are tagged "' + activeSectionName + '" yet -- add some first.');
     return;
   }
-  // insert the duplicated block right after the LAST occurrence of this section
-  let lastIdx = -1;
-  progression.forEach((e, i) => { if (e.section === activeSectionName) lastIdx = i; });
-  const copies = matching.map(e => ({ ...e }));
-  const updated = [...progression.slice(0, lastIdx + 1), ...copies, ...progression.slice(lastIdx + 1)];
-  setProgression(updated);
+  const definitions = loadSectionDefinitions();
+  const savedDef = definitions.find(d => d.name === activeSectionName);
+  populateSectionDefinitionSelect(savedDef ? savedDef.id : undefined);
+});
+
+syncFromDefinitionBtn.addEventListener('click', () => {
+  if (!activeSectionName) { window.alert('Type a section name first.'); return; }
+  const definitions = loadSectionDefinitions();
+  const def = definitions.find(d => d.name === activeSectionName);
+  if (!def) {
+    window.alert('No saved definition named "' + activeSectionName + '" yet -- use Save As Definition first.');
+    return;
+  }
+  const ok = window.confirm('Replace every "' + activeSectionName + '" section in your progression with the saved definition? This will overwrite any edits made to those instances.');
+  if (!ok) return;
+  syncFromDefinition(activeSectionName);
 });
 
 // ---- Canvas-rendered chord diagram, for the exported image (Canvas can't
@@ -4238,6 +4650,7 @@ function playProgressionThrough(){
   progressionStopBtn.disabled = false;
 
   function runOnce(){
+    const ctx = getChartToneCtx();
     let elapsed = 0;
     entriesToPlay.forEach(({ entry, i }) => {
       const durMs = (entry.beats || 4) * beatMs();
@@ -4246,6 +4659,10 @@ function playProgressionThrough(){
         updateTimelineHighlight();
         const shape = lookupChordShape(entry.rootIndex, entry.suffix, entry.voicingIndex || 0);
         if (shape) playChordShape(shape, renderedChipElements[i], entry.arpeggiate, durMs / 1000);
+        if (shape && bassNotesToggle.checked) {
+          const bassPitchClass = getBassPitchClass(shape);
+          if (bassPitchClass !== null) playBassTone(ctx, bassPitchClass, ctx.currentTime, durMs / 1000);
+        }
       }, elapsed);
       activeTimeoutIds.push(id);
       elapsed += durMs;
@@ -4600,6 +5017,7 @@ function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degre
 
   card.addEventListener('click', () => {
     if (currentShape) playChordShape(currentShape, card, cardArpeggiate);
+    if (currentShape) maybePlayPreviewBassNote(currentShape, window.__toneEngine.isInstrument(window.__toneType || 'triangle') ? 1.8 : 1.4);
   });
 
   card.addEventListener('keydown', (e) => {
@@ -4610,6 +5028,7 @@ function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degre
     } else if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       if (currentShape) playChordShape(currentShape, card, cardArpeggiate);
+      if (currentShape) maybePlayPreviewBassNote(currentShape, window.__toneEngine.isInstrument(window.__toneType || 'triangle') ? 1.8 : 1.4);
     } else if (e.key.toLowerCase() === 'a') {
       e.preventDefault();
       arpBtn.click();
@@ -4821,6 +5240,8 @@ const SHORTCUTS = [
   { section: 'Global', items: [
     { keys: 'Alt+1 / Alt+2 / Alt+3', desc: 'Switch to Tune / Chord ID / Chart' },
     { keys: '?', desc: 'Toggle this help' },
+    { keys: 'Cmd/Ctrl+Z', desc: 'Undo last progression change' },
+    { keys: 'Cmd/Ctrl+Shift+Z or Ctrl+Y', desc: 'Redo' },
   ]},
   { section: 'Tune', items: [
     { keys: 'Space', desc: 'Start / stop tuning' },
@@ -4929,6 +5350,17 @@ document.addEventListener('keydown', (e) => {
   // since those are separate listeners on those specific elements.
   const activeTag = document.activeElement ? document.activeElement.tagName : '';
   if (activeTag === 'INPUT' || activeTag === 'SELECT' || activeTag === 'TEXTAREA') return;
+
+  // Undo/Redo -- Cmd (Mac) or Ctrl (Windows/Linux), checked via metaKey ||
+  // ctrlKey together since this app runs on both. Covers both common redo
+  // conventions (Cmd/Ctrl+Shift+Z and Ctrl+Y) so it works regardless of
+  // platform habit. Placed after the input-guard above so it never
+  // conflicts with a browser's native undo/redo while typing in a text
+  // field -- only acts on the progression when focus isn't in a form
+  // control.
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undoProgression(); return; }
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && e.shiftKey) { e.preventDefault(); redoProgression(); return; }
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redoProgression(); return; }
 
   if (currentActiveMode === 'tune') {
     if (e.key === ' ') { e.preventDefault(); if (window.__tunerToggle) window.__tunerToggle(); return; }
