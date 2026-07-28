@@ -103,25 +103,14 @@
   .logo{
     font-family:'Oswald', sans-serif;
     font-weight:700;
-    font-size:clamp(15px, 4.6vw, 19px);
-    letter-spacing:0.06em;
+    font-size:clamp(22px, 6.5vw, 34px);
+    letter-spacing:0.05em;
     text-transform:uppercase;
     color:var(--fg);
     text-shadow:0 1px 0 rgba(0,0,0,0.7), 0 -1px 0 rgba(255,255,255,0.06);
     line-height:1.15;
-    white-space:nowrap;
   }
   .logo span{ color:var(--amber); text-shadow:0 0 8px rgba(232,149,46,0.4), 0 1px 0 rgba(0,0,0,0.7); }
-  .tuning-label{
-    font-family:'JetBrains Mono', monospace;
-    font-size:10px;
-    letter-spacing:0.14em;
-    text-transform:uppercase;
-    color:var(--fg);
-    opacity:0.4;
-    margin-top:6px;
-  }
-
   main{ width:100%; max-width:420px; display:flex; flex-direction:column; align-items:center; gap:28px; }
 
   /* mode toggle -- two square console-style buttons, matches string-button language */
@@ -284,6 +273,15 @@
   .chart-card-function-tonic{ color:var(--locked); }
   .chart-card-function-subdominant{ color:#7fb3d5; }
   .chart-card-function-dominant{ color:var(--amber); }
+  .chart-card-pivot-badge{
+    font-family:'JetBrains Mono', monospace;
+    font-size:8px;
+    letter-spacing:0.04em;
+    color:#7fd8e8;
+    opacity:0.85;
+    margin-top:2px;
+    cursor:help;
+  }
   .chart-card-info-btn{
     background:none;
     border:none;
@@ -386,6 +384,10 @@
     padding:20px 0;
   }
   .chart-group-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
     font-family:'Oswald', sans-serif;
     font-weight:600;
     font-size:13px;
@@ -396,6 +398,20 @@
     border-bottom:1px solid var(--hairline);
     padding-bottom:4px;
   }
+  .chart-scale-preview-btn{
+    font-family:'JetBrains Mono', monospace;
+    font-size:9px;
+    letter-spacing:0.03em;
+    text-transform:none;
+    color:var(--fg);
+    opacity:0.6;
+    background:none;
+    border:1px solid var(--hairline);
+    border-radius:4px;
+    padding:2px 6px;
+    cursor:pointer;
+  }
+  .chart-scale-preview-btn:hover{ opacity:1; border-color:var(--amber); color:var(--amber); }
   .chart-subgroup-header{
     font-family:'JetBrains Mono', monospace;
     font-size:10px;
@@ -482,6 +498,45 @@
     color:var(--locked);
     opacity:0.85;
   }
+  .progression-summary{
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    font-size:16px;
+    letter-spacing:0.04em;
+    color:var(--amber);
+    margin-top:4px;
+  }
+  .progression-cadence{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10.5px;
+    color:var(--fg);
+    opacity:0.65;
+    margin-top:2px;
+  }
+  .saved-progressions-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:10px;
+    margin-bottom:6px;
+  }
+  .saved-progressions-row .chart-select{ max-width:220px; }
+  .section-row{
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:8px;
+  }
+  .section-row-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    color:var(--fg);
+    opacity:0.6;
+  }
+  #sectionNameInput{ max-width:180px; }
   .progression-actions{ display:flex; gap:6px; }
   .mini-btn{
     padding:5px 10px;
@@ -496,6 +551,11 @@
     cursor:pointer;
   }
   .mini-btn:active{ transform:scale(0.96); }
+  .mini-btn.active{
+    background:linear-gradient(180deg, #f0b878, var(--amber));
+    color:#2a1c08;
+    box-shadow:0 0 6px rgba(232,149,46,0.5);
+  }
   .progression-row{
     width:100%;
     display:flex;
@@ -505,6 +565,17 @@
     -webkit-overflow-scrolling:touch;
     min-height:52px;
   }
+  .progression-section-header{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--amber);
+    opacity:0.8;
+    margin-top:12px;
+    margin-bottom:4px;
+  }
+  .progression-section-header:first-child{ margin-top:0; }
   .progression-empty{
     font-family:'JetBrains Mono', monospace;
     font-size:11px;
@@ -887,6 +958,7 @@
   }
   #shortcutsCloseBtn:hover{ opacity:1; }
   .shortcuts-body{ padding:8px 18px 18px; }
+  .scale-diagram-wrap{ display:flex; justify-content:center; padding:8px 0 16px; }
   .shortcuts-section-title{
     font-family:'Oswald', sans-serif;
     font-weight:600;
@@ -972,7 +1044,6 @@
 
 <header>
   <div class="logo">Frequency Target <span>Replicator</span></div>
-  <div class="tuning-label">Standard · 6-String</div>
 </header>
 
 <main>
@@ -990,8 +1061,15 @@
       <option value="sawtooth">Sawtooth (Bright)</option>
       <option value="square">Square (Buzzy)</option>
       <option value="piano">Piano</option>
+      <option value="brightpiano">Bright Piano</option>
+      <option value="toypiano">Toy Piano</option>
       <option value="rhodes">Electric Piano (Rhodes)</option>
+      <option value="wurly">Electric Piano (Wurly)</option>
+      <option value="dxep">Electric Piano (DX)</option>
       <option value="organ">Organ</option>
+      <option value="rockorgan">Rock Organ</option>
+      <option value="synthpad">Synth Pad</option>
+      <option value="synthbass">Synth Bass</option>
     </select>
     <label class="playback-setting checkbox" style="margin-left:6px;">
       <input type="checkbox" id="arpeggiateToggle">
@@ -1081,6 +1159,8 @@
         <input type="checkbox" id="borrowedChordsToggle">
         Borrowed Chords
       </label>
+      <button type="button" class="mini-btn" id="relativeMinorBtn" title="Jump to the relative minor (same key signature, Aeolian)">Relative Minor</button>
+      <button type="button" class="mini-btn" id="relativeMajorBtn" title="Jump to the relative major (same key signature, Ionian)">Relative Major</button>
     </div>
 
     <div class="mode-picker" id="modePicker"></div>
@@ -1094,11 +1174,29 @@
           <button class="mini-btn" id="transposeDownBtn" title="Transpose down a semitone">♭</button>
           <button class="mini-btn" id="transposeUpBtn" title="Transpose up a semitone">♯</button>
           <button class="mini-btn" id="progressionDownloadBtn">Save Image</button>
+          <button class="mini-btn" id="exportMidiBtn">Export MIDI</button>
+          <button class="mini-btn" id="undoProgressionBtn" disabled>Undo</button>
           <button class="mini-btn" id="progressionClearBtn">Clear</button>
         </div>
       </div>
       <div class="progression-status" id="progressionStatus" style="display:none;"></div>
-      <div class="progression-row" id="progressionRow">
+      <div class="progression-summary" id="progressionSummary" style="display:none;"></div>
+      <div class="progression-cadence" id="progressionCadence" style="display:none;"></div>
+      <div class="section-row">
+        <label for="sectionNameInput" class="section-row-label">Section:</label>
+        <input type="text" id="sectionNameInput" list="sectionNameOptions" placeholder="e.g. Verse, Chorus, Bridge" class="chart-select" />
+        <datalist id="sectionNameOptions"></datalist>
+        <button type="button" class="mini-btn" id="duplicateSectionBtn">Duplicate Section</button>
+      </div>
+      <div class="saved-progressions-row">
+        <select class="chart-select" id="savedProgressionsSelect">
+          <option value="">My Saved Progressions...</option>
+        </select>
+        <button type="button" class="mini-btn" id="saveProgressionAsBtn">Save As</button>
+        <button type="button" class="mini-btn" id="loadSavedProgressionBtn">Load</button>
+        <button type="button" class="mini-btn" id="deleteSavedProgressionBtn">Delete</button>
+      </div>
+      <div id="progressionRow">
         <div class="progression-empty" id="progressionEmpty">tap + on any chord above to add it here</div>
       </div>
 
@@ -1124,6 +1222,12 @@
             <input type="checkbox" id="loopToggle">
             <span>Loop</span>
           </label>
+          <label class="playback-setting">
+            <span>Section</span>
+            <select class="chart-select" id="loopSectionSelect" style="max-width:140px;">
+              <option value="">All</option>
+            </select>
+          </label>
         </div>
       </div>
     </div>
@@ -1144,6 +1248,16 @@
   </div>
 </div>
 
+<div id="scaleDiagramOverlay" class="shortcuts-overlay" style="display:none;">
+  <div class="shortcuts-panel" role="dialog" aria-modal="true" aria-labelledby="scaleDiagramTitle">
+    <div class="shortcuts-header">
+      <span id="scaleDiagramTitle">Scale</span>
+      <button type="button" id="scaleDiagramCloseBtn" aria-label="Close scale diagram">&times;</button>
+    </div>
+    <div class="shortcuts-body" id="scaleDiagramBody"></div>
+  </div>
+</div>
+
 
 <script>
 (function(){
@@ -1152,7 +1266,7 @@
   toneTypeSelect.value = window.__toneType;
   toneTypeSelect.addEventListener('change', function(){
     window.__toneType = toneTypeSelect.value;
-    if(toneTypeSelect.value === 'piano'){
+    if(toneTypeSelect.value === 'piano' || toneTypeSelect.value === 'brightpiano'){
       window.__toneEngine.ensurePianoLoaded(window.__getSharedToneCtx());
     }
   });
@@ -1319,6 +1433,112 @@
       modulator.stop(startAt + duration + 0.05); carrier.stop(startAt + duration + 0.05);
     }
 
+    // Wurly -- same FM technique as Rhodes, but with an integer (harmonic,
+    // not inharmonic) modulator ratio. That's the real structural
+    // difference behind why a Wurlitzer sounds reedier/more "growly" and a
+    // Rhodes sounds more bell-like/glassy -- an integer ratio reinforces
+    // the harmonic series instead of adding inharmonic partials.
+    function playWurlyNote(ctx, freq, startAt, gain, duration){
+      var modRatio = 1; // integer ratio -- reedier, more harmonic than Rhodes' 1.4
+      var carrier = ctx.createOscillator();
+      carrier.type = 'sine'; carrier.frequency.value = freq;
+      var modulator = ctx.createOscillator();
+      modulator.type = 'sine'; modulator.frequency.value = freq * modRatio;
+      var modGain = ctx.createGain();
+      modGain.gain.setValueAtTime(freq * 1.6, startAt);
+      modGain.gain.exponentialRampToValueAtTime(Math.max(1, freq * 0.06), startAt + 0.22); // faster initial "bark" than Rhodes -- more percussive attack
+      modGain.gain.linearRampToValueAtTime(0, startAt + duration);
+      modulator.connect(modGain);
+      modGain.connect(carrier.frequency);
+      var outGain = ctx.createGain();
+      outGain.gain.setValueAtTime(0, startAt);
+      outGain.gain.linearRampToValueAtTime(gain, startAt + 0.006);
+      outGain.gain.setValueAtTime(gain * 0.75, startAt + Math.max(0.05, duration - 0.25));
+      outGain.gain.linearRampToValueAtTime(0, startAt + duration);
+      carrier.connect(outGain); outGain.connect(window.__getMasterBus(ctx));
+      modulator.start(startAt); carrier.start(startAt);
+      modulator.stop(startAt + duration + 0.05); carrier.stop(startAt + duration + 0.05);
+    }
+
+    // DX E.Piano -- brighter, glassier FM character using a much higher
+    // modulator ratio (the classic DX7-style relationship behind that
+    // famous crystalline '80s electric piano sound), with a sharper,
+    // shorter initial transient than either Rhodes or Wurly.
+    function playDxEpNote(ctx, freq, startAt, gain, duration){
+      var modRatio = 14; // high ratio -- produces the bright, bell/glass-like DX7 EP character
+      var carrier = ctx.createOscillator();
+      carrier.type = 'sine'; carrier.frequency.value = freq;
+      var modulator = ctx.createOscillator();
+      modulator.type = 'sine'; modulator.frequency.value = freq * modRatio;
+      var modGain = ctx.createGain();
+      modGain.gain.setValueAtTime(freq * 0.9, startAt); // lower peak depth than Rhodes/Wurly -- high ratios need less depth to sound bright
+      modGain.gain.exponentialRampToValueAtTime(Math.max(0.5, freq * 0.015), startAt + 0.15); // very fast initial transient
+      modGain.gain.linearRampToValueAtTime(0, startAt + duration);
+      modulator.connect(modGain);
+      modGain.connect(carrier.frequency);
+      var outGain = ctx.createGain();
+      outGain.gain.setValueAtTime(0, startAt);
+      outGain.gain.linearRampToValueAtTime(gain, startAt + 0.004);
+      outGain.gain.setValueAtTime(gain * 0.7, startAt + Math.max(0.05, duration - 0.3));
+      outGain.gain.linearRampToValueAtTime(0, startAt + duration);
+      carrier.connect(outGain); outGain.connect(window.__getMasterBus(ctx));
+      modulator.start(startAt); carrier.start(startAt);
+      modulator.stop(startAt + duration + 0.05); carrier.stop(startAt + duration + 0.05);
+    }
+
+    // Bright Piano -- the exact same real Salamander recordings as Piano,
+    // just routed through a high-shelf boost for a different character.
+    // Zero new sample weight; this is a genuinely common technique (many
+    // commercial piano libraries offer "bright"/"soft" variants of one
+    // underlying sample set through processing, not separate recordings).
+    function playBrightPianoNote(ctx, freq, startAt, gain, duration){
+      var nearest = nearestPianoSample(freq);
+      var buffer = pianoBuffers[nearest];
+      if(!buffer) return;
+      var src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.playbackRate.value = freq / PIANO_FREQS[nearest];
+      var brightFilter = ctx.createBiquadFilter();
+      brightFilter.type = 'highshelf';
+      brightFilter.frequency.value = 2500;
+      brightFilter.gain.value = 7; // dB boost above 2.5kHz
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0, startAt);
+      g.gain.linearRampToValueAtTime(gain, startAt + 0.008);
+      g.gain.setValueAtTime(gain, startAt + Math.max(0.05, duration - 0.15));
+      g.gain.linearRampToValueAtTime(0, startAt + duration);
+      src.connect(brightFilter); brightFilter.connect(g); g.connect(window.__getMasterBus(ctx));
+      src.start(startAt);
+      src.stop(startAt + duration + 0.05);
+    }
+
+    // Toy Piano -- pure synthesis, no real samples at all. High-ratio FM
+    // with a very short, plucky envelope for that small bright bell-like
+    // character, plus a quiet octave-up layer for extra shimmer.
+    function playToyPianoNote(ctx, freq, startAt, gain, duration){
+      [1, 2].forEach(function(octaveMult, i){
+        var voiceFreq = freq * octaveMult;
+        var voiceGain = i === 0 ? gain : gain * 0.25;
+        var carrier = ctx.createOscillator();
+        carrier.type = 'sine'; carrier.frequency.value = voiceFreq;
+        var modulator = ctx.createOscillator();
+        modulator.type = 'sine'; modulator.frequency.value = voiceFreq * 3.5;
+        var modGain = ctx.createGain();
+        modGain.gain.setValueAtTime(voiceFreq * 1.2, startAt);
+        modGain.gain.exponentialRampToValueAtTime(Math.max(0.5, voiceFreq * 0.02), startAt + 0.1);
+        modulator.connect(modGain);
+        modGain.connect(carrier.frequency);
+        var outGain = ctx.createGain();
+        var noteDur = Math.min(duration, 0.9); // toy piano notes ring out briefly regardless of the requested duration -- it's a small, plucky sound
+        outGain.gain.setValueAtTime(0, startAt);
+        outGain.gain.linearRampToValueAtTime(voiceGain, startAt + 0.003);
+        outGain.gain.exponentialRampToValueAtTime(Math.max(0.001, voiceGain * 0.05), startAt + noteDur);
+        carrier.connect(outGain); outGain.connect(window.__getMasterBus(ctx));
+        modulator.start(startAt); carrier.start(startAt);
+        modulator.stop(startAt + noteDur + 0.05); carrier.stop(startAt + noteDur + 0.05);
+      });
+    }
+
     function playOrganNote(ctx, freq, startAt, gain, duration){
       // drawbar-style stacked harmonics, fast percussive-click attack then
       // sustained (real organs don't decay the way a struck/plucked
@@ -1338,13 +1558,113 @@
       });
     }
 
+    // Rock Organ -- same drawbar harmonic stack as Organ, but pushed
+    // through a soft-clip distortion stage and a rotary-speaker-style
+    // tremolo (amplitude LFO), for the classic overdriven Hammond/Leslie
+    // character rather than a clean church-organ tone.
+    function makeDistortionCurve(amount){
+      var samples = 256, curve = new Float32Array(samples), deg = Math.PI / 180;
+      for(var i = 0; i < samples; i++){
+        var x = (i * 2) / samples - 1;
+        curve[i] = (3 + amount) * x * 20 * deg / (Math.PI + amount * Math.abs(x));
+      }
+      return curve;
+    }
+    function playRockOrganNote(ctx, freq, startAt, gain, duration){
+      var harmonics = [ {mult:1, amp:0.5}, {mult:2, amp:0.3}, {mult:3, amp:0.22}, {mult:4, amp:0.16} ];
+      var shaper = ctx.createWaveShaper();
+      shaper.curve = makeDistortionCurve(28);
+      shaper.oversample = '2x';
+      var tremolo = ctx.createGain();
+      var lfo = ctx.createOscillator();
+      lfo.type = 'sine'; lfo.frequency.value = 6; // rotary-speaker-ish tremolo rate
+      var lfoDepth = ctx.createGain();
+      lfoDepth.gain.value = 0.18;
+      lfo.connect(lfoDepth);
+      lfoDepth.connect(tremolo.gain);
+      tremolo.gain.value = 0.82; // base level the LFO modulates around
+      lfo.start(startAt); lfo.stop(startAt + duration + 0.05);
+
+      shaper.connect(tremolo);
+      tremolo.connect(window.__getMasterBus(ctx));
+
+      harmonics.forEach(function(h){
+        var osc = ctx.createOscillator();
+        osc.type = 'sine'; osc.frequency.value = freq * h.mult;
+        var g = ctx.createGain();
+        var amp = gain * h.amp * 0.8; // a bit of headroom before the distortion stage
+        g.gain.setValueAtTime(0, startAt);
+        g.gain.linearRampToValueAtTime(amp, startAt + 0.015);
+        g.gain.setValueAtTime(amp, startAt + Math.max(0.05, duration - 0.08));
+        g.gain.linearRampToValueAtTime(0, startAt + duration);
+        osc.connect(g); g.connect(shaper);
+        osc.start(startAt); osc.stop(startAt + duration + 0.05);
+      });
+    }
+
+    // Synth Pad -- slow-attack detuned oscillator stack, ambient/dreamy.
+    function playSynthPadNote(ctx, freq, startAt, gain, duration){
+      var detunes = [-6, 0, 6]; // cents -- subtle chorused width
+      detunes.forEach(function(cents){
+        var osc = ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.value = freq * Math.pow(2, cents / 1200);
+        var filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = freq * 4;
+        var g = ctx.createGain();
+        var amp = gain * 0.3;
+        g.gain.setValueAtTime(0, startAt);
+        g.gain.linearRampToValueAtTime(amp, startAt + Math.min(0.5, duration * 0.35)); // slow attack is the whole character here
+        g.gain.setValueAtTime(amp, startAt + Math.max(0.05, duration - 0.25));
+        g.gain.linearRampToValueAtTime(0, startAt + duration);
+        osc.connect(filter); filter.connect(g); g.connect(window.__getMasterBus(ctx));
+        osc.start(startAt); osc.stop(startAt + duration + 0.05);
+      });
+    }
+
+    // Synth Bass -- sub-heavy, punchy, simple waveform for exploring lower
+    // voicings specifically.
+    function playSynthBassNote(ctx, freq, startAt, gain, duration){
+      var osc = ctx.createOscillator();
+      osc.type = 'triangle'; osc.frequency.value = freq;
+      var sub = ctx.createOscillator();
+      sub.type = 'sine'; sub.frequency.value = freq / 2; // sub-octave for weight
+      var filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(freq * 6, startAt);
+      filter.frequency.exponentialRampToValueAtTime(Math.max(200, freq * 2), startAt + 0.2); // punchy filter-close envelope
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0, startAt);
+      g.gain.linearRampToValueAtTime(gain, startAt + 0.008);
+      g.gain.setValueAtTime(gain, startAt + Math.max(0.05, duration - 0.1));
+      g.gain.linearRampToValueAtTime(0, startAt + duration);
+      var subGain = ctx.createGain(); subGain.gain.value = 0.6;
+      osc.connect(filter); filter.connect(g);
+      sub.connect(subGain); subGain.connect(g);
+      g.connect(window.__getMasterBus(ctx));
+      osc.start(startAt); osc.stop(startAt + duration + 0.05);
+      sub.start(startAt); sub.stop(startAt + duration + 0.05);
+    }
+
     return {
-      isInstrument: function(type){ return type === 'piano' || type === 'rhodes' || type === 'organ'; },
+      isInstrument: function(type){
+        return type === 'piano' || type === 'rhodes' || type === 'organ' ||
+               type === 'wurly' || type === 'dxep' || type === 'brightpiano' ||
+               type === 'toypiano' || type === 'rockorgan' || type === 'synthpad' || type === 'synthbass';
+      },
       ensurePianoLoaded: ensurePianoLoaded,
       playNote: function(ctx, type, freq, startAt, gain, duration){
         if(type === 'piano') playPianoNote(ctx, freq, startAt, gain, duration);
         else if(type === 'rhodes') playRhodesNote(ctx, freq, startAt, gain, duration);
         else if(type === 'organ') playOrganNote(ctx, freq, startAt, gain, duration);
+        else if(type === 'wurly') playWurlyNote(ctx, freq, startAt, gain, duration);
+        else if(type === 'dxep') playDxEpNote(ctx, freq, startAt, gain, duration);
+        else if(type === 'brightpiano') playBrightPianoNote(ctx, freq, startAt, gain, duration);
+        else if(type === 'toypiano') playToyPianoNote(ctx, freq, startAt, gain, duration);
+        else if(type === 'rockorgan') playRockOrganNote(ctx, freq, startAt, gain, duration);
+        else if(type === 'synthpad') playSynthPadNote(ctx, freq, startAt, gain, duration);
+        else if(type === 'synthbass') playSynthBassNote(ctx, freq, startAt, gain, duration);
       }
     };
   })();
@@ -1510,7 +1830,7 @@
       var playIt = function(){
         window.__toneEngine.playNote(ctx, toneType, freq, ctx.currentTime, 0.55, dur);
       };
-      if(toneType === 'piano'){
+      if(toneType === 'piano' || toneType === 'brightpiano'){
         window.__toneEngine.ensurePianoLoaded(ctx).then(playIt);
       } else {
         playIt();
@@ -2041,7 +2361,13 @@ const SUFFIX_TO_DB = {
   '6': '6', 'm6': 'm6', 'm7b5': 'm7b5', 'add9': 'add9',
   '9': '9', 'maj9': 'maj9', 'm9': 'm9', '69': '69',
   'dim7': 'dim7', 'aug7': 'aug7', '7sus4': '7sus4', 'add11': 'add11',
-  'madd9': 'madd9', '5': '5'
+  'madd9': 'madd9', '5': '5',
+  // extended jazz voicings -- every one of these verified against real
+  // chords-db data across 7 different roots before being added, same
+  // discipline as everywhere else in this app
+  '11': '11', '13': '13', 'maj11': 'maj11', 'maj13': 'maj13',
+  '7b9': '7b9', '7#9': '7#9', '7b5': '7b5', 'alt': 'alt',
+  'm11': 'm11', 'mmaj7': 'mmaj7', 'm69': 'm69'
 };
 
 // Per-chord "mod" dropdown options, bucketed by the diatonic chord's base
@@ -2056,6 +2382,14 @@ const MOD_OPTIONS = {
     { value: 'add9',  label: 'Add9' },
     { value: '9',     label: '9' },
     { value: 'maj9',  label: 'Maj9' },
+    { value: '11',    label: '11' },
+    { value: 'maj11', label: 'Maj11' },
+    { value: '13',    label: '13' },
+    { value: 'maj13', label: 'Maj13' },
+    { value: '7b5',   label: '7b5' },
+    { value: '7b9',   label: '7b9' },
+    { value: '7#9',   label: '7#9' },
+    { value: 'alt',   label: 'Alt (Altered Dominant)' },
     { value: 'sus2',  label: 'Sus2' },
     { value: 'sus4',  label: 'Sus4' },
     { value: 'aug',   label: 'Augmented' },
@@ -2067,6 +2401,9 @@ const MOD_OPTIONS = {
     { value: 'm6',    label: 'm6' },
     { value: 'madd9', label: 'Add9' },
     { value: 'm9',    label: 'm9' },
+    { value: 'm11',   label: 'm11' },
+    { value: 'm69',   label: 'm6/9' },
+    { value: 'mmaj7', label: 'Minor-Maj7' },
     { value: 'sus2',  label: 'Sus2' },
     { value: 'sus4',  label: 'Sus4' },
     { value: 'dim',   label: 'Diminished' },
@@ -2153,18 +2490,18 @@ function ordinal(n){
 // where to put your fingers. Root stays the app's amber accent for
 // consistency with everywhere else; everything else gets its own hue.
 function getIntervalRole(interval){
-  if (interval === 0) return { name: 'R', color: 'var(--amber)' };
-  if (interval === 3) return { name: 'm3', color: '#7fd88f' };
-  if (interval === 4) return { name: 'M3', color: '#7fd88f' };
-  if (interval === 6) return { name: 'b5', color: '#7fb3d5' };
-  if (interval === 7) return { name: '5', color: '#7fb3d5' };
-  if (interval === 8) return { name: '#5', color: '#7fb3d5' };
-  if (interval === 9) return { name: '6', color: '#c58fd8' };
-  if (interval === 10) return { name: 'b7', color: '#c58fd8' };
-  if (interval === 11) return { name: '7', color: '#c58fd8' };
-  if (interval === 1) return { name: 'b9', color: '#e88fa8' };
-  if (interval === 2) return { name: '9', color: '#e88fa8' };
-  return { name: '11', color: '#e88fa8' }; // interval === 5
+  if (interval === 0) return { name: 'R', fullName: 'Root', color: 'var(--amber)' };
+  if (interval === 3) return { name: 'm3', fullName: 'Minor 3rd', color: '#7fd88f' };
+  if (interval === 4) return { name: 'M3', fullName: 'Major 3rd', color: '#7fd88f' };
+  if (interval === 6) return { name: 'b5', fullName: 'Flat 5th', color: '#7fb3d5' };
+  if (interval === 7) return { name: '5', fullName: 'Perfect 5th', color: '#7fb3d5' };
+  if (interval === 8) return { name: '#5', fullName: 'Sharp 5th', color: '#7fb3d5' };
+  if (interval === 9) return { name: '6', fullName: '6th', color: '#c58fd8' };
+  if (interval === 10) return { name: 'b7', fullName: 'Flat 7th (Dominant 7th)', color: '#c58fd8' };
+  if (interval === 11) return { name: '7', fullName: 'Major 7th', color: '#c58fd8' };
+  if (interval === 1) return { name: 'b9', fullName: 'Flat 9th', color: '#e88fa8' };
+  if (interval === 2) return { name: '9', fullName: '9th', color: '#e88fa8' };
+  return { name: '11', fullName: '11th', color: '#e88fa8' }; // interval === 5
 }
 
 function renderChordDiagramSVG(position, rootIndex){
@@ -2226,14 +2563,14 @@ function renderChordDiagramSVG(position, rootIndex){
     } else if (f === 0) {
       const role = (rootIndex !== undefined) ? getIntervalRole((STRING_PITCH_CLASS[i] - rootIndex + 12) % 12) : null;
       const strokeColor = role ? role.color : 'var(--live-white)';
-      svg += `<circle cx="${x}" cy="${topPad - 13}" r="4.5" fill="none" stroke="${strokeColor}" stroke-width="1.5" />`;
+      svg += `<circle cx="${x}" cy="${topPad - 13}" r="4.5" fill="none" stroke="${strokeColor}" stroke-width="1.5">${role ? '<title>' + role.fullName + '</title>' : ''}</circle>`;
     } else {
       const row = f; // same fix as the pitch calculation -- f is already relative to baseFret
       const y = fretY(row - 1) + rowHeight / 2;
       const absoluteFret = baseFret + f - 1;
       const role = (rootIndex !== undefined) ? getIntervalRole((STRING_PITCH_CLASS[i] + absoluteFret - rootIndex + 1200) % 12) : null;
       const dotColor = role ? role.color : 'var(--amber)';
-      svg += `<circle cx="${x}" cy="${y}" r="8" fill="${dotColor}" />`;
+      svg += `<circle cx="${x}" cy="${y}" r="8" fill="${dotColor}">${role ? '<title>' + role.fullName + '</title>' : ''}</circle>`;
       const fingerNum = fingers ? fingers[i] : 0;
       if (fingerNum > 0) {
         svg += `<text x="${x}" y="${y + 3.5}" font-size="9" fill="#2a1c08" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="700">${fingerNum}</text>`;
@@ -2565,8 +2902,89 @@ const chartGroups = document.getElementById('chartGroups');
 const progressionRow = document.getElementById('progressionRow');
 const progressionEmpty = document.getElementById('progressionEmpty');
 const progressionStatus = document.getElementById('progressionStatus');
+const progressionSummary = document.getElementById('progressionSummary');
+const progressionCadence = document.getElementById('progressionCadence');
 const progressionDownloadBtn = document.getElementById('progressionDownloadBtn');
 const progressionClearBtn = document.getElementById('progressionClearBtn');
+const undoProgressionBtn = document.getElementById('undoProgressionBtn');
+
+// ---- MIDI export -- Standard MIDI File, Type 0, single track. The binary
+// encoding below (VLQ delta-times, chunk structure, event bytes) was
+// verified against the formal MIDI spec's test vectors and against a real,
+// independent MIDI parser (Python's mido) before being ported here -- a
+// malformed byte stream just silently fails to open in a DAW, so this
+// isn't something to get approximately right.
+const OPEN_STRING_MIDI = [40, 45, 50, 55, 59, 64]; // low E to high E, standard tuning
+function writeVLQ(value){
+  if (value === 0) return [0];
+  const groups = [];
+  while (value > 0) {
+    groups.unshift(value & 0x7F);
+    value = value >>> 7;
+  }
+  for (let i = 0; i < groups.length - 1; i++) groups[i] |= 0x80;
+  return groups;
+}
+function uint16BE(v){ return [(v >> 8) & 0xFF, v & 0xFF]; }
+function uint32BE(v){ return [(v >> 24) & 0xFF, (v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF]; }
+function stringBytes(s){ return Array.from(s).map(c => c.charCodeAt(0)); }
+
+function generateMidiBytes(prog, tempo){
+  const division = 480; // ticks per quarter note -- 1 beat === 1 quarter note throughout this app, matching beatMs()
+  const trackBytes = [];
+
+  const microsPerQuarter = Math.round(60000000 / tempo);
+  trackBytes.push(...writeVLQ(0), 0xFF, 0x51, 0x03, (microsPerQuarter >> 16) & 0xFF, (microsPerQuarter >> 8) & 0xFF, microsPerQuarter & 0xFF);
+
+  const name = 'Frequency Target Replicator Export';
+  trackBytes.push(...writeVLQ(0), 0xFF, 0x03, ...writeVLQ(name.length), ...stringBytes(name));
+
+  let lastSection = undefined;
+  prog.forEach(entry => {
+    if (entry.section !== lastSection) {
+      lastSection = entry.section;
+      if (entry.section) {
+        trackBytes.push(...writeVLQ(0), 0xFF, 0x06, ...writeVLQ(entry.section.length), ...stringBytes(entry.section));
+      }
+    }
+    const durationTicks = (entry.beats || 4) * division;
+    const shape = lookupChordShape(entry.rootIndex, entry.suffix, entry.voicingIndex || 0);
+    // Real voicing when we have one -- falls back to just the root note
+    // alone if this exact chord has no diagram available, rather than
+    // silently dropping the chord from the export entirely.
+    const notes = shape
+      ? shape.frets.map((f, i) => f === -1 ? null : (OPEN_STRING_MIDI[i] + (f > 0 ? shape.baseFret + f - 1 : 0))).filter(n => n !== null)
+      : [60 + entry.rootIndex - 0]; // root note in a reasonable octave, computed relative to middle C's pitch class (C=0)
+
+    notes.forEach(note => { trackBytes.push(...writeVLQ(0), 0x90, note, 90); });
+    notes.forEach((note, i) => { trackBytes.push(...writeVLQ(i === 0 ? durationTicks : 0), 0x80, note, 64); });
+  });
+
+  trackBytes.push(...writeVLQ(0), 0xFF, 0x2F, 0x00);
+
+  const header = [...stringBytes('MThd'), ...uint32BE(6), ...uint16BE(0), ...uint16BE(1), ...uint16BE(division)];
+  const track = [...stringBytes('MTrk'), ...uint32BE(trackBytes.length), ...trackBytes];
+  return new Uint8Array([...header, ...track]);
+}
+
+const exportMidiBtn = document.getElementById('exportMidiBtn');
+exportMidiBtn.addEventListener('click', () => {
+  if (progression.length === 0) {
+    window.alert('Your progression is empty -- add some chords first.');
+    return;
+  }
+  const tempo = parseInt(tempoInput.value, 10) || 90;
+  const bytes = generateMidiBytes(progression, tempo);
+  const blob = new Blob([bytes], { type: 'audio/midi' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'frequency-target-replicator-progression.mid';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
 
 const ALL_MODE_BTNS = [modeTuneBtn, modeChordBtn, modeChartBtn];
 const ALL_MODE_PANELS = [tuneModeEl, chordModeEl, chartModeEl];
@@ -2759,7 +3177,7 @@ function resolvePresetIntoTray(presetIndex){
     : (activeModes[0] || preset.defaultMode || 'Ionian');
   const modeData = MODES_TABLE[modeName];
 
-  progression = preset.degrees.map(degreeIdx => {
+  const newProgression = preset.degrees.map(degreeIdx => {
     const rootIndex = (tonicIndex + modeData.intervals[degreeIdx]) % 12;
     const quality = modeData.qualities[degreeIdx];
     const suffix = QUALITY_TO_SUFFIX[quality];
@@ -2771,9 +3189,7 @@ function resolvePresetIntoTray(presetIndex){
     };
   });
 
-  saveProgression();
-  renderProgression();
-  syncCardSelectionStates();
+  setProgression(newProgression, { keepPreset: true });
 }
 
 function applyActivePresetIfAny(){
@@ -2815,6 +3231,114 @@ const OPEN_STRING_FREQS = [82.41, 110.00, 146.83, 196.00, 246.94, 329.63]; // lo
 function getChartToneCtx(){
   return window.__getSharedToneCtx();
 }
+
+// Scale preview -- plays a mode's raw ascending scale (tonic to octave), not
+// a chord. Deliberately a separate control on the mode-column header, not
+// tied to any chord card, specifically so it never fires from browsing or
+// swapping mods -- that's the whole reason it lives up here instead of
+// being attached to chord clicks.
+function playScalePreview(tonicIndex, modeName){
+  const modeData = MODES_TABLE[modeName];
+  const ctx = getChartToneCtx();
+  const toneType = window.__toneType || 'triangle';
+  const isInstrument = window.__toneEngine.isInstrument(toneType);
+  const NOTE_DURATION = 0.32;
+  const GAP = 0.04;
+
+  // Lands the tonic around octave 3 -- a comfortable, guitar-appropriate
+  // register, computed directly from equal temperament (A4 = 440Hz)
+  // rather than tied to any particular string.
+  function noteFreq(semitoneFromTonic){
+    const totalSemitoneFromA4 = (tonicIndex - 9) + semitoneFromTonic - 12;
+    return 440 * Math.pow(2, totalSemitoneFromA4 / 12);
+  }
+
+  const scaleSteps = [...modeData.intervals, 12]; // full ascending run, tonic to octave
+
+  function scheduleNotes(){
+    const now = ctx.currentTime;
+    scaleSteps.forEach((interval, i) => {
+      const freq = noteFreq(interval);
+      const startAt = now + i * (NOTE_DURATION + GAP);
+      if (isInstrument) {
+        window.__toneEngine.playNote(ctx, toneType, freq, startAt, 0.35, NOTE_DURATION);
+      } else {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = toneType;
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, startAt);
+        gain.gain.linearRampToValueAtTime(0.28, startAt + 0.02);
+        gain.gain.linearRampToValueAtTime(0.28, startAt + NOTE_DURATION - 0.08);
+        gain.gain.linearRampToValueAtTime(0, startAt + NOTE_DURATION);
+        osc.connect(gain); gain.connect(window.__getMasterBus(ctx));
+        osc.start(startAt); osc.stop(startAt + NOTE_DURATION + 0.05);
+      }
+    });
+  }
+
+  if (toneType === 'piano' || toneType === 'brightpiano') {
+    window.__toneEngine.ensurePianoLoaded(ctx).then(scheduleNotes);
+  } else {
+    scheduleNotes();
+  }
+}
+
+// Scale-box fretboard diagram: the standard guitarist approach of finding
+// where the tonic falls on the low E string and showing every scale tone
+// within a 5-fret window from there. Reuses the exact same interval-color
+// system as chord diagrams (getIntervalRole) so a scale's root/3rd/5th/etc.
+// read the same way here as they do everywhere else in the app.
+function computeScaleBox(tonicIndex, modeData){
+  const startFret = (tonicIndex - STRING_PITCH_CLASS[0] + 12) % 12;
+  const scaleSet = new Set(modeData.intervals.map(iv => (tonicIndex + iv) % 12));
+  const dots = [];
+  for (let stringIdx = 0; stringIdx < 6; stringIdx++) {
+    for (let fret = startFret; fret <= startFret + 4; fret++) {
+      const pitchClass = (STRING_PITCH_CLASS[stringIdx] + fret) % 12;
+      if (scaleSet.has(pitchClass)) {
+        dots.push({ stringIdx, fret, pitchClass });
+      }
+    }
+  }
+  return { startFret, dots };
+}
+
+function renderScaleBoxSVG(tonicIndex, modeData){
+  const { startFret, dots } = computeScaleBox(tonicIndex, modeData);
+  const numStrings = 6;
+  const numFretRows = 5;
+  const width = 220, topPad = 26, leftPad = 18, rightPad = 18, bottomPad = 14;
+  const gridWidth = width - leftPad - rightPad;
+  const rowHeight = 34;
+  const gridHeight = numFretRows * rowHeight;
+  const height = topPad + gridHeight + bottomPad;
+  const stringX = (i) => leftPad + (gridWidth / (numStrings - 1)) * i;
+  const fretY = (row) => topPad + row * rowHeight;
+
+  let svg = `<svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`;
+  for (let i = 0; i < numStrings; i++) {
+    svg += `<line x1="${stringX(i)}" y1="${topPad}" x2="${stringX(i)}" y2="${topPad + gridHeight}" stroke="var(--amber-dim)" stroke-width="1.5" />`;
+  }
+  for (let row = 0; row <= numFretRows; row++) {
+    const isNut = row === 0 && startFret === 0;
+    svg += `<line x1="${leftPad}" y1="${fretY(row)}" x2="${leftPad + gridWidth}" y2="${fretY(row)}" stroke="var(--amber-dim)" stroke-width="${isNut ? 3 : 1.5}" />`;
+  }
+  if (startFret > 0) {
+    svg += `<text x="${leftPad - 10}" y="${fretY(0) + rowHeight * 0.65}" font-size="12" font-weight="700" fill="var(--amber)" text-anchor="end" font-family="JetBrains Mono, monospace">${startFret}fr</text>`;
+  }
+  dots.forEach(d => {
+    const x = stringX(d.stringIdx);
+    const row = d.fret - startFret;
+    const y = fretY(row) + rowHeight / 2;
+    const role = getIntervalRole((d.pitchClass - tonicIndex + 12) % 12);
+    svg += `<circle cx="${x}" cy="${y}" r="8" fill="${role.color}"><title>${role.fullName}</title></circle>`;
+    svg += `<text x="${x}" y="${y + 3}" font-size="8" fill="#1a1408" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="700">${role.name}</text>`;
+  });
+  svg += '</svg>';
+  return svg;
+}
+
 function playChordShape(shape, cardEl, forceArpeggiate, durationOverrideSeconds){
   const ctx = getChartToneCtx();
   const toneType = window.__toneType || 'triangle';
@@ -2883,7 +3407,7 @@ function playChordShape(shape, cardEl, forceArpeggiate, durationOverrideSeconds)
     });
   }
 
-  if (toneType === 'piano') {
+  if (toneType === 'piano' || toneType === 'brightpiano') {
     window.__toneEngine.ensurePianoLoaded(ctx).then(scheduleNotes);
   } else {
     scheduleNotes();
@@ -2919,6 +3443,8 @@ function renderModePicker(){
     });
     modePicker.appendChild(pill);
   });
+  relativeMinorBtn.classList.toggle('active', activeModes.includes('Aeolian'));
+  relativeMajorBtn.classList.toggle('active', activeModes.includes('Ionian'));
 }
 
 // ---- progression tray -- persists via localStorage until explicitly cleared ----
@@ -2930,7 +3456,77 @@ try {
 } catch (e) { progression = []; }
 
 function saveProgression(){
-  try { localStorage.setItem(PROGRESSION_STORAGE_KEY, JSON.stringify(progression)); } catch (e) {}
+  try {
+    localStorage.setItem(PROGRESSION_STORAGE_KEY, JSON.stringify(progression));
+  } catch (e) {
+    console.error('Failed to save progression to localStorage -- changes will be lost on reload:', e);
+  }
+}
+
+// ---- named, saved progressions -- a small "song list" separate from the
+// single working progression above. Each entry is a full independent
+// snapshot: saving never touches the working tray, and loading one always
+// goes through setProgression so it's undo-able like any other change.
+const SAVED_PROGRESSIONS_KEY = 'ftr-saved-progressions-v1';
+function loadSavedProgressions(){
+  try {
+    const raw = localStorage.getItem(SAVED_PROGRESSIONS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.error('Failed to load saved progressions:', e);
+    return [];
+  }
+}
+function writeSavedProgressions(list){
+  try {
+    localStorage.setItem(SAVED_PROGRESSIONS_KEY, JSON.stringify(list));
+  } catch (e) {
+    console.error('Failed to save the progression list -- it may not persist across reloads:', e);
+  }
+}
+
+// ---- Centralized progression mutation -- every single change to the
+// progression array (add, remove, reorder, transpose, mod-swap, voicing
+// change, clear, preset-load) goes through this one function instead of
+// each of those ~14 call sites independently handling persistence,
+// re-rendering, and preset-tracking. This is what makes Undo possible
+// without bolting separate tracking onto every one of them -- and it's the
+// same reasoning as extracting createChartCard: one place to get right,
+// instead of many places that can quietly drift out of sync with each
+// other over time.
+let progressionUndoStack = [];
+const MAX_UNDO_STEPS = 20;
+
+function setProgression(newProgression, options){
+  options = options || {};
+  if (!options.skipHistory) {
+    progressionUndoStack.push(JSON.stringify(progression)); // snapshot from BEFORE this change
+    if (progressionUndoStack.length > MAX_UNDO_STEPS) progressionUndoStack.shift();
+  }
+  progression = newProgression;
+  if (!options.keepPreset) activePresetIndex = null; // any manual edit means this is no longer the untouched preset
+  saveProgression();
+  if (!options.skipRender) {
+    renderProgression();
+    syncCardSelectionStates();
+  }
+  updateUndoBtnState();
+}
+
+function undoProgression(){
+  if (progressionUndoStack.length === 0) return;
+  const prevSnapshot = progressionUndoStack.pop();
+  progression = JSON.parse(prevSnapshot);
+  saveProgression();
+  renderProgression();
+  syncCardSelectionStates();
+  updateUndoBtnState();
+}
+
+function updateUndoBtnState(){
+  if (typeof undoProgressionBtn !== 'undefined' && undoProgressionBtn) {
+    undoProgressionBtn.disabled = progressionUndoStack.length === 0;
+  }
 }
 
 // ---- persistent "in progression" highlight on chart cards, tracked by ROOT
@@ -2951,9 +3547,25 @@ function findLinkedEntry(rootIndex){
   return null;
 }
 
+// Exact (root AND suffix) match -- used for secondary dominants and
+// borrowed chords instead of the root-only match above. Those cards
+// frequently share a root with some completely unrelated chord already in
+// the progression (a secondary dominant's root is literally "a fifth above
+// an existing diatonic root", so overlap is common) -- root-only matching
+// made them show as already-added just from that coincidence, even when
+// that exact chord had never actually been added.
+function findExactEntry(rootIndex, suffix){
+  for (let i = progression.length - 1; i >= 0; i--) {
+    if (progression[i].rootIndex === rootIndex && progression[i].suffix === suffix) return progression[i];
+  }
+  return null;
+}
+
 function syncCardSelectionStates(){
   renderedChartCards.forEach(entry => {
-    const linked = findLinkedEntry(entry.rootIndex);
+    const linked = entry.exactMatch
+      ? findExactEntry(entry.rootIndex, entry.getCurrentSuffix())
+      : findLinkedEntry(entry.rootIndex);
     entry.card.classList.toggle('selected', !!linked);
     if (linked && entry.followLinkedSuffix) {
       entry.followLinkedSuffix(linked.suffix, linked.voicingIndex || 0);
@@ -2988,6 +3600,31 @@ function moveChip(idx, direction){
   return true;
 }
 
+// Classifies a chord's roman-numeral label for cadence detection.
+// Deliberately excludes secondary-dominant labels (anything with "/") --
+// "V7/vi" starting with "V" would otherwise false-positive as a plain
+// dominant resolving to the main tonic, which it isn't.
+function classifyLabel(label){
+  if (!label || label.includes('/')) return null;
+  const clean = label.replace(/\u00b0|\+/g, ''); // strip \u00b0 and + decorations
+  if (clean === 'I' || clean === 'i') return 'tonic';
+  if (clean === 'IV' || clean === 'iv') return 'subdominant';
+  if (clean === 'vi' || clean === 'VI') return 'submediant';
+  if (clean.startsWith('V') && !clean.startsWith('VI')) return 'dominant'; // V, V7 -- but not VI
+  return null;
+}
+function detectCadence(prog){
+  if (prog.length < 2) return null;
+  const prev = classifyLabel(prog[prog.length - 2].label);
+  const last = classifyLabel(prog[prog.length - 1].label);
+  if (prev === 'dominant' && last === 'tonic') return 'Perfect Authentic Cadence \u2014 strong, complete resolution';
+  if (prev === 'dominant' && last === 'submediant') return 'Deceptive Cadence \u2014 resolution redirected at the last moment';
+  if (prev === 'subdominant' && last === 'tonic') return 'Plagal Cadence \u2014 the classic \u201cAmen\u201d resolution';
+  if (last === 'dominant') return 'Half Cadence \u2014 ends open, wanting resolution';
+  return null;
+}
+
+let renderedChipElements = []; // parallel to progression -- chips are no longer direct children of progressionRow now that they're grouped into per-section rows, so anything needing "the chip at index i" uses this instead of DOM position
 function renderProgression(){
   if (activePresetIndex !== null && POPULAR_PROGRESSIONS[activePresetIndex]) {
     progressionStatus.style.display = '';
@@ -2996,11 +3633,44 @@ function renderProgression(){
     progressionStatus.style.display = 'none';
   }
 
+  if (progression.length > 0) {
+    progressionSummary.style.display = '';
+    progressionSummary.textContent = progression.map(e => e.label).join(' \u2013 ');
+  } else {
+    progressionSummary.style.display = 'none';
+  }
+
+  const cadence = detectCadence(progression);
+  if (cadence) {
+    progressionCadence.style.display = '';
+    progressionCadence.textContent = cadence;
+  } else {
+    progressionCadence.style.display = 'none';
+  }
+
   progressionRow.innerHTML = '';
   if (progression.length === 0) {
     progressionRow.appendChild(progressionEmpty);
     renderTimeline();
     return;
+  }
+  populateSectionNameOptions();
+  renderedChipElements = [];
+  let lastSection = undefined; // tracks section changes as we walk the list, to know when to start a new row
+  let currentRow = null;
+  function ensureRowFor(section){
+    if (section === lastSection && currentRow) return currentRow;
+    lastSection = section;
+    if (section) {
+      const header = document.createElement('div');
+      header.className = 'progression-section-header';
+      header.textContent = section;
+      progressionRow.appendChild(header);
+    }
+    currentRow = document.createElement('div');
+    currentRow.className = 'progression-row';
+    progressionRow.appendChild(currentRow);
+    return currentRow;
   }
   progression.forEach((entry, idx) => {
     // Same rationale as chart cards: this contains a nested <select> and
@@ -3027,18 +3697,14 @@ function renderProgression(){
         if (shape) playChordShape(shape, chip, progression[idx].arpeggiate, (progression[idx].beats || 4) * beatMs() / 1000);
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
-        activePresetIndex = null;
-        progression = progression.filter((_, i) => i !== idx);
-        saveProgression();
-        renderProgression();
-        syncCardSelectionStates();
+        setProgression(progression.filter((_, i) => i !== idx));
       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         e.preventDefault();
         const newIdx = idx + (e.key === 'ArrowLeft' ? -1 : 1);
         if (moveChip(idx, e.key === 'ArrowLeft' ? -1 : 1)) {
           // refocus the same chord at its new position so repeated arrow
           // presses keep moving it further, instead of losing focus
-          const movedChip = progressionRow.children[newIdx];
+          const movedChip = renderedChipElements[newIdx];
           if (movedChip) movedChip.focus();
         }
       }
@@ -3089,17 +3755,11 @@ function renderProgression(){
     });
     chipModSelect.addEventListener('click', (e) => e.stopPropagation());
     chipModSelect.addEventListener('change', () => {
-      activePresetIndex = null; // per-chord customization, same as any other manual chip edit
       const newSuffix = chipModSelect.value;
-      progression[idx] = {
-        ...progression[idx],
-        suffix: newSuffix,
-        chordName: NOTE_NAMES[entry.rootIndex] + newSuffix,
-        voicingIndex: 0
-      };
-      saveProgression();
-      renderProgression(); // chordName affects the chip label AND the timeline block text, so a full rebuild is the safe choice here
-      syncCardSelectionStates();
+      const updated = progression.map((e, i) => i === idx
+        ? { ...e, suffix: newSuffix, chordName: NOTE_NAMES[entry.rootIndex] + newSuffix, voicingIndex: 0 }
+        : e);
+      setProgression(updated);
     });
     chip.appendChild(chipModSelect);
 
@@ -3120,9 +3780,8 @@ function renderProgression(){
     });
     beatsSelect.addEventListener('click', (e) => e.stopPropagation());
     beatsSelect.addEventListener('change', () => {
-      activePresetIndex = null; // per-chord customization -- stop auto-reapplying the preset over it
-      progression[idx] = { ...progression[idx], beats: parseInt(beatsSelect.value, 10) };
-      saveProgression();
+      const updated = progression.map((e, i) => i === idx ? { ...e, beats: parseInt(beatsSelect.value, 10) } : e);
+      setProgression(updated, { skipRender: true });
       renderTimeline(); // only the timeline needs to reflect the new duration, no need to rebuild every chip
     });
     chip.appendChild(beatsSelect);
@@ -3135,10 +3794,9 @@ function renderProgression(){
     chipArpBtn.setAttribute('aria-pressed', entry.arpeggiate ? 'true' : 'false');
     chipArpBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      activePresetIndex = null; // per-chord customization -- stop auto-reapplying the preset over it
       const nowOn = !progression[idx].arpeggiate;
-      progression[idx] = { ...progression[idx], arpeggiate: nowOn };
-      saveProgression();
+      const updated = progression.map((en, i) => i === idx ? { ...en, arpeggiate: nowOn } : en);
+      setProgression(updated, { skipRender: true });
       chipArpBtn.classList.toggle('active', nowOn);
       chipArpBtn.setAttribute('aria-pressed', nowOn ? 'true' : 'false');
     });
@@ -3152,12 +3810,8 @@ function renderProgression(){
     duplicateEl.title = 'Duplicate this chord';
     duplicateEl.addEventListener('click', (e) => {
       e.stopPropagation();
-      activePresetIndex = null;
       const copy = { ...progression[idx] };
-      progression = [...progression.slice(0, idx + 1), copy, ...progression.slice(idx + 1)];
-      saveProgression();
-      renderProgression();
-      syncCardSelectionStates();
+      setProgression([...progression.slice(0, idx + 1), copy, ...progression.slice(idx + 1)]);
     });
     chip.appendChild(duplicateEl);
 
@@ -3168,15 +3822,12 @@ function renderProgression(){
     removeEl.setAttribute('aria-label', 'Remove ' + entry.chordName + ' from progression');
     removeEl.addEventListener('click', (e) => {
       e.stopPropagation(); // don't also trigger the chip's play-on-click
-      activePresetIndex = null;
-      progression = progression.filter((_, i) => i !== idx);
-      saveProgression();
-      renderProgression();
-      syncCardSelectionStates();
+      setProgression(progression.filter((_, i) => i !== idx));
     });
     chip.appendChild(removeEl);
 
-    progressionRow.appendChild(chip);
+    ensureRowFor(entry.section).appendChild(chip);
+    renderedChipElements[idx] = chip;
   });
   renderTimeline();
 }
@@ -3194,37 +3845,156 @@ function renderTimeline(){
 }
 
 
+let activeSectionName = ''; // '' = no section assigned; whatever chords are added while this is set get tagged with it
 function addToProgression(entry){
-  activePresetIndex = null; // manual edit -- this is now a custom progression, not tied to a preset anymore
-  progression = [...progression, { ...entry, beats: 4, arpeggiate: false }]; // default to a full 4-beat measure, strummed
-  saveProgression();
-  renderProgression();
-  syncCardSelectionStates();
+  setProgression([...progression, { ...entry, beats: 4, arpeggiate: false, section: activeSectionName || null }]);
 }
 
 progressionClearBtn.addEventListener('click', () => {
-  activePresetIndex = null;
-  progression = [];
-  saveProgression();
-  renderProgression();
-  syncCardSelectionStates();
+  setProgression([]);
+});
+
+undoProgressionBtn.addEventListener('click', () => {
+  undoProgression();
+});
+
+// ---- saved progressions ("song list") UI ----
+const savedProgressionsSelect = document.getElementById('savedProgressionsSelect');
+const saveProgressionAsBtn = document.getElementById('saveProgressionAsBtn');
+const loadSavedProgressionBtn = document.getElementById('loadSavedProgressionBtn');
+const deleteSavedProgressionBtn = document.getElementById('deleteSavedProgressionBtn');
+
+function populateSavedProgressionsSelect(selectId){
+  const saved = loadSavedProgressions();
+  savedProgressionsSelect.innerHTML = '<option value="">My Saved Progressions...</option>';
+  saved.forEach(entry => {
+    const opt = document.createElement('option');
+    opt.value = entry.id;
+    opt.textContent = entry.name + ' (' + entry.progression.length + ' chords)';
+    if (selectId !== undefined && entry.id === selectId) opt.selected = true;
+    savedProgressionsSelect.appendChild(opt);
+  });
+}
+populateSavedProgressionsSelect();
+
+saveProgressionAsBtn.addEventListener('click', () => {
+  if (progression.length === 0) {
+    window.alert('Your progression is empty -- add some chords first.');
+    return;
+  }
+  const name = window.prompt('Name this progression:', '');
+  if (!name) return; // cancelled, or left blank
+  const saved = loadSavedProgressions();
+  const newEntry = {
+    id: Date.now(),
+    name: name.trim(),
+    progression: JSON.parse(JSON.stringify(progression)), // deep copy -- this saved snapshot must never share references with the live working progression
+    savedAt: Date.now()
+  };
+  saved.push(newEntry);
+  writeSavedProgressions(saved);
+  populateSavedProgressionsSelect(newEntry.id);
+});
+
+loadSavedProgressionBtn.addEventListener('click', () => {
+  const id = savedProgressionsSelect.value;
+  if (!id) return;
+  const saved = loadSavedProgressions();
+  const entry = saved.find(e => String(e.id) === String(id));
+  if (!entry) return;
+  if (progression.length > 0) {
+    const ok = window.confirm('Loading "' + entry.name + '" will replace your current progression. Continue?');
+    if (!ok) return;
+  }
+  setProgression(JSON.parse(JSON.stringify(entry.progression))); // deep copy again -- editing the loaded working progression must never mutate the saved entry
+});
+
+deleteSavedProgressionBtn.addEventListener('click', () => {
+  const id = savedProgressionsSelect.value;
+  if (!id) return;
+  const saved = loadSavedProgressions();
+  const entry = saved.find(e => String(e.id) === String(id));
+  if (!entry) return;
+  const ok = window.confirm('Delete the saved progression "' + entry.name + '"? This cannot be undone.');
+  if (!ok) return;
+  writeSavedProgressions(saved.filter(e => String(e.id) !== String(id)));
+  populateSavedProgressionsSelect();
 });
 
 const transposeDownBtn = document.getElementById('transposeDownBtn');
 const transposeUpBtn = document.getElementById('transposeUpBtn');
 function transposeProgression(semitones){
   if (progression.length === 0) return;
-  activePresetIndex = null; // shifting every chord is a manual edit, same as any other
-  progression = progression.map(entry => {
+  const updated = progression.map(entry => {
     const newRootIndex = ((entry.rootIndex + semitones) % 12 + 12) % 12; // safe modulo, handles negative shifts
     return { ...entry, rootIndex: newRootIndex, chordName: NOTE_NAMES[newRootIndex] + entry.suffix };
   });
-  saveProgression();
-  renderProgression();
-  syncCardSelectionStates();
+  setProgression(updated);
+
+  // The Key dropdown represents "what key am I working in" -- after a
+  // transpose that's genuinely different, so it needs to follow along
+  // instead of silently showing the key you started in.
+  const currentKeyIndex = parseInt(chartKeySelect.value, 10);
+  const newKeyIndex = ((currentKeyIndex + semitones) % 12 + 12) % 12;
+  chartKeySelect.value = newKeyIndex;
+  renderChartGroups();
+  applyActivePresetIfAny();
 }
 transposeDownBtn.addEventListener('click', () => transposeProgression(-1));
 transposeUpBtn.addEventListener('click', () => transposeProgression(1));
+
+// ---- song structure: sections ----
+const sectionNameInput = document.getElementById('sectionNameInput');
+const sectionNameOptions = document.getElementById('sectionNameOptions');
+const duplicateSectionBtn = document.getElementById('duplicateSectionBtn');
+
+sectionNameInput.addEventListener('input', () => {
+  activeSectionName = sectionNameInput.value.trim();
+});
+
+const loopSectionSelect = document.getElementById('loopSectionSelect');
+function populateLoopSectionSelect(names){
+  const previousValue = loopSectionSelect.value;
+  loopSectionSelect.innerHTML = '<option value="">All</option>';
+  names.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    loopSectionSelect.appendChild(opt);
+  });
+  // keep the current selection if that section still exists, otherwise fall back to "All"
+  if (names.includes(previousValue)) loopSectionSelect.value = previousValue;
+}
+
+function populateSectionNameOptions(){
+  const names = [...new Set(progression.map(e => e.section).filter(Boolean))];
+  sectionNameOptions.innerHTML = '';
+  names.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    sectionNameOptions.appendChild(opt);
+  });
+  populateLoopSectionSelect(names);
+}
+populateSectionNameOptions();
+
+duplicateSectionBtn.addEventListener('click', () => {
+  if (!activeSectionName) {
+    window.alert('Type a section name first (or pick one that\u2019s already in your progression).');
+    return;
+  }
+  const matching = progression.filter(e => e.section === activeSectionName);
+  if (matching.length === 0) {
+    window.alert('No chords are tagged "' + activeSectionName + '" yet -- add some first.');
+    return;
+  }
+  // insert the duplicated block right after the LAST occurrence of this section
+  let lastIdx = -1;
+  progression.forEach((e, i) => { if (e.section === activeSectionName) lastIdx = i; });
+  const copies = matching.map(e => ({ ...e }));
+  const updated = [...progression.slice(0, lastIdx + 1), ...copies, ...progression.slice(lastIdx + 1)];
+  setProgression(updated);
+});
 
 // ---- Canvas-rendered chord diagram, for the exported image (Canvas can't
 // read CSS variables like the inline SVG diagrams do, so colors are literal
@@ -3456,6 +4226,12 @@ function stopPlayback(){
 
 function playProgressionThrough(){
   if (progression.length === 0) return;
+  const sectionFilter = loopSectionSelect.value;
+  const entriesToPlay = progression
+    .map((entry, i) => ({ entry, i }))
+    .filter(x => !sectionFilter || x.entry.section === sectionFilter);
+  if (entriesToPlay.length === 0) return; // selected section has no chords (shouldn't normally happen, but don't schedule an empty loop if it does)
+
   stopPlayback(); // cancel any prior run cleanly before starting a new one
   isPlaying = true;
   progressionPlayBtn.disabled = true;
@@ -3463,13 +4239,13 @@ function playProgressionThrough(){
 
   function runOnce(){
     let elapsed = 0;
-    progression.forEach((entry, i) => {
+    entriesToPlay.forEach(({ entry, i }) => {
       const durMs = (entry.beats || 4) * beatMs();
       const id = setTimeout(() => {
         currentPlayIndex = i;
         updateTimelineHighlight();
         const shape = lookupChordShape(entry.rootIndex, entry.suffix, entry.voicingIndex || 0);
-        if (shape) playChordShape(shape, progressionRow.children[i], entry.arpeggiate, durMs / 1000);
+        if (shape) playChordShape(shape, renderedChipElements[i], entry.arpeggiate, durMs / 1000);
       }, elapsed);
       activeTimeoutIds.push(id);
       elapsed += durMs;
@@ -3569,7 +4345,7 @@ function computeBorrowedChords(tonicIndex, currentModeName){
   return results;
 }
 
-function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degreeIdx, explanation, linkedTargetCard, isSpecial }){
+function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degreeIdx, explanation, linkedTargetCard, isSpecial, pivotModes }){
   // mutable per-card state -- the mod dropdown changes this, and
   // everything else on the card (name, diagram, sound, add-to-progression)
   // stays in sync with whatever it's currently set to
@@ -3577,6 +4353,16 @@ function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degre
   let currentShape = null;
   let cardArpeggiate = false; // per-card override -- ORs with the global toggle, so this only needs to force it ON
   let voicingIndex = 0; // which alternate voicing/inversion is currently shown; reset to 0 whenever the suffix changes
+
+  // Special cards (secondary dominants, borrowed chords) use exact
+  // root+suffix matching instead of the normal root-only matching --
+  // otherwise they'd show as "already added" just from sharing a root with
+  // some unrelated chord already in the progression (very common for
+  // secondary dominants specifically, since their root is literally "a
+  // fifth above an existing diatonic root").
+  function findMatch(){
+    return isSpecial ? findExactEntry(rootIndex, currentSuffix) : findLinkedEntry(rootIndex);
+  }
 
   // Deliberately NOT a real <button> for the card itself -- it contains
   // nested interactive children (the mod select, the add/arp buttons),
@@ -3627,7 +4413,7 @@ function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degre
   toggleBtn.type = 'button';
   toggleBtn.className = 'chart-card-add';
   function refreshToggleBtn(){
-    const linked = findLinkedEntry(rootIndex);
+    const linked = findMatch();
     toggleBtn.textContent = linked ? '\u2212' : '+';
     toggleBtn.setAttribute('aria-label', linked ? 'Remove from progression' : 'Add to progression');
     toggleBtn.setAttribute('aria-pressed', linked ? 'true' : 'false');
@@ -3635,19 +4421,15 @@ function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degre
   }
   toggleBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    const linked = findLinkedEntry(rootIndex);
+    const linked = findMatch();
     if (linked) {
       const linkedIdx = progression.indexOf(linked);
       if (linkedIdx === -1) return;
-      activePresetIndex = null;
-      progression = progression.filter((_, i) => i !== linkedIdx);
-      saveProgression();
-      renderProgression();
+      setProgression(progression.filter((_, i) => i !== linkedIdx));
     } else {
       const chordName = NOTE_NAMES[rootIndex] + currentSuffix;
       addToProgression({ chordName, label, modeName, rootIndex, suffix: currentSuffix, voicingIndex });
     }
-    syncCardSelectionStates();
   });
   card.appendChild(toggleBtn);
 
@@ -3663,6 +4445,14 @@ function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degre
     functionEl.className = 'chart-card-function chart-card-function-' + colorFamily;
     functionEl.textContent = degreeName;
     card.appendChild(functionEl);
+  }
+
+  if (pivotModes && pivotModes.length > 0) {
+    const pivotBadge = document.createElement('div');
+    pivotBadge.className = 'chart-card-pivot-badge';
+    pivotBadge.textContent = '\u21c4 Pivot';
+    pivotBadge.title = 'Also appears in: ' + pivotModes.join(', ');
+    card.appendChild(pivotBadge);
   }
 
   // "Explain this chord" -- a short, always-available bit of context on
@@ -3720,12 +4510,12 @@ function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degre
   voicingNextBtn.textContent = '\u25b6';
   voicingNextBtn.setAttribute('aria-label', 'Next voicing');
   function syncVoicingToLinkedEntry(){
-    const linked = findLinkedEntry(rootIndex);
+    const linked = findMatch();
     if (!linked) return;
     const linkedIdx = progression.indexOf(linked);
     if (linkedIdx === -1) return;
-    progression[linkedIdx] = { ...progression[linkedIdx], voicingIndex };
-    saveProgression();
+    const updated = progression.map((e, i) => i === linkedIdx ? { ...e, voicingIndex } : e);
+    setProgression(updated, { skipRender: true });
   }
   voicingPrevBtn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -3766,7 +4556,7 @@ function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degre
     } else {
       voicingRow.style.visibility = 'hidden'; // reserves the layout space so cards in the same row stay the same height, rather than jumping
     }
-    const isLinked = !!findLinkedEntry(rootIndex);
+    const isLinked = !!findMatch();
     card.classList.toggle('selected', isLinked);
     card.classList.toggle('selected-no-diagram', isLinked && !currentShape);
     card.classList.toggle('selected-special', isLinked && !!isSpecial);
@@ -3788,24 +4578,19 @@ function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degre
     rebuildModOptions(currentSuffix);
     refreshCard();
   }
-  renderedChartCards.push({ card, rootIndex, getCurrentSuffix: () => currentSuffix, followLinkedSuffix, resetToBaseSuffix, refreshToggleBtn });
+  renderedChartCards.push({ card, rootIndex, getCurrentSuffix: () => currentSuffix, followLinkedSuffix, resetToBaseSuffix, refreshToggleBtn, exactMatch: !!isSpecial });
   refreshCard();
 
   modSelect.addEventListener('change', () => {
     const newSuffix = modSelect.value;
-    const linked = findLinkedEntry(rootIndex);
+    const linked = findMatch();
     if (linked) {
       const linkedIdx = progression.indexOf(linked);
       if (linkedIdx !== -1) {
-        progression[linkedIdx] = {
-          ...progression[linkedIdx],
-          suffix: newSuffix,
-          chordName: NOTE_NAMES[rootIndex] + newSuffix,
-          voicingIndex: 0
-        };
-        activePresetIndex = null;
-        saveProgression();
-        renderProgression();
+        const updated = progression.map((e, i) => i === linkedIdx
+          ? { ...e, suffix: newSuffix, chordName: NOTE_NAMES[rootIndex] + newSuffix, voicingIndex: 0 }
+          : e);
+        setProgression(updated);
       }
     }
     currentSuffix = newSuffix;
@@ -3868,6 +4653,24 @@ function renderChartGroups(){
     return;
   }
 
+  // Pivot chords: which diatonic chords are shared between 2+ of the
+  // currently-active modes -- genuinely useful for modulation (a shared
+  // chord is a natural pivot point to move from one mode/key feel to
+  // another). Computed once up front as root+suffix -> [mode names],
+  // rather than as a border color (already at four of those) -- a small
+  // badge instead, see createChartCard.
+  const pivotMap = {};
+  activeModes.forEach(modeName => {
+    const modeData = MODES_TABLE[modeName];
+    modeData.intervals.forEach((interval, i) => {
+      const rootIndex = (tonicIndex + interval) % 12;
+      const suffix = QUALITY_TO_SUFFIX[modeData.qualities[i]];
+      const key = rootIndex + ':' + suffix;
+      if (!pivotMap[key]) pivotMap[key] = [];
+      if (!pivotMap[key].includes(modeName)) pivotMap[key].push(modeName);
+    });
+  });
+
   activeModes.forEach(modeName => {
     const modeData = MODES_TABLE[modeName];
 
@@ -3875,7 +4678,19 @@ function renderChartGroups(){
     group.className = 'chart-mode-group';
     const header = document.createElement('div');
     header.className = 'chart-group-header';
-    header.textContent = modeName;
+    const headerLabel = document.createElement('span');
+    headerLabel.textContent = modeName;
+    header.appendChild(headerLabel);
+    const scalePreviewBtn = document.createElement('button');
+    scalePreviewBtn.type = 'button';
+    scalePreviewBtn.className = 'chart-scale-preview-btn';
+    scalePreviewBtn.textContent = '\u25b6 Scale';
+    scalePreviewBtn.title = 'Play the ' + modeName + ' scale';
+    scalePreviewBtn.addEventListener('click', () => {
+      playScalePreview(tonicIndex, modeName);
+      showScaleDiagram(tonicIndex, modeName);
+    });
+    header.appendChild(scalePreviewBtn);
     group.appendChild(header);
 
     const row = document.createElement('div');
@@ -3888,7 +4703,9 @@ function renderChartGroups(){
       const quality = modeData.qualities[degreeIdx];
       const baseSuffix = QUALITY_TO_SUFFIX[quality];
       const label = modeData.labels[degreeIdx];
-      const card = createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degreeIdx });
+      const pivotKey = rootIndex + ':' + baseSuffix;
+      const pivotModes = (pivotMap[pivotKey] || []).filter(m => m !== modeName);
+      const card = createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degreeIdx, pivotModes });
       diatonicCardsByDegreeIdx[degreeIdx] = card;
       row.appendChild(card);
     });
@@ -3950,6 +4767,33 @@ const secondaryDominantsToggle = document.getElementById('secondaryDominantsTogg
 const borrowedChordsToggle = document.getElementById('borrowedChordsToggle');
 secondaryDominantsToggle.addEventListener('change', renderChartGroups);
 borrowedChordsToggle.addEventListener('change', renderChartGroups);
+
+// Relative major/minor: a major key and its relative minor share the exact
+// same key signature -- the minor tonic sits a minor third (3 semitones)
+// below the major tonic. Jumping shifts the key accordingly and makes sure
+// the corresponding mode (Aeolian or Ionian) is active, regardless of
+// whichever modes happen to be selected already.
+const relativeMinorBtn = document.getElementById('relativeMinorBtn');
+const relativeMajorBtn = document.getElementById('relativeMajorBtn');
+function jumpToRelativeKey(semitoneShift, modeToEnsure){
+  if (activeModes.includes(modeToEnsure)) {
+    // Already active (button is lit) -- toggle it back off, same as
+    // clicking its mode pill would. Deliberately doesn't reverse the key
+    // shift: other active modes or browsing since the jump may have real
+    // reasons to stay at the current key, so only the mode itself toggles.
+    activeModes = activeModes.filter(m => m !== modeToEnsure);
+  } else {
+    const currentKeyIndex = parseInt(chartKeySelect.value, 10);
+    const newKeyIndex = ((currentKeyIndex + semitoneShift) % 12 + 12) % 12;
+    chartKeySelect.value = newKeyIndex;
+    activeModes = [...activeModes, modeToEnsure];
+  }
+  renderModePicker();
+  renderChartGroups();
+  applyActivePresetIfAny();
+}
+relativeMinorBtn.addEventListener('click', () => jumpToRelativeKey(-3, 'Aeolian'));
+relativeMajorBtn.addEventListener('click', () => jumpToRelativeKey(3, 'Ionian'));
 
 chartKeySelect.addEventListener('change', () => {
   renderChartGroups();
@@ -4044,10 +4888,32 @@ shortcutsOverlay.addEventListener('click', (e) => {
   if (e.target === shortcutsOverlay) toggleShortcutsOverlay(false); // click on backdrop, not the panel itself
 });
 
+const scaleDiagramOverlay = document.getElementById('scaleDiagramOverlay');
+const scaleDiagramTitle = document.getElementById('scaleDiagramTitle');
+const scaleDiagramBody = document.getElementById('scaleDiagramBody');
+const scaleDiagramCloseBtn = document.getElementById('scaleDiagramCloseBtn');
+function showScaleDiagram(tonicIndex, modeName){
+  const modeData = MODES_TABLE[modeName];
+  scaleDiagramTitle.textContent = NOTE_NAMES[tonicIndex] + ' ' + modeName + ' Scale';
+  scaleDiagramBody.innerHTML = '<div class="scale-diagram-wrap">' + renderScaleBoxSVG(tonicIndex, modeData) + '</div>';
+  scaleDiagramOverlay.style.display = 'flex';
+}
+function closeScaleDiagram(){
+  scaleDiagramOverlay.style.display = 'none';
+}
+scaleDiagramCloseBtn.addEventListener('click', closeScaleDiagram);
+scaleDiagramOverlay.addEventListener('click', (e) => {
+  if (e.target === scaleDiagramOverlay) closeScaleDiagram();
+});
+
 document.addEventListener('keydown', (e) => {
   // help overlay: Escape always closes it first, regardless of anything else
   if (shortcutsOverlay.style.display !== 'none') {
     if (e.key === 'Escape') toggleShortcutsOverlay(false);
+    return;
+  }
+  if (scaleDiagramOverlay.style.display !== 'none') {
+    if (e.key === 'Escape') closeScaleDiagram();
     return;
   }
   if (e.key === '?') { toggleShortcutsOverlay(true); return; }
