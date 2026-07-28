@@ -253,6 +253,15 @@
     box-shadow:inset 0 2px 5px rgba(0,0,0,0.6), 0 0 0 2px var(--amber);
   }
   .chart-card.selected.selected-no-diagram.playing{ box-shadow:inset 0 2px 5px rgba(0,0,0,0.6), 0 0 0 2px var(--amber), 0 0 12px 2px rgba(232,149,46,0.6); }
+  .chart-card.selected.selected-special{
+    border-color:#c58fd8;
+    box-shadow:inset 0 2px 5px rgba(0,0,0,0.6), 0 0 0 2px #c58fd8;
+  }
+  .chart-card.selected.selected-special.playing{ box-shadow:inset 0 2px 5px rgba(0,0,0,0.6), 0 0 0 2px #c58fd8, 0 0 12px 2px rgba(232,149,46,0.6); }
+  .chart-card.selected.selected-special.selected-no-diagram{
+    border-color:var(--amber);
+    box-shadow:inset 0 2px 5px rgba(0,0,0,0.6), 0 0 0 2px var(--amber);
+  }
   .chart-card.resolution-target{
     border-color:#7fd8e8;
     box-shadow:inset 0 2px 5px rgba(0,0,0,0.6), 0 0 0 3px #7fd8e8, 0 0 16px 3px rgba(127,216,232,0.5);
@@ -2161,7 +2170,16 @@ function getIntervalRole(interval){
 function renderChordDiagramSVG(position, rootIndex){
   const { frets, fingers, baseFret, barres } = position;
   const numStrings = 6;
-  const relFrets = frets.map(f => (f > 0 ? f - baseFret + 1 : f));
+  // IMPORTANT: frets values are already relative to baseFret (f=1 means
+  // "the first row of the diagram, i.e. baseFret itself") -- verified
+  // empirically against real data, the same fact the playback pitch fix
+  // relies on. The display row is simply the raw value; no further
+  // transformation. The old "f - baseFret + 1" formula assumed f was an
+  // absolute fret number, which produces NEGATIVE rows (dots drawn off
+  // the top of the visible diagram, looking like an empty grid) for any
+  // voicing where baseFret > 1 -- invisible until voicing-cycling made it
+  // possible to reach those voicings at all.
+  const relFrets = frets;
   const maxRel = Math.max(4, ...relFrets.filter(f => f > 0));
   const numFretRows = maxRel;
 
@@ -2190,7 +2208,7 @@ function renderChordDiagramSVG(position, rootIndex){
   }
   // barres
   (barres || []).forEach(barreFret => {
-    const relBarre = barreFret - baseFret + 1;
+    const relBarre = barreFret; // barreFret is in the same relative units as frets -- no baseFret subtraction needed
     const stringsAtBarre = [];
     frets.forEach((f, i) => { if (f === barreFret) stringsAtBarre.push(i); });
     if (stringsAtBarre.length >= 2) {
@@ -2210,7 +2228,7 @@ function renderChordDiagramSVG(position, rootIndex){
       const strokeColor = role ? role.color : 'var(--live-white)';
       svg += `<circle cx="${x}" cy="${topPad - 13}" r="4.5" fill="none" stroke="${strokeColor}" stroke-width="1.5" />`;
     } else {
-      const row = f - baseFret + 1;
+      const row = f; // same fix as the pitch calculation -- f is already relative to baseFret
       const y = fretY(row - 1) + rowHeight / 2;
       const absoluteFret = baseFret + f - 1;
       const role = (rootIndex !== undefined) ? getIntervalRole((STRING_PITCH_CLASS[i] + absoluteFret - rootIndex + 1200) % 12) : null;
@@ -2938,7 +2956,7 @@ function syncCardSelectionStates(){
     const linked = findLinkedEntry(entry.rootIndex);
     entry.card.classList.toggle('selected', !!linked);
     if (linked && entry.followLinkedSuffix) {
-      entry.followLinkedSuffix(linked.suffix);
+      entry.followLinkedSuffix(linked.suffix, linked.voicingIndex || 0);
     } else if (!linked && entry.resetToBaseSuffix) {
       entry.resetToBaseSuffix();
     }
@@ -2995,7 +3013,7 @@ function renderProgression(){
     chip.setAttribute('tabindex', '0');
     chip.setAttribute('aria-label', entry.chordName + ', ' + entry.label + ', ' + entry.modeName + '. Press Enter to preview, Delete to remove.');
     chip.addEventListener('click', () => {
-      const shape = lookupChordShape(entry.rootIndex, entry.suffix);
+      const shape = lookupChordShape(entry.rootIndex, entry.suffix, entry.voicingIndex || 0);
       // Preview for exactly as long as this chord's own beat count represents
       // at the current tempo -- not a fixed length -- so clicking a chip
       // actually previews how it will sound in context, not a generic blip.
@@ -3005,7 +3023,7 @@ function renderProgression(){
       if (e.target !== chip) return; // let the nested select/button handle their own keys
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        const shape = lookupChordShape(entry.rootIndex, entry.suffix);
+        const shape = lookupChordShape(entry.rootIndex, entry.suffix, entry.voicingIndex || 0);
         if (shape) playChordShape(shape, chip, progression[idx].arpeggiate, (progression[idx].beats || 4) * beatMs() / 1000);
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
@@ -3076,7 +3094,8 @@ function renderProgression(){
       progression[idx] = {
         ...progression[idx],
         suffix: newSuffix,
-        chordName: NOTE_NAMES[entry.rootIndex] + newSuffix
+        chordName: NOTE_NAMES[entry.rootIndex] + newSuffix,
+        voicingIndex: 0
       };
       saveProgression();
       renderProgression(); // chordName affects the chip label AND the timeline block text, so a full rebuild is the safe choice here
@@ -3213,7 +3232,7 @@ transposeUpBtn.addEventListener('click', () => transposeProgression(1));
 function drawChordDiagramOnCanvas(ctx, originX, originY, shape){
   const { frets, fingers, baseFret, barres } = shape;
   const numStrings = 6;
-  const relFrets = frets.map(f => (f > 0 ? f - baseFret + 1 : f));
+  const relFrets = frets; // f is already relative to baseFret -- same fix as the SVG renderer and the pitch calculation
   const maxRel = Math.max(4, ...relFrets.filter(f => f > 0));
   const numFretRows = maxRel;
 
@@ -3248,7 +3267,7 @@ function drawChordDiagramOnCanvas(ctx, originX, originY, shape){
     ctx.fillText(baseFret + 'fr', originX + leftPad - 8, fretY(0) + rowHeight * 0.65);
   }
   (barres || []).forEach(barreFret => {
-    const relBarre = barreFret - baseFret + 1;
+    const relBarre = barreFret; // same fix -- already relative, no baseFret subtraction needed
     const stringsAt = [];
     frets.forEach((f, i) => { if (f === barreFret) stringsAt.push(i); });
     if (stringsAt.length >= 2) {
@@ -3275,7 +3294,7 @@ function drawChordDiagramOnCanvas(ctx, originX, originY, shape){
       ctx.arc(x, originY + topPad - 12, 4.5, 0, Math.PI * 2);
       ctx.stroke();
     } else {
-      const row = f - baseFret + 1;
+      const row = f; // same fix -- f is already the relative row
       const y = fretY(row - 1) + rowHeight / 2;
       ctx.fillStyle = AMBER;
       ctx.beginPath();
@@ -3344,7 +3363,7 @@ function generateProgressionCanvas(){
     ctx.font = '11px monospace';
     ctx.fillText(entry.label + ' \u00b7 ' + entry.modeName, cellX + 12, cellY + 48);
 
-    const shape = lookupChordShape(entry.rootIndex, entry.suffix);
+    const shape = lookupChordShape(entry.rootIndex, entry.suffix, entry.voicingIndex || 0);
     if (shape) drawChordDiagramOnCanvas(ctx, cellX + 12, cellY + 58, shape);
   });
 
@@ -3449,7 +3468,7 @@ function playProgressionThrough(){
       const id = setTimeout(() => {
         currentPlayIndex = i;
         updateTimelineHighlight();
-        const shape = lookupChordShape(entry.rootIndex, entry.suffix);
+        const shape = lookupChordShape(entry.rootIndex, entry.suffix, entry.voicingIndex || 0);
         if (shape) playChordShape(shape, progressionRow.children[i], entry.arpeggiate, durMs / 1000);
       }, elapsed);
       activeTimeoutIds.push(id);
@@ -3550,7 +3569,7 @@ function computeBorrowedChords(tonicIndex, currentModeName){
   return results;
 }
 
-function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degreeIdx, explanation, linkedTargetCard }){
+function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degreeIdx, explanation, linkedTargetCard, isSpecial }){
   // mutable per-card state -- the mod dropdown changes this, and
   // everything else on the card (name, diagram, sound, add-to-progression)
   // stays in sync with whatever it's currently set to
@@ -3626,7 +3645,7 @@ function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degre
       renderProgression();
     } else {
       const chordName = NOTE_NAMES[rootIndex] + currentSuffix;
-      addToProgression({ chordName, label, modeName, rootIndex, suffix: currentSuffix });
+      addToProgression({ chordName, label, modeName, rootIndex, suffix: currentSuffix, voicingIndex });
     }
     syncCardSelectionStates();
   });
@@ -3700,13 +3719,21 @@ function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degre
   voicingNextBtn.className = 'chart-card-voicing-nav';
   voicingNextBtn.textContent = '\u25b6';
   voicingNextBtn.setAttribute('aria-label', 'Next voicing');
+  function syncVoicingToLinkedEntry(){
+    const linked = findLinkedEntry(rootIndex);
+    if (!linked) return;
+    const linkedIdx = progression.indexOf(linked);
+    if (linkedIdx === -1) return;
+    progression[linkedIdx] = { ...progression[linkedIdx], voicingIndex };
+    saveProgression();
+  }
   voicingPrevBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    if (voicingIndex > 0) { voicingIndex--; refreshCard(); }
+    if (voicingIndex > 0) { voicingIndex--; refreshCard(); syncVoicingToLinkedEntry(); }
   });
   voicingNextBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    voicingIndex++; refreshCard();
+    voicingIndex++; refreshCard(); syncVoicingToLinkedEntry();
   });
   voicingRow.appendChild(voicingPrevBtn);
   voicingRow.appendChild(voicingLabel);
@@ -3742,13 +3769,16 @@ function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degre
     const isLinked = !!findLinkedEntry(rootIndex);
     card.classList.toggle('selected', isLinked);
     card.classList.toggle('selected-no-diagram', isLinked && !currentShape);
+    card.classList.toggle('selected-special', isLinked && !!isSpecial);
     refreshToggleBtn();
   }
-  function followLinkedSuffix(linkedSuffix){
-    if (linkedSuffix === currentSuffix) return;
+  function followLinkedSuffix(linkedSuffix, linkedVoicingIndex){
+    const suffixChanged = linkedSuffix !== currentSuffix;
+    const voicingChanged = (linkedVoicingIndex || 0) !== voicingIndex;
+    if (!suffixChanged && !voicingChanged) return;
     currentSuffix = linkedSuffix;
-    voicingIndex = 0; // a different chord variant has its own separate set of voicings, start from its first
-    rebuildModOptions(currentSuffix);
+    voicingIndex = suffixChanged ? 0 : (linkedVoicingIndex || 0); // a different chord variant starts from its first voicing; same suffix just follows the stored one
+    if (suffixChanged) rebuildModOptions(currentSuffix);
     refreshCard();
   }
   function resetToBaseSuffix(){
@@ -3770,7 +3800,8 @@ function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degre
         progression[linkedIdx] = {
           ...progression[linkedIdx],
           suffix: newSuffix,
-          chordName: NOTE_NAMES[rootIndex] + newSuffix
+          chordName: NOTE_NAMES[rootIndex] + newSuffix,
+          voicingIndex: 0
         };
         activePresetIndex = null;
         saveProgression();
@@ -3879,7 +3910,8 @@ function renderChartGroups(){
             rootIndex: sd.rootIndex, suffix: sd.suffix, label: sd.label,
             modeName: modeName + ' (sec. dom.)',
             explanation: SECONDARY_DOMINANT_EXPLANATION,
-            linkedTargetCard: diatonicCardsByDegreeIdx[sd.targetDegreeIdx]
+            linkedTargetCard: diatonicCardsByDegreeIdx[sd.targetDegreeIdx],
+            isSpecial: true
           });
           secRow.appendChild(card);
         });
@@ -3901,7 +3933,8 @@ function renderChartGroups(){
           const card = createChartCard({
             rootIndex: bc.rootIndex, suffix: bc.suffix, label: bc.label,
             modeName: bc.sourceModeName + ' (borrowed)',
-            explanation: BORROWED_CHORD_EXPLANATION
+            explanation: BORROWED_CHORD_EXPLANATION,
+            isSpecial: true
           });
           borrowRow.appendChild(card);
         });
