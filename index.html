@@ -149,7 +149,7 @@
     white-space:nowrap;
   }
 
-  #tuneMode, #chordMode, #chartMode{ width:100%; display:flex; flex-direction:column; align-items:center; gap:28px; }
+  #tuneMode, #chordMode, #chartMode, #leadMode{ width:100%; display:flex; flex-direction:column; align-items:center; gap:28px; }
 
   /* chord ID readout -- reuses the same recessed LCD material as the tuner's numbers */
   .chord-readout{
@@ -631,6 +631,99 @@
     max-width:70px;
     padding:0 2px;
   }
+  .grid-lead-chip{
+    display:flex;
+    align-items:center;
+    gap:4px;
+    background:linear-gradient(180deg, #8fd4e0, #5aa8b8);
+    border:1px solid rgba(0,0,0,0.4);
+    border-radius:5px;
+    padding:3px 6px;
+  }
+  .grid-lead-chip-select, .drum-chip-select{
+    width:12px; height:12px;
+    flex-shrink:0;
+    cursor:pointer;
+  }
+  .grid-lead-chip-open{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    color:#0a2530;
+    background:none;
+    border:none;
+    cursor:pointer;
+    padding:0;
+    flex:1 1 auto;
+    text-align:left;
+  }
+  .grid-lead-chip-open:active{ transform:scale(0.96); }
+  .grid-lead-chip-tone-select{
+    font-family:'JetBrains Mono', monospace;
+    font-size:8px;
+    color:#0a2530;
+    background:rgba(255,255,255,0.3);
+    border:1px solid rgba(0,0,0,0.3);
+    border-radius:3px;
+    max-width:80px;
+    padding:0 2px;
+  }
+  .grid-lead-chip-remove{
+    background:none;
+    border:none;
+    color:#0a2530;
+    font-size:12px;
+    line-height:1;
+    cursor:pointer;
+    padding:0 2px;
+    opacity:0.6;
+  }
+  .grid-lead-chip-mute, .grid-lead-chip-solo, .lead-chip-mute, .lead-chip-solo, .drum-chip-mute, .drum-chip-solo{
+    font-family:'JetBrains Mono', monospace;
+    font-size:9px;
+    font-weight:700;
+    width:15px; height:15px;
+    line-height:1;
+    cursor:pointer;
+    border-radius:3px;
+    border:1px solid rgba(0,0,0,0.4);
+    background:rgba(255,255,255,0.3);
+    color:#0a2530;
+    flex-shrink:0;
+  }
+  .grid-lead-chip-mute.active, .lead-chip-mute.active, .drum-chip-mute.active{ background:#888; color:#1a1a1a; }
+  .grid-lead-chip-solo.active, .lead-chip-solo.active, .drum-chip-solo.active{ background:var(--amber); color:#2a1c08; }
+  .grid-lead-chip-remove:hover{ opacity:1; }
+  .drum-chip{
+    display:flex;
+    align-items:center;
+    gap:4px;
+    background:linear-gradient(180deg, #e8a878, #c47a4a);
+    border:1px solid rgba(0,0,0,0.4);
+    border-radius:5px;
+    padding:3px 6px;
+  }
+  .drum-chip-open{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    color:#2a1608;
+    background:none;
+    border:none;
+    cursor:pointer;
+    padding:0;
+    flex:1 1 auto;
+    text-align:left;
+  }
+  .drum-chip-remove{
+    background:none;
+    border:none;
+    color:#2a1608;
+    font-size:12px;
+    line-height:1;
+    cursor:pointer;
+    padding:0 2px;
+    opacity:0.6;
+  }
+  .drum-chip-remove:hover{ opacity:1; }
   .progression-chip{
     flex:0 0 auto;
     display:flex;
@@ -641,6 +734,10 @@
     border-radius:6px;
     padding:8px 10px;
     box-shadow:inset 0 2px 4px rgba(0,0,0,0.5);
+  }
+  .progression-chip.now-playing{
+    border-color:#b347e8;
+    box-shadow:inset 0 2px 4px rgba(0,0,0,0.5), 0 0 12px rgba(179,71,232,0.7);
   }
   .progression-chip-name{
     font-family:'VT323', monospace;
@@ -662,6 +759,31 @@
     background:none;
     border:none;
   }
+  .progression-chip-mute, .progression-chip-solo{
+    font-family:'JetBrains Mono', monospace;
+    font-size:9px;
+    font-weight:700;
+    width:16px; height:16px;
+    line-height:1;
+    cursor:pointer;
+    border-radius:3px;
+    border:1px solid rgba(0,0,0,0.4);
+    background:var(--panel-mid);
+    color:var(--fg);
+    flex-shrink:0;
+  }
+  .progression-chip-mute.active{ background:#888; color:#1a1a1a; }
+  .progression-chip-solo.active{ background:var(--amber); color:#2a1c08; }
+  .volume-knob{
+    width:16px; height:16px;
+    flex-shrink:0;
+    cursor:grab;
+    touch-action:none;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .volume-knob:active{ cursor:grabbing; }
   .progression-chip-section-tag{
     font-size:11px;
     line-height:1;
@@ -763,6 +885,21 @@
     padding-top:4px;
   }
   .playback-transport{ display:flex; gap:6px; }
+  .lead-copy-toolbar{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-top:8px;
+    padding-top:8px;
+    border-top:1px solid var(--hairline);
+  }
+  .lead-copy-status{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    color:var(--fg);
+    opacity:0.6;
+    flex:1 1 auto;
+  }
   .mini-btn:disabled{ opacity:0.35; cursor:default; }
   .playback-settings{
     display:flex;
@@ -788,6 +925,27 @@
     border:1px solid rgba(0,0,0,0.5);
     border-radius:8px;
   }
+  .piano-keyboard-panel{
+    margin-top:14px;
+    padding:14px;
+    background:var(--meter-bg);
+    border:1px solid rgba(0,0,0,0.5);
+    border-radius:8px;
+  }
+  .piano-keyboard-label{
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    font-size:13px;
+    letter-spacing:0.04em;
+    color:var(--amber);
+    margin-bottom:8px;
+    text-align:center;
+  }
+  .piano-keyboard-diagram{
+    display:flex;
+    justify-content:center;
+    overflow-x:auto;
+  }
   .fretboard-panel-label{
     font-family:'Oswald', sans-serif;
     font-weight:600;
@@ -803,6 +961,154 @@
     overflow-x:auto;
   }
   .fretboard-tone-dot:hover{ opacity:0.75; }
+  .lead-fretboard-controls{
+    display:flex;
+    gap:8px;
+    margin-top:14px;
+  }
+  .lead-fretboard-outer{
+    position:relative;
+    width:100%;
+  }
+  .lead-fretboard-wrap{
+    display:flex;
+    align-items:center;
+    height:400px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    margin-top:8px;
+    padding:14px;
+    background:var(--meter-bg);
+    border:1px solid rgba(0,0,0,0.5);
+    border-radius:8px;
+  }
+  .lead-legend{
+    position:absolute;
+    top:16px;
+    right:8px;
+    background:rgba(20,16,10,0.92);
+    border:1px solid var(--amber-dim);
+    border-radius:6px;
+    padding:8px 10px;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:9px;
+    color:var(--fg);
+    z-index:2;
+  }
+  .lead-legend-row{ display:flex; align-items:center; gap:6px; }
+  .lead-legend-swatch{ width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .lead-grid-wrap{
+    display:flex;
+    gap:10px;
+    overflow-x:auto;
+    margin-top:14px;
+    padding:12px;
+    background:var(--meter-bg);
+    border:1px solid rgba(0,0,0,0.5);
+    border-radius:8px;
+  }
+  .drum-grid-wrap{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+    overflow-x:auto;
+    margin-top:14px;
+    padding:12px;
+    background:var(--meter-bg);
+    border:1px solid rgba(0,0,0,0.5);
+    border-radius:8px;
+  }
+  .drum-grid-row{
+    display:flex;
+    align-items:center;
+    gap:2px;
+  }
+  .drum-grid-row-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    color:var(--fg);
+    width:100px;
+    flex-shrink:0;
+    text-align:right;
+    padding-right:8px;
+  }
+  .drum-grid-cell{
+    width:20px; height:20px;
+    flex-shrink:0;
+    border:1px solid rgba(0,0,0,0.4);
+    border-radius:3px;
+    background:var(--panel-mid);
+    cursor:pointer;
+    padding:0;
+  }
+  .drum-grid-cell.beat-start{ border-left:2px solid var(--amber-dim); }
+  .drum-grid-cell.active{ background:linear-gradient(180deg, #d4a8e8, #b880d0); border-color:#8a5aa8; }
+  .drum-grid-cell.playing-col{ box-shadow:0 0 0 2px var(--amber) inset; }
+  .lead-list-wrap{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:14px;
+  }
+  .lead-list-item{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    background:linear-gradient(180deg, #8fd4e0, #5aa8b8);
+    color:#0a2530;
+    border:1px solid rgba(0,0,0,0.4);
+    border-radius:6px;
+    padding:5px 10px;
+    cursor:pointer;
+  }
+  .lead-list-item.active-editing{ box-shadow:0 0 0 2px var(--amber); }
+  .lead-list-item:active{ transform:scale(0.96); }
+  .lead-list-empty{ font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--fg); opacity:0.5; }
+  .lead-grid-beat-group{
+    display:flex;
+    gap:3px;
+    padding-right:10px;
+    border-right:1px solid var(--hairline);
+  }
+  .lead-grid-beat-group:last-child{ border-right:none; padding-right:0; }
+  .lead-grid-slot{
+    width:31px; height:31px;
+    flex-shrink:0;
+    border-radius:5px;
+    border:1px solid rgba(0,0,0,0.4);
+    background:var(--panel-mid);
+    color:var(--fg);
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    cursor:pointer;
+  }
+  .lead-grid-slot.selected{ border-color:var(--amber); box-shadow:0 0 6px rgba(232,149,46,0.5); }
+  .lead-grid-slot.filled{ background:linear-gradient(180deg, #d4a8e8, #b880d0); color:#2a1c08; font-weight:700; }
+  .lead-grid-slot.velocity-soft{ opacity:0.55; }
+  .lead-grid-slot.velocity-accent{ box-shadow:0 0 8px rgba(232,149,46,0.8); border-color:var(--amber); }
+  .lead-grid-slot.locked{ opacity:0.3; background:#222; cursor:pointer; }
+  .lead-grid-slot.in-range{ box-shadow:0 0 0 2px var(--amber) inset; }
+  .lead-grid-open-label{
+    display:flex;
+    align-items:center;
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    color:var(--amber-dim);
+    white-space:nowrap;
+    padding:0 6px;
+  }
+  .lead-transport{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:12px;
+    margin-top:14px;
+  }
   .playback-setting{
     display:flex;
     align-items:center;
@@ -867,6 +1173,38 @@
   }
 
   .hint{ font-size:11px; color:var(--fg); opacity:0.55; text-align:center; font-family:'JetBrains Mono', monospace; text-transform:uppercase; letter-spacing:0.06em; }
+  #leadMode .hint{ margin-bottom:14px; }
+  #leadMode .chart-controls{ margin-bottom:6px; }
+  .lead-arp-generator{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin-top:10px;
+    padding:12px;
+    background:var(--meter-bg);
+    border:1px solid rgba(0,0,0,0.5);
+    border-radius:8px;
+  }
+  .lead-arp-controls{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:14px;
+  }
+  .lead-arp-actions{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:8px;
+    margin-top:10px;
+    padding-top:10px;
+    border-top:1px solid var(--hairline);
+  }
+  .lead-arp-diagram{
+    display:flex;
+    justify-content:center;
+    padding:6px 0;
+  }
 
   .gauge-wrap{ width:100%; max-width:320px; display:flex; flex-direction:column; align-items:center; gap:22px; }
 
@@ -1174,6 +1512,8 @@
     <button class="mode-btn active" id="modeTuneBtn">Tune</button>
     <button class="mode-btn" id="modeChordBtn">Chord ID</button>
     <button class="mode-btn" id="modeChartBtn">Chart</button>
+    <button class="mode-btn" id="modeLeadBtn">Lead</button>
+    <button class="mode-btn" id="modeDrumsBtn">Drums</button>
   </div>
 
   <div class="tone-picker">
@@ -1363,6 +1703,11 @@
         <div class="progression-empty" id="progressionEmpty">tap + on any chord above to add it here</div>
       </div>
 
+      <div class="piano-keyboard-panel" id="chartPianoPanel">
+        <div class="piano-keyboard-label" id="chartPianoLabel">Click a chord above to preview its notes on piano</div>
+        <div class="piano-keyboard-diagram" id="chartPianoDiagram"></div>
+      </div>
+
       <div class="progression-timeline" id="progressionTimeline"></div>
 
       <div class="playback-controls">
@@ -1370,13 +1715,25 @@
           <button class="mini-btn" id="progressionPlayBtn">Play</button>
           <button class="mini-btn" id="progressionStopBtn" disabled>Stop</button>
           <button class="mini-btn" id="progressionCopyBtn">Copy</button>
+        </div>
+        <!-- Superseded by the Lead tab's grid+arp system -- kept as hidden,
+             inert elements rather than deleted, since updateFretboardPanel
+             and other logic (including inside progression playback) still
+             reference them; hiding is the low-risk way to remove this from
+             the UI without needing to audit every downstream call site. -->
+        <div style="display:none;">
           <button class="mini-btn" id="fretboardToggleBtn">Fretboard</button>
-          <label class="playback-setting checkbox" style="margin-left:4px;">
+          <label class="playback-setting checkbox">
             <input type="checkbox" id="melodyRecordToggle">
             <span>Record</span>
           </label>
           <button class="mini-btn" id="saveLeadBtn">Save Lead</button>
           <button class="mini-btn" id="clearLeadBtn">Clear Lead</button>
+        </div>
+        <div class="lead-copy-toolbar">
+          <span id="leadCopyStatus" class="lead-copy-status">Check a lead's box to select it, then duplicate or copy it to another chord</span>
+          <button type="button" class="mini-btn" id="leadDupRightBtn" disabled>Dup to Next Chord &#8594;</button>
+          <button type="button" class="mini-btn" id="leadCopyToBtn" disabled>Copy To...</button>
         </div>
         <div class="playback-settings">
           <div class="playback-group">
@@ -1384,6 +1741,17 @@
               <span>Tempo</span>
               <input type="number" id="tempoInput" min="40" max="220" step="5" value="90">
               <span class="playback-setting-unit">bpm</span>
+            </label>
+            <label class="playback-setting">
+              <span>Time Sig</span>
+              <select class="chart-select" id="timeSigSelect" style="max-width:80px;">
+                <option value="4">4/4</option>
+                <option value="3">3/4</option>
+                <option value="2">2/4</option>
+                <option value="5">5/4</option>
+                <option value="6">6/8</option>
+                <option value="7">7/8</option>
+              </select>
             </label>
             <label class="playback-setting checkbox">
               <input type="checkbox" id="metronomeToggle">
@@ -1424,6 +1792,128 @@
       </div>
     </div>
   </div>
+
+  <div id="leadMode" style="display:none;">
+    <div class="hint">pick a key and mode, click a grid slot then a fretboard note to place it, then save &middot; alt+click a filled slot to cycle velocity</div>
+    <div class="chart-controls">
+      <select class="chart-select" id="leadKeySelect"></select>
+      <select class="chart-select" id="leadModeSelect"></select>
+      <select class="chart-select" id="leadToneSelect"></select>
+    </div>
+    <div class="lead-arp-generator">
+      <div class="lead-arp-controls">
+        <label class="playback-setting">
+          <span>Pattern</span>
+          <select class="chart-select" id="arpPatternSelect"></select>
+        </label>
+        <label class="playback-setting">
+          <span>Active Chord</span>
+          <select class="chart-select" id="arpChordSelect">
+            <option value="">-- pick a chord from your progression --</option>
+          </select>
+        </label>
+        <label class="playback-setting">
+          <span>Inversion</span>
+          <select class="chart-select" id="arpInversionSelect"></select>
+        </label>
+        <label class="playback-setting">
+          <span>Octave Range</span>
+          <select class="chart-select" id="arpOctaveRangeSelect" style="max-width:60px;">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select>
+        </label>
+      </div>
+      <div class="lead-arp-actions">
+        <button type="button" class="mini-btn" id="arpPreviewBtn" title="Hear the selected notes played in the current pattern's order and timing">Preview Pattern</button>
+        <button type="button" class="mini-btn" id="arpGenerateBtn">Generate Into Grid</button>
+      </div>
+      <div class="lead-arp-diagram" id="arpChordDiagram"></div>
+    </div>
+    <div class="lead-fretboard-controls">
+      <button type="button" class="mini-btn" id="leadFretZoomOutBtn" title="Zoom out">&#8722;</button>
+      <button type="button" class="mini-btn" id="leadFretZoomInBtn" title="Zoom in">+</button>
+      <button type="button" class="mini-btn" id="leadFretPanLeftBtn" title="Pan left">&#9664;</button>
+      <button type="button" class="mini-btn" id="leadFretPanRightBtn" title="Pan right">&#9654;</button>
+      <button type="button" class="mini-btn" id="leadPentatonicBtn" title="Filter the fretboard to just the pentatonic notes for the current mode, plus the blues blue note">Pentatonic</button>
+      <button type="button" class="mini-btn" id="leadLegendToggleBtn" title="Show/hide the color legend">Legend</button>
+    </div>
+    <div class="lead-fretboard-outer">
+      <div class="lead-fretboard-wrap" id="leadFretboardWrap"></div>
+      <div class="lead-legend" id="leadLegend" style="display:none;"></div>
+    </div>
+    <div class="lead-grid-wrap" id="leadGridWrap"></div>
+    <div class="lead-list-wrap" id="leadListWrap"></div>
+    <div class="lead-transport">
+      <button type="button" class="mini-btn" id="leadPlayBtn">Play</button>
+      <button type="button" class="mini-btn" id="leadStopBtn" disabled>Stop</button>
+      <label class="playback-setting checkbox">
+        <input type="checkbox" id="leadLoopToggle">
+        <span>Loop</span>
+      </label>
+      <label class="playback-setting checkbox">
+        <input type="checkbox" id="leadMetronomeToggle">
+        <span>Metronome</span>
+      </label>
+      <label class="playback-setting">
+        <span>Tempo</span>
+        <input type="number" id="leadTempoInput" min="40" max="220" step="5" value="90">
+        <span class="playback-setting-unit">bpm</span>
+      </label>
+      <label class="playback-setting">
+        <span>Time Sig</span>
+        <select class="chart-select" id="leadTimeSigSelect" style="max-width:80px;">
+          <option value="4">4/4</option>
+          <option value="3">3/4</option>
+          <option value="2">2/4</option>
+          <option value="5">5/4</option>
+          <option value="6">6/8</option>
+          <option value="7">7/8</option>
+        </select>
+      </label>
+      <button type="button" class="mini-btn" id="leadUndoBtn" disabled>Undo</button>
+      <button type="button" class="mini-btn" id="leadRedoBtn" disabled>Redo</button>
+      <label class="playback-setting">
+        <span>Block</span>
+        <select class="chart-select" id="leadDupBlockSize" style="max-width:70px;">
+          <option value="4">4</option>
+          <option value="8">8</option>
+          <option value="16">16</option>
+        </select>
+      </label>
+      <button type="button" class="mini-btn" id="leadDupBtn">Duplicate</button>
+      <button type="button" class="mini-btn" id="leadClearGridBtn">Clear Grid</button>
+      <button type="button" class="mini-btn" id="leadSaveGridBtn">Save Lead</button>
+      <button type="button" class="mini-btn" id="leadSaveAsNewBtn" title="Attach this lead (same content) to a different chord, without touching whatever it's currently linked to">Save As New</button>
+      <button type="button" class="mini-btn" id="leadSaveStackedBtn" title="Add this lead as an extra layer on a chosen chord, keeping whatever leads are already there">Save as Stacked Lead</button>
+    </div>
+  </div>
+
+  <div id="drumsMode" style="display:none;">
+    <div class="hint">click cells to build a beat, pick a kit, then save to a chord</div>
+    <div class="chart-controls">
+      <select class="chart-select" id="drumKitSelect"></select>
+    </div>
+    <div class="lead-fretboard-controls">
+      <button type="button" class="mini-btn" id="drumPlayBtn">Play</button>
+      <button type="button" class="mini-btn" id="drumStopBtn" disabled>Stop</button>
+      <label class="playback-setting checkbox">
+        <input type="checkbox" id="drumLoopToggle">
+        <span>Loop</span>
+      </label>
+      <label class="playback-setting">
+        <span>Tempo</span>
+        <input type="number" id="drumTempoInput" min="40" max="220" step="5" value="90">
+        <span class="playback-setting-unit">bpm</span>
+      </label>
+    </div>
+    <div class="drum-grid-wrap" id="drumGridWrap"></div>
+    <div class="lead-arp-actions">
+      <button type="button" class="mini-btn" id="drumClearGridBtn">Clear Grid</button>
+      <button type="button" class="mini-btn" id="drumSaveBtn">Save Pattern to Chord</button>
+    </div>
+  </div>
 </main>
 
 <footer>
@@ -1460,6 +1950,16 @@
   </div>
 </div>
 
+<div id="leadTargetOverlay" class="shortcuts-overlay" style="display:none;">
+  <div class="shortcuts-panel" role="dialog" aria-modal="true" aria-labelledby="leadTargetTitle">
+    <div class="shortcuts-header">
+      <span id="leadTargetTitle">Send Lead To...</span>
+      <button type="button" id="leadTargetCloseBtn" aria-label="Close">&times;</button>
+    </div>
+    <div class="shortcuts-body" id="leadTargetBody"></div>
+  </div>
+</div>
+
 
 <script>
 (function(){
@@ -1468,6 +1968,8 @@
   toneTypeSelect.value = window.__toneType;
   toneTypeSelect.addEventListener('change', function(){
     window.__toneType = toneTypeSelect.value;
+    var leadToneSelectEl = document.getElementById('leadToneSelect');
+    if (leadToneSelectEl) leadToneSelectEl.value = toneTypeSelect.value;
     if(toneTypeSelect.value === 'piano' || toneTypeSelect.value === 'brightpiano'){
       window.__toneEngine.ensurePianoLoaded(window.__getSharedToneCtx());
     }
@@ -1513,6 +2015,19 @@
     hpf.frequency.value = 42;
     hpf.Q.value = 0.707; // standard Butterworth slope, no resonant peak at the cutoff
 
+    // Hard-mute control -- inserted here specifically so a "Stop" action
+    // can instantly silence every currently-sounding voice in one place.
+    // Clearing a setTimeout only prevents FUTURE notes from being
+    // scheduled; it can't retroactively cancel a Web Audio node's own
+    // already-baked-in .start()/.stop() times, which is why a chord or
+    // lead note could keep ringing for its full duration (up to a whole
+    // beat count) after Stop was pressed. Every voice already connects to
+    // hpf, so routing hpf through this gain node before the limiter means
+    // every existing playback function is silenced by this without any
+    // of them needing to change.
+    var muteGain = ctx.createGain();
+    muteGain.gain.value = 1;
+
     var limiter = ctx.createDynamicsCompressor();
     limiter.threshold.value = -8;
     limiter.knee.value = 6;
@@ -1520,10 +2035,30 @@
     limiter.attack.value = 0.003;
     limiter.release.value = 0.25;
 
-    hpf.connect(limiter);
+    hpf.connect(muteGain);
+    muteGain.connect(limiter);
     limiter.connect(ctx.destination);
     ctx.__masterBusInput = hpf; // everything connects to this node
+    ctx.__masterMuteGain = muteGain;
     return hpf;
+  };
+
+  // Instantly silences everything currently playing through the master
+  // bus, regardless of which function started it (chord, bass, top note,
+  // lead pattern, grid lead, drum pattern, metronome -- all of them route
+  // through the same chain). A fast ramp rather than an instant jump to
+  // avoid an audible click, restored shortly after so the NEXT playback
+  // isn't silently muted forever.
+  window.__hardStopAllAudio = function(ctx){
+    window.__getMasterBus(ctx); // ensures __masterMuteGain exists even if called before any voice has played yet
+    var g = ctx.__masterMuteGain;
+    if (!g) return;
+    var now = ctx.currentTime;
+    g.gain.cancelScheduledValues(now);
+    g.gain.setValueAtTime(g.gain.value, now); // hold whatever the current value actually is, in case a ramp was already mid-flight
+    g.gain.linearRampToValueAtTime(0, now + 0.02);
+    g.gain.setValueAtTime(0, now + 0.03);
+    g.gain.linearRampToValueAtTime(1, now + 0.06);
   };
 
   // ============================================================
@@ -2802,6 +3337,13 @@ function ordinal(n){
 // each fretted note actually is (root/3rd/5th/7th/extension), not just
 // where to put your fingers. Root stays the app's amber accent for
 // consistency with everywhere else; everything else gets its own hue.
+// Distinct from every interval-role color below (root=amber, 3rds=green,
+// 5ths=blue, 6/7ths=purple, 9/11ths=pink) -- deliberately NOT colored
+// blue despite the name, since the b5 interval it usually represents
+// already shares blue with the perfect 5th below, which would make it
+// blend in rather than stand out as "special, non-diatonic, optional."
+const BLUE_NOTE_COLOR = '#e85d5d';
+
 function getIntervalRole(interval){
   if (interval === 0) return { name: 'R', fullName: 'Root', color: 'var(--amber)' };
   if (interval === 3) return { name: 'm3', fullName: 'Minor 3rd', color: '#7fd88f' };
@@ -3209,6 +3751,10 @@ chordCaptureBtn.addEventListener('click', () => {
 // ---- mode toggle ----
 const modeChartBtn = document.getElementById('modeChartBtn');
 const chartModeEl = document.getElementById('chartMode');
+const modeLeadBtn = document.getElementById('modeLeadBtn');
+const leadModeEl = document.getElementById('leadMode');
+const modeDrumsBtn = document.getElementById('modeDrumsBtn');
+const drumsModeEl = document.getElementById('drumsMode');
 const chartKeySelect = document.getElementById('chartKeySelect');
 const modePicker = document.getElementById('modePicker');
 const chartGroups = document.getElementById('chartGroups');
@@ -3254,6 +3800,11 @@ function generateMidiBytes(prog, tempo){
   trackBytes.push(...writeVLQ(0), 0xFF, 0x03, ...writeVLQ(name.length), ...stringBytes(name));
 
   let lastSection = undefined;
+  // Respect Mute/Solo the same way playback does -- otherwise an export
+  // would include chords the person deliberately silenced, or exclude
+  // nothing when they soloed down to a specific section, silently
+  // disagreeing with what they actually hear.
+  const anyChordSoloed = prog.some(entry => entry.solo);
   prog.forEach(entry => {
     if (entry.section !== lastSection) {
       lastSection = entry.section;
@@ -3262,6 +3813,14 @@ function generateMidiBytes(prog, tempo){
       }
     }
     const durationTicks = (entry.beats || 4) * division;
+    const chordAudible = (!anyChordSoloed || entry.solo) && !entry.muted;
+    if (!chordAudible) {
+      // Still advance the timeline by this chord's duration -- muting a
+      // chord silences it, it doesn't delete it from the progression's
+      // timing, so the rest of the export shouldn't shift earlier.
+      trackBytes.push(...writeVLQ(durationTicks), 0xB0, 0x00, 0x00); // harmless no-op event, just carries the time delta forward
+      return;
+    }
     const shape = lookupEntryShape(entry);
     // Real voicing when we have one -- falls back to just the root note
     // alone if this exact chord has no diagram available, rather than
@@ -3300,8 +3859,8 @@ exportMidiBtn.addEventListener('click', () => {
   URL.revokeObjectURL(url);
 });
 
-const ALL_MODE_BTNS = [modeTuneBtn, modeChordBtn, modeChartBtn];
-const ALL_MODE_PANELS = [tuneModeEl, chordModeEl, chartModeEl];
+const ALL_MODE_BTNS = [modeTuneBtn, modeChordBtn, modeChartBtn, modeLeadBtn, modeDrumsBtn];
+const ALL_MODE_PANELS = [tuneModeEl, chordModeEl, chartModeEl, leadModeEl, drumsModeEl];
 
 // Tone/Arpeggiate picker only makes sense where something actually gets
 // played: Tune uses Tone (single reference notes) but never chords, so
@@ -3309,11 +3868,11 @@ const ALL_MODE_PANELS = [tuneModeEl, chordModeEl, chartModeEl];
 const tonePickerEl = document.querySelector('.tone-picker');
 const arpeggiateLabel = document.getElementById('strumPatternSelect').closest('label');
 function updatePickerVisibility(activePanel){
-  tonePickerEl.style.display = (activePanel === chordModeEl) ? 'none' : '';
+  tonePickerEl.style.display = (activePanel === chordModeEl || activePanel === leadModeEl || activePanel === drumsModeEl) ? 'none' : '';
   arpeggiateLabel.style.display = (activePanel === chartModeEl) ? '' : 'none';
 }
 
-let currentActiveMode = 'tune'; // 'tune' | 'chord' | 'chart' -- tracked for keyboard shortcuts
+let currentActiveMode = 'tune'; // 'tune' | 'chord' | 'chart' | 'lead' | 'drums' -- tracked for keyboard shortcuts
 
 function switchToMode(activeBtn, activePanel){
   ALL_MODE_BTNS.forEach(b => b.classList.toggle('active', b === activeBtn));
@@ -3321,7 +3880,7 @@ function switchToMode(activeBtn, activePanel){
   updatePickerVisibility(activePanel);
   stopChordCapture();
   if (window.__tunerStop) window.__tunerStop();
-  currentActiveMode = activePanel === tuneModeEl ? 'tune' : activePanel === chordModeEl ? 'chord' : 'chart';
+  currentActiveMode = activePanel === tuneModeEl ? 'tune' : activePanel === chordModeEl ? 'chord' : activePanel === chartModeEl ? 'chart' : activePanel === leadModeEl ? 'lead' : 'drums';
 }
 
 function showTuneMode(){
@@ -3335,11 +3894,23 @@ function showChordMode(){
 function showChartMode(){
   switchToMode(modeChartBtn, chartModeEl);
   ensureChordsDbLoaded().then(renderChartGroups).catch(() => {});
+  ensureDrumSamplesLoaded(getChartToneCtx()).catch(() => {}); // pre-warm here too -- a saved drum pattern can play during progression playback without ever opening the Drums tab this session
+}
+function showLeadMode(){
+  switchToMode(modeLeadBtn, leadModeEl);
+  renderLeadEditor();
+}
+function showDrumsMode(){
+  switchToMode(modeDrumsBtn, drumsModeEl);
+  renderDrumEditor();
+  ensureDrumSamplesLoaded(getChartToneCtx()).catch(() => {}); // pre-warm as soon as this tab opens
 }
 
 modeTuneBtn.addEventListener('click', showTuneMode);
 modeChordBtn.addEventListener('click', showChordMode);
 modeChartBtn.addEventListener('click', showChartMode);
+modeLeadBtn.addEventListener('click', showLeadMode);
+modeDrumsBtn.addEventListener('click', showDrumsMode);
 
 // ---- Chart mode: diatonic 7-chord tables for all 7 modes of the major scale ----
 // intervals: semitone offsets of each scale degree from the tonic
@@ -3499,7 +4070,7 @@ function resolvePresetIntoTray(presetIndex){
     return {
       chordName: NOTE_NAMES[rootIndex] + suffix,
       label, modeName, rootIndex, suffix,
-      beats: 4, strumPattern: 'block'
+      beats: beatsPerBar, strumPattern: 'block'
     };
   });
 
@@ -3567,20 +4138,22 @@ function topNoteFreq(pitchClass){
   const totalSemitoneFromA4 = (pitchClass - 9) + 12;
   return 440 * Math.pow(2, totalSemitoneFromA4 / 12);
 }
-function playBassTone(ctx, pitchClass, startAt, duration){
+function playBassTone(ctx, pitchClass, startAt, duration, volumeMultOverride){
   const freq = bassNoteFreq(pitchClass);
   const toneType = window.__toneType || 'triangle';
   const isInstrument = window.__toneEngine.isInstrument(toneType);
+  const volumeMult = volumeMultOverride !== undefined ? volumeMultOverride : 1.0;
   if (isInstrument) {
-    window.__toneEngine.playNote(ctx, toneType, freq, startAt, 0.4, duration);
+    window.__toneEngine.playNote(ctx, toneType, freq, startAt, 0.4 * volumeMult, duration);
   } else {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = toneType;
     osc.frequency.value = freq;
+    const peakGain = 0.32 * volumeMult;
     gain.gain.setValueAtTime(0, startAt);
-    gain.gain.linearRampToValueAtTime(0.32, startAt + 0.02);
-    gain.gain.linearRampToValueAtTime(0.32, startAt + duration - 0.08);
+    gain.gain.linearRampToValueAtTime(peakGain, startAt + 0.02);
+    gain.gain.linearRampToValueAtTime(peakGain, startAt + duration - 0.08);
     gain.gain.linearRampToValueAtTime(0, startAt + duration);
     osc.connect(gain); gain.connect(window.__getMasterBus(ctx));
     osc.start(startAt); osc.stop(startAt + duration + 0.05);
@@ -3589,20 +4162,22 @@ function playBassTone(ctx, pitchClass, startAt, duration){
 // Mirror of playBassTone for the top note -- slightly lower gain (0.28 vs
 // 0.32) since a high, bright note tends to read as louder than a low one
 // at the same amplitude, and it's meant to add sparkle, not dominate.
-function playTopNoteTone(ctx, pitchClass, startAt, duration){
+function playTopNoteTone(ctx, pitchClass, startAt, duration, volumeMultOverride){
   const freq = topNoteFreq(pitchClass);
   const toneType = window.__toneType || 'triangle';
   const isInstrument = window.__toneEngine.isInstrument(toneType);
+  const volumeMult = volumeMultOverride !== undefined ? volumeMultOverride : 1.0;
   if (isInstrument) {
-    window.__toneEngine.playNote(ctx, toneType, freq, startAt, 0.32, duration);
+    window.__toneEngine.playNote(ctx, toneType, freq, startAt, 0.32 * volumeMult, duration);
   } else {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = toneType;
     osc.frequency.value = freq;
+    const peakGain = 0.26 * volumeMult;
     gain.gain.setValueAtTime(0, startAt);
-    gain.gain.linearRampToValueAtTime(0.26, startAt + 0.02);
-    gain.gain.linearRampToValueAtTime(0.26, startAt + duration - 0.08);
+    gain.gain.linearRampToValueAtTime(peakGain, startAt + 0.02);
+    gain.gain.linearRampToValueAtTime(peakGain, startAt + duration - 0.08);
     gain.gain.linearRampToValueAtTime(0, startAt + duration);
     osc.connect(gain); gain.connect(window.__getMasterBus(ctx));
     osc.start(startAt); osc.stop(startAt + duration + 0.05);
@@ -3613,24 +4188,59 @@ function playTopNoteTone(ctx, pitchClass, startAt, duration){
 // recorded string+fret (same formula used everywhere else in the app),
 // not just a pitch class, since a melody is specific notes, not a general
 // register like bass/top note.
-function playMelodyNoteTone(ctx, melodyNote, startAt, duration){
+const VELOCITY_GAIN_MULTIPLIER = { soft: 0.55, normal: 1.0, accent: 1.35 };
+function playMelodyNoteTone(ctx, melodyNote, startAt, duration, toneTypeOverride, volumeMultOverride){
   const freq = OPEN_STRING_FREQS[melodyNote.stringIdx] * Math.pow(2, melodyNote.fret / 12);
-  const toneType = window.__toneType || 'triangle';
+  const toneType = toneTypeOverride || window.__toneType || 'triangle';
   const isInstrument = window.__toneEngine.isInstrument(toneType);
+  const velocityMult = VELOCITY_GAIN_MULTIPLIER[melodyNote.velocity] || 1.0;
+  const volumeMult = volumeMultOverride !== undefined ? volumeMultOverride : 1.0;
+  const combinedMult = velocityMult * volumeMult;
   if (isInstrument) {
-    window.__toneEngine.playNote(ctx, toneType, freq, startAt, 0.3, duration);
+    window.__toneEngine.playNote(ctx, toneType, freq, startAt, 0.3 * combinedMult, duration);
   } else {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = toneType;
     osc.frequency.value = freq;
+    const peakGain = 0.24 * combinedMult;
     gain.gain.setValueAtTime(0, startAt);
-    gain.gain.linearRampToValueAtTime(0.24, startAt + 0.02);
-    gain.gain.linearRampToValueAtTime(0.24, startAt + duration - 0.08);
+    gain.gain.linearRampToValueAtTime(peakGain, startAt + 0.02);
+    gain.gain.linearRampToValueAtTime(peakGain, startAt + duration - 0.08);
     gain.gain.linearRampToValueAtTime(0, startAt + duration);
     osc.connect(gain); gain.connect(window.__getMasterBus(ctx));
     osc.start(startAt); osc.stop(startAt + duration + 0.05);
   }
+}
+
+// Applies a custom hold-then-fade envelope on top of whatever
+// instrument/tone is currently active, WITHOUT modifying any of the 10
+// individually hand-tuned instrument envelope functions (each has its
+// own fixed, short release -- rewriting all of them to support a
+// variable fade fraction would be real surgery on carefully-tuned
+// sounds, and risky). Instead: every voice-building function connects
+// synchronously (no async/await in between) to whatever
+// window.__getMasterBus(ctx) currently returns, which is just a cached
+// node reference. So we temporarily swap that cached reference to a
+// sub-bus we create and control, call the normal note-playing function
+// (which connects to our sub-bus without knowing anything changed),
+// restore the real reference immediately after, then apply our own gain
+// automation on the sub-bus. holdFraction is the portion of the total
+// duration spent at full volume before the fade begins (e.g. 0.5 = hold
+// for the first half, fade over the second half).
+function playNoteWithCustomFade(ctx, melodyNote, startAt, duration, toneTypeOverride, holdFraction, volumeMultOverride){
+  const trueMasterBus = window.__getMasterBus(ctx); // ensures the real chain exists, returns the permanent node
+  const subBus = ctx.createGain();
+  subBus.gain.value = 1;
+  subBus.connect(trueMasterBus);
+  ctx.__masterBusInput = subBus; // temporary redirect -- safe only because the call below is fully synchronous
+  playMelodyNoteTone(ctx, melodyNote, startAt, duration, toneTypeOverride, volumeMultOverride);
+  ctx.__masterBusInput = trueMasterBus; // restored immediately, before any other voice could be affected
+
+  const holdUntil = startAt + duration * holdFraction;
+  subBus.gain.setValueAtTime(1, startAt);
+  subBus.gain.setValueAtTime(1, holdUntil);
+  subBus.gain.linearRampToValueAtTime(0, startAt + duration);
 }
 
 // Global preview Bass Notes toggle (near Tone/Arpeggiate) -- deliberately
@@ -3767,6 +4377,123 @@ function renderScaleBoxSVG(tonicIndex, modeData){
 // fixed a mistake in my own hand-typed test shape along the way, which is
 // exactly why this got checked against the real data instead of trusted
 // on sight.
+// Renders one specific chord voicing's actual notes as small, interactive
+// dots (one per string, keyed by string index since a voicing has at most
+// one note per string) -- different from the full-neck scale view, since
+// a real chord shape only occupies a handful of specific positions.
+// Positioning matches the verified convention from renderChordDiagramSVG
+// exactly (open strings as a ring above the nut, fretted notes centered
+// in their row via fretY(row-1) + rowHeight/2) -- reused rather than
+// re-derived, since that convention was already hand-verified against
+// real chords-db data earlier in this build.
+function renderArpChordSelectorSVG(shape, rootIndex, selectedSet){
+  const numStrings = 6;
+  const maxRel = Math.max(4, ...shape.frets.filter(f => f > 0));
+  const numFretRows = maxRel;
+  const width = 220, topPad = 26, leftPad = 18, rightPad = 18, bottomPad = 14;
+  const gridWidth = width - leftPad - rightPad;
+  const rowHeight = 34;
+  const gridHeight = numFretRows * rowHeight;
+  const height = topPad + gridHeight + bottomPad;
+  const stringX = (i) => leftPad + (gridWidth / (numStrings - 1)) * i;
+  const fretY = (row) => topPad + row * rowHeight;
+
+  let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`;
+  for (let i = 0; i < numStrings; i++) {
+    svg += `<line x1="${stringX(i)}" y1="${topPad}" x2="${stringX(i)}" y2="${topPad + gridHeight}" stroke="var(--amber-dim)" stroke-width="1.5" />`;
+  }
+  for (let row = 0; row <= numFretRows; row++) {
+    const isNut = row === 0 && shape.baseFret === 1;
+    svg += `<line x1="${leftPad}" y1="${fretY(row)}" x2="${leftPad + gridWidth}" y2="${fretY(row)}" stroke="var(--amber-dim)" stroke-width="${isNut ? 3 : 1.5}" />`;
+  }
+  if (shape.baseFret > 1) {
+    svg += `<text x="${leftPad - 10}" y="${fretY(0) + rowHeight * 0.65}" font-size="12" font-weight="700" fill="var(--amber)" text-anchor="end" font-family="JetBrains Mono, monospace">${shape.baseFret}fr</text>`;
+  }
+  shape.frets.forEach((f, i) => {
+    if (f === -1) return; // muted string, no note here to select
+    const x = stringX(i);
+    const absoluteFret = f > 0 ? shape.baseFret + f - 1 : 0;
+    const pitchClass = (STRING_PITCH_CLASS[i] + absoluteFret) % 12;
+    const role = getIntervalRole((pitchClass - rootIndex + 12) % 12);
+    const isSelected = selectedSet.has(i);
+    const y = f === 0 ? topPad - 13 : fretY(f - 1) + rowHeight / 2;
+    const r = f === 0 ? 8 : 9;
+    svg += `<circle cx="${x}" cy="${y}" r="${r}" fill="${isSelected ? role.color : '#2a2a2a'}" class="arp-note-dot" data-string="${i}" style="cursor:pointer;" stroke="${isSelected ? '#fff' : 'var(--amber-dim)'}" stroke-width="${isSelected ? 2 : 1}"><title>${role.fullName}</title></circle>`;
+    svg += `<text x="${x}" y="${y + 3.5}" font-size="9" fill="${isSelected ? 'rgba(0,0,0,0.55)' : 'var(--fg)'}" text-anchor="middle" font-family="JetBrains Mono, monospace" pointer-events="none">${NOTE_NAMES[pitchClass]}</text>`;
+  });
+  svg += '</svg>';
+  return svg;
+}
+
+// Renders a 2-octave piano keyboard, highlighting and labeling any key
+// whose pitch class is in pitchClasses. Reuses getIntervalRole for
+// coloring, same system already used for fretboard dots, so a chord
+// tone reads the same color whether you're looking at the neck or the
+// keyboard. Geometry (which white key positions have a black key
+// following them) verified numerically before writing this -- no black
+// key after E or B, matching a real keyboard.
+const PIANO_WHITE_KEY_PATTERN = [0, 2, 4, 5, 7, 9, 11]; // C D E F G A B pitch classes
+const PIANO_WHITE_KEY_NAMES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+const PIANO_BLACK_AFTER_WHITE = [true, true, false, true, true, true, false];
+const PIANO_BLACK_KEY_NAMES = { 0: 'C#', 2: 'D#', 5: 'F#', 7: 'G#', 9: 'A#' }; // keyed by the white key's pitch class it follows
+function renderPianoKeyboardSVG(pitchClasses, rootIndex){
+  const NUM_WHITE_KEYS = 14; // 2 octaves
+  const whiteKeyWidth = 30, whiteKeyHeight = 100;
+  const blackKeyWidth = 18, blackKeyHeight = 62;
+  const width = NUM_WHITE_KEYS * whiteKeyWidth;
+  const height = whiteKeyHeight;
+
+  let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`;
+
+  // White keys first (drawn under the black keys)
+  const whiteKeyInfo = [];
+  for (let i = 0; i < NUM_WHITE_KEYS; i++) {
+    const posInOctave = i % 7;
+    const pitchClass = PIANO_WHITE_KEY_PATTERN[posInOctave];
+    const name = PIANO_WHITE_KEY_NAMES[posInOctave];
+    const x = i * whiteKeyWidth;
+    const isHighlighted = pitchClasses.has(pitchClass);
+    const role = isHighlighted ? getIntervalRole((pitchClass - rootIndex + 12) % 12) : null;
+    whiteKeyInfo.push({ x, pitchClass, name, isHighlighted, role });
+    svg += `<rect x="${x}" y="0" width="${whiteKeyWidth}" height="${whiteKeyHeight}" fill="${isHighlighted ? role.color : '#f0ede4'}" stroke="#1a1a1a" stroke-width="1" />`;
+    if (isHighlighted) {
+      svg += `<text x="${x + whiteKeyWidth / 2}" y="${whiteKeyHeight - 10}" font-size="11" font-weight="700" fill="#1a1a1a" text-anchor="middle" font-family="JetBrains Mono, monospace" pointer-events="none">${name}</text>`;
+    }
+  }
+
+  // Black keys on top
+  for (let i = 0; i < NUM_WHITE_KEYS; i++) {
+    const posInOctave = i % 7;
+    if (!PIANO_BLACK_AFTER_WHITE[posInOctave] || i >= NUM_WHITE_KEYS - 1) continue;
+    const whitePitchClass = PIANO_WHITE_KEY_PATTERN[posInOctave];
+    const blackPitchClass = (whitePitchClass + 1) % 12;
+    const blackName = PIANO_BLACK_KEY_NAMES[whitePitchClass];
+    const blackX = (i + 1) * whiteKeyWidth - blackKeyWidth / 2;
+    const isHighlighted = pitchClasses.has(blackPitchClass);
+    const role = isHighlighted ? getIntervalRole((blackPitchClass - rootIndex + 12) % 12) : null;
+    svg += `<rect x="${blackX}" y="0" width="${blackKeyWidth}" height="${blackKeyHeight}" fill="${isHighlighted ? role.color : '#1a1a1a'}" stroke="#000" stroke-width="1" />`;
+    if (isHighlighted) {
+      svg += `<text x="${blackX + blackKeyWidth / 2}" y="${blackKeyHeight - 8}" font-size="9" font-weight="700" fill="#1a1a1a" text-anchor="middle" font-family="JetBrains Mono, monospace" pointer-events="none">${blackName}</text>`;
+    }
+  }
+
+  svg += '</svg>';
+  return svg;
+}
+
+// Updates the always-visible Chart-tab piano panel to reflect whichever
+// chord is currently active -- called from the same places
+// updateFretboardPanel already is (chip click/preview and progression
+// playback), so both stay in sync with zero new trigger logic needed.
+function updateChartPianoPanel(shape, chordName, rootIndex){
+  const chartPianoDiagram = document.getElementById('chartPianoDiagram');
+  const chartPianoLabel = document.getElementById('chartPianoLabel');
+  if (!shape) return;
+  const pitchClasses = getChordTonePitchClasses(shape);
+  chartPianoLabel.textContent = chordName ? chordName + ' on piano' : 'Piano';
+  chartPianoDiagram.innerHTML = renderPianoKeyboardSVG(pitchClasses, rootIndex);
+}
+
 function getChordTonePitchClasses(shape){
   const pitchClasses = new Set();
   shape.frets.forEach((f, i) => {
@@ -3789,11 +4516,14 @@ function computeChordToneMap(pitchClasses, startFret, endFret){
 // Horizontal layout (frets left-to-right, strings top-to-bottom) -- more
 // natural for a whole-neck view than the vertical card-diagram style,
 // which only ever needed to show a small 5-fret window.
-function renderChordToneMapSVG(pitchClasses, rootIndex, leadNotes){
-  const dots = computeChordToneMap(pitchClasses, 0, 12);
-  const numStrings = 6, numFrets = 12;
-  const leftPad = 30, rightPad = 14, topPad = 20, bottomPad = 20;
-  const colWidth = 34, rowHeight = 26;
+function renderChordToneMapSVG(pitchClasses, rootIndex, leadNotes, numFrets, scale, blueNotePitchClass){
+  numFrets = numFrets || 12;
+  scale = scale || 1;
+  const dots = computeChordToneMap(pitchClasses, 0, numFrets);
+  const numStrings = 6;
+  const leftPad = 30 * scale, rightPad = 14 * scale, topPad = 20 * scale, bottomPad = 20 * scale;
+  const colWidth = 32 * scale, rowHeight = 25 * scale; // ~5% smaller than the original 34/26 baseline
+  const dotRadius = 7 * scale;
   const gridWidth = numFrets * colWidth;
   const gridHeight = (numStrings - 1) * rowHeight;
   const width = leftPad + gridWidth + rightPad;
@@ -3801,26 +4531,28 @@ function renderChordToneMapSVG(pitchClasses, rootIndex, leadNotes){
   const stringY = (i) => topPad + (numStrings - 1 - i) * rowHeight; // low E at bottom, high E at top
   const fretX = (fret) => leftPad + fret * colWidth;
 
-  let svg = `<svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`;
+  let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">`;
   for (let i = 0; i < numStrings; i++) {
     svg += `<line x1="${leftPad}" y1="${stringY(i)}" x2="${leftPad + gridWidth}" y2="${stringY(i)}" stroke="var(--amber-dim)" stroke-width="1.5" />`;
   }
   for (let fret = 0; fret <= numFrets; fret++) {
     svg += `<line x1="${fretX(fret)}" y1="${topPad}" x2="${fretX(fret)}" y2="${topPad + gridHeight}" stroke="var(--amber-dim)" stroke-width="${fret === 0 ? 3 : 1}" />`;
   }
-  [3, 5, 7, 9].forEach(fret => {
-    svg += `<text x="${(fretX(fret - 1) + fretX(fret)) / 2}" y="${topPad - 6}" font-size="9" fill="var(--fg)" opacity="0.5" text-anchor="middle" font-family="JetBrains Mono, monospace">${fret}</text>`;
+  [3, 5, 7, 9, 12, 15, 17, 19, 21, 24].filter(fret => fret <= numFrets).forEach(fret => {
+    svg += `<text x="${(fretX(fret - 1) + fretX(fret)) / 2}" y="${topPad - 6}" font-size="${9 * scale}" fill="var(--fg)" opacity="0.5" text-anchor="middle" font-family="JetBrains Mono, monospace">${fret}</text>`;
   });
-  svg += `<text x="${(fretX(11) + fretX(12)) / 2}" y="${topPad - 6}" font-size="9" fill="var(--fg)" opacity="0.5" text-anchor="middle" font-family="JetBrains Mono, monospace">12</text>`;
   dots.forEach(d => {
-    const x = d.fret === 0 ? fretX(0) - 12 : (fretX(d.fret - 1) + fretX(d.fret)) / 2;
+    const x = d.fret === 0 ? fretX(0) - 12 * scale : (fretX(d.fret - 1) + fretX(d.fret)) / 2;
     const y = stringY(d.stringIdx);
-    const role = getIntervalRole((d.pitchClass - rootIndex + 12) % 12);
+    const isBlueNote = blueNotePitchClass !== null && blueNotePitchClass !== undefined && d.pitchClass === blueNotePitchClass;
+    const role = isBlueNote ? { name: 'BN', fullName: 'Blue Note' } : getIntervalRole((d.pitchClass - rootIndex + 12) % 12);
+    const dotColor = isBlueNote ? BLUE_NOTE_COLOR : role.color;
     const leadOrder = (leadNotes || []).findIndex(n => n.stringIdx === d.stringIdx && n.fret === d.fret);
     const isRecorded = leadOrder !== -1;
-    svg += `<circle cx="${x}" cy="${y}" r="7" fill="${role.color}" class="fretboard-tone-dot" data-string="${d.stringIdx}" data-fret="${d.fret}" style="cursor:pointer;" stroke="${isRecorded ? '#fff' : 'none'}" stroke-width="${isRecorded ? 2.5 : 0}"><title>${role.fullName}</title></circle>`;
+    svg += `<circle cx="${x}" cy="${y}" r="${dotRadius}" fill="${dotColor}" class="fretboard-tone-dot" data-string="${d.stringIdx}" data-fret="${d.fret}" style="cursor:pointer;" stroke="${isRecorded ? '#fff' : 'none'}" stroke-width="${isRecorded ? 2.5 : 0}"><title>${role.fullName}</title></circle>`;
+    svg += `<text x="${x}" y="${y + 3 * scale}" font-size="${7 * scale}" fill="rgba(0,0,0,0.55)" text-anchor="middle" font-family="JetBrains Mono, monospace" pointer-events="none">${NOTE_NAMES[d.pitchClass]}</text>`;
     if (isRecorded) {
-      svg += `<text x="${x}" y="${y - 11}" font-size="9" font-weight="700" fill="#fff" text-anchor="middle" font-family="JetBrains Mono, monospace">${leadOrder + 1}</text>`;
+      svg += `<text x="${x}" y="${y - 11 * scale}" font-size="${9 * scale}" font-weight="700" fill="#fff" text-anchor="middle" font-family="JetBrains Mono, monospace">${leadOrder + 1}</text>`;
     }
   });
   // Fallback pass: a lead note recorded against a DIFFERENT chord/voicing
@@ -3834,10 +4566,10 @@ function renderChordToneMapSVG(pitchClasses, rootIndex, leadNotes){
   (leadNotes || []).forEach((n, leadOrder) => {
     const alreadyDrawn = dots.some(d => d.stringIdx === n.stringIdx && d.fret === n.fret);
     if (alreadyDrawn) return;
-    const x = n.fret === 0 ? fretX(0) - 12 : (fretX(n.fret - 1) + fretX(n.fret)) / 2;
+    const x = n.fret === 0 ? fretX(0) - 12 * scale : (fretX(n.fret - 1) + fretX(n.fret)) / 2;
     const y = stringY(n.stringIdx);
-    svg += `<circle cx="${x}" cy="${y}" r="7" fill="#888" class="fretboard-tone-dot" data-string="${n.stringIdx}" data-fret="${n.fret}" style="cursor:pointer;" stroke="#fff" stroke-width="2.5"><title>Recorded note (not a tone of the current chord)</title></circle>`;
-    svg += `<text x="${x}" y="${y - 11}" font-size="9" font-weight="700" fill="#fff" text-anchor="middle" font-family="JetBrains Mono, monospace">${leadOrder + 1}</text>`;
+    svg += `<circle cx="${x}" cy="${y}" r="${dotRadius}" fill="#888" class="fretboard-tone-dot" data-string="${n.stringIdx}" data-fret="${n.fret}" style="cursor:pointer;" stroke="#fff" stroke-width="2.5"><title>Recorded note (not a tone of the current chord)</title></circle>`;
+    svg += `<text x="${x}" y="${y - 11 * scale}" font-size="${9 * scale}" font-weight="700" fill="#fff" text-anchor="middle" font-family="JetBrains Mono, monospace">${leadOrder + 1}</text>`;
   });
   svg += '</svg>';
   return svg;
@@ -3914,7 +4646,7 @@ function applyPatternToLeadNotes(leadPattern, patternType){
 // context and wouldn't carry over.
 const MAX_REALISTIC_GUITAR_FREQ = OPEN_STRING_FREQS[5] * Math.pow(2, 24 / 12);
 
-function playChordShape(shape, cardEl, pattern, durationOverrideSeconds, octaveDouble){
+function playChordShape(shape, cardEl, pattern, durationOverrideSeconds, octaveDouble, startTimeOverride, volumeMultOverride){
   const ctx = getChartToneCtx();
   const toneType = window.__toneType || 'triangle';
   const resolvedPattern = pattern || window.__strumPattern || 'block';
@@ -3945,14 +4677,20 @@ function playChordShape(shape, cardEl, pattern, durationOverrideSeconds, octaveD
 
   if (patternConfig.sortDir === 1) notes.sort((a, b) => a.freq - b.freq);
   else if (patternConfig.sortDir === -1) notes.sort((a, b) => b.freq - a.freq);
-  const noteGain = Math.min(0.26, 1.0 / notes.length); // computed from the real chord-tone count, BEFORE any reorder below might expand the sequence (Up-Down repeats existing pitches, it doesn't add new simultaneous voices)
+  const noteGain = Math.min(0.26, 1.0 / notes.length) * (volumeMultOverride !== undefined ? volumeMultOverride : 1.0); // computed from the real chord-tone count, BEFORE any reorder below might expand the sequence (Up-Down repeats existing pitches, it doesn't add new simultaneous voices)
   if (patternConfig.reorder) notes = patternConfig.reorder(notes);
   const dur = durationOverrideSeconds
     ? Math.max(0.3, durationOverrideSeconds) // tied to the chord's actual beat-slot when known (progression playback/preview); floored so a very short slot at a fast tempo still gets an audible attack/release
     : (isInstrument ? 1.8 : 1.4); // no beat context (chart-card browsing preview) -- fixed default as before
 
   function scheduleNotes(){
-    const now = ctx.currentTime;
+    // Uses the precomputed target time when the caller provides one
+    // (progression playback), instead of "whatever ctx.currentTime
+    // happens to be right now" -- otherwise a setTimeout firing even a
+    // few ms late (very common once DOM work like timeline highlighting
+    // runs earlier in the same callback) directly delays the audio too,
+    // and that delay compounds chord over chord.
+    const now = (startTimeOverride !== undefined && startTimeOverride !== null) ? startTimeOverride : ctx.currentTime;
     notes.forEach((note, idx) => {
       const freq = note.freq;
       const stagger = patternConfig.getStagger(idx, notes.length);
@@ -4053,6 +4791,7 @@ function renderModePicker(){
 // ---- progression tray -- persists via localStorage until explicitly cleared ----
 const PROGRESSION_STORAGE_KEY = 'ftr-progression-v1';
 let progression = [];
+let selectedLeadForCopy = null; // { type: 'lead'|'drum', entryIdx, layerId (leads only), chordName } | null -- which chip is checked for the Dup/Copy toolbar
 try {
   const saved = localStorage.getItem(PROGRESSION_STORAGE_KEY);
   if (saved) progression = JSON.parse(saved);
@@ -4389,6 +5128,18 @@ function detectCadence(prog){
 
 let renderedChipElements = []; // parallel to progression -- chips are no longer direct children of progressionRow now that they're grouped into per-section rows, so anything needing "the chip at index i" uses this instead of DOM position
 function renderProgression(){
+  // Selection can go stale if the selected chip's chord (or the lead/drum
+  // content itself) was removed by some other action -- validate and
+  // clear rather than leaving the toolbar pointing at something that no
+  // longer exists.
+  if (selectedLeadForCopy) {
+    const entry = progression[selectedLeadForCopy.entryIdx];
+    const stillExists = entry && (selectedLeadForCopy.type === 'drum'
+      ? !!entry.drumPattern
+      : getEntryLeadGrids(entry).some(g => g.id === selectedLeadForCopy.layerId));
+    if (!stillExists) selectedLeadForCopy = null;
+  }
+  updateLeadCopyToolbar();
   if (activePresetIndex !== null && POPULAR_PROGRESSIONS[activePresetIndex]) {
     progressionStatus.style.display = '';
     progressionStatus.textContent = '\u2713 Tracking "' + POPULAR_PROGRESSIONS[activePresetIndex].name + '" -- changes to key/mode auto-update it. Edit any chord to make it your own.';
@@ -4481,6 +5232,7 @@ function renderProgression(){
       maybePlayPreviewBassNote(shape, dur);
       maybePlayPreviewTopNote(shape, dur);
       updateFretboardPanel(shape, entry.chordName, entry.rootIndex, idx);
+      updateChartPianoPanel(shape, entry.chordName, entry.rootIndex);
     });
     chip.addEventListener('keydown', (e) => {
       if (e.target !== chip) return; // let the nested select/button handle their own keys
@@ -4492,6 +5244,7 @@ function renderProgression(){
         maybePlayPreviewBassNote(shape, dur);
         maybePlayPreviewTopNote(shape, dur);
         updateFretboardPanel(shape, entry.chordName, entry.rootIndex, idx);
+        updateChartPianoPanel(shape, entry.chordName, entry.rootIndex);
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
         setProgression(progression.filter((_, i) => i !== idx));
@@ -4629,6 +5382,36 @@ function renderProgression(){
     });
     chip.appendChild(sectionTagEl);
 
+    const muteEl = document.createElement('button');
+    muteEl.type = 'button';
+    muteEl.className = 'progression-chip-mute' + (entry.muted ? ' active' : '');
+    muteEl.textContent = 'M';
+    muteEl.title = 'Mute this chord';
+    muteEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const updated = progression.map((en, i) => i === idx ? { ...en, muted: !en.muted } : en);
+      setProgression(updated);
+    });
+    chip.appendChild(muteEl);
+
+    const soloEl = document.createElement('button');
+    soloEl.type = 'button';
+    soloEl.className = 'progression-chip-solo' + (entry.solo ? ' active' : '');
+    soloEl.textContent = 'S';
+    soloEl.title = 'Solo this chord';
+    soloEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const updated = progression.map((en, i) => i === idx ? { ...en, solo: !en.solo } : en);
+      setProgression(updated);
+    });
+    chip.appendChild(soloEl);
+
+    const volumeKnob = createVolumeKnob(entry.volume, (newVolume) => {
+      const updated = progression.map((en, i) => i === idx ? { ...en, volume: newVolume } : en);
+      setProgression(updated, { skipRender: true, skipHistory: true }); // avoid rebuilding the whole chip DOM mid-drag (which would kill the active drag), and avoid flooding undo with every intermediate drag-tick
+    });
+    chip.appendChild(volumeKnob);
+
     const removeEl = document.createElement('button');
     removeEl.type = 'button';
     removeEl.className = 'progression-chip-remove';
@@ -4680,8 +5463,216 @@ function renderProgression(){
       });
       leadChip.appendChild(leadPatternSelect);
 
+      const leadMuteBtn = document.createElement('button');
+      leadMuteBtn.type = 'button';
+      leadMuteBtn.className = 'lead-chip-mute' + (entry.leadPatternMuted ? ' active' : '');
+      leadMuteBtn.textContent = 'M';
+      leadMuteBtn.title = 'Mute this lead';
+      leadMuteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const updated = progression.map((en, i) => i === idx ? { ...en, leadPatternMuted: !en.leadPatternMuted } : en);
+        setProgression(updated);
+      });
+      leadChip.appendChild(leadMuteBtn);
+
+      const leadSoloBtn = document.createElement('button');
+      leadSoloBtn.type = 'button';
+      leadSoloBtn.className = 'lead-chip-solo' + (entry.leadPatternSolo ? ' active' : '');
+      leadSoloBtn.textContent = 'S';
+      leadSoloBtn.title = 'Solo this lead';
+      leadSoloBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const updated = progression.map((en, i) => i === idx ? { ...en, leadPatternSolo: !en.leadPatternSolo } : en);
+        setProgression(updated);
+      });
+      leadChip.appendChild(leadSoloBtn);
+
+      const leadVolumeKnob = createVolumeKnob(entry.leadPatternVolume, (newVolume) => {
+        const updated = progression.map((en, i) => i === idx ? { ...en, leadPatternVolume: newVolume } : en);
+        setProgression(updated, { skipRender: true, skipHistory: true });
+      });
+      leadChip.appendChild(leadVolumeKnob);
+
       chipStack.appendChild(leadChip);
     }
+    getEntryLeadGrids(entry).forEach((leadLayer, layerIdx) => {
+      const gridLeadChip = document.createElement('div');
+      gridLeadChip.className = 'grid-lead-chip';
+
+      const gridLeadSelectBox = document.createElement('input');
+      gridLeadSelectBox.type = 'checkbox';
+      gridLeadSelectBox.className = 'grid-lead-chip-select';
+      gridLeadSelectBox.title = 'Select this lead to duplicate or copy it to another chord';
+      gridLeadSelectBox.checked = !!(selectedLeadForCopy && selectedLeadForCopy.type === 'lead' && selectedLeadForCopy.entryIdx === idx && selectedLeadForCopy.layerId === leadLayer.id);
+      gridLeadSelectBox.addEventListener('click', (e) => e.stopPropagation());
+      gridLeadSelectBox.addEventListener('change', () => {
+        selectedLeadForCopy = gridLeadSelectBox.checked ? { type: 'lead', entryIdx: idx, layerId: leadLayer.id, chordName: entry.chordName } : null;
+        updateLeadCopyToolbar();
+        renderProgression(); // refresh so only this box stays checked (selection is exclusive, one chip at a time)
+      });
+      gridLeadChip.appendChild(gridLeadSelectBox);
+
+      const gridLeadOpenBtn = document.createElement('button');
+      gridLeadOpenBtn.type = 'button';
+      gridLeadOpenBtn.className = 'grid-lead-chip-open';
+      const gridNoteCount = leadLayer.slots.filter(Boolean).length;
+      const stackLabel = getEntryLeadGrids(entry).length > 1 ? ' #' + (layerIdx + 1) : '';
+      gridLeadOpenBtn.textContent = '\u25a6 Grid Lead' + stackLabel + ' (' + gridNoteCount + ')';
+      gridLeadOpenBtn.title = 'Click to open and edit this lead in the Lead tab';
+      gridLeadOpenBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        loadLeadGridFromEntry(idx, leadLayer.id);
+        showLeadMode();
+      });
+      gridLeadChip.appendChild(gridLeadOpenBtn);
+
+      const gridLeadToneSelect = document.createElement('select');
+      gridLeadToneSelect.className = 'grid-lead-chip-tone-select';
+      gridLeadToneSelect.title = 'This lead\u2019s own instrument, independent from the chord\u2019s and any other stacked leads';
+      Array.from(document.getElementById('toneTypeSelect').options).forEach(opt => {
+        const clone = document.createElement('option');
+        clone.value = opt.value;
+        clone.textContent = opt.textContent;
+        if ((leadLayer.toneType || 'piano') === opt.value) clone.selected = true;
+        gridLeadToneSelect.appendChild(clone);
+      });
+      gridLeadToneSelect.addEventListener('click', (e) => e.stopPropagation());
+      gridLeadToneSelect.addEventListener('change', () => {
+        const updated = progression.map((en, i) => {
+          if (i !== idx) return en;
+          const newGrids = getEntryLeadGrids(en).map(g => g.id === leadLayer.id ? { ...g, toneType: gridLeadToneSelect.value } : g);
+          return { ...en, leadGrids: newGrids, leadGrid: undefined };
+        });
+        setProgression(updated, { skipRender: true });
+      });
+      gridLeadChip.appendChild(gridLeadToneSelect);
+
+      const gridLeadMuteBtn = document.createElement('button');
+      gridLeadMuteBtn.type = 'button';
+      gridLeadMuteBtn.className = 'grid-lead-chip-mute' + (leadLayer.muted ? ' active' : '');
+      gridLeadMuteBtn.textContent = 'M';
+      gridLeadMuteBtn.title = 'Mute this lead';
+      gridLeadMuteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        updateLeadLayerField(idx, leadLayer.id, 'muted', !leadLayer.muted);
+      });
+      gridLeadChip.appendChild(gridLeadMuteBtn);
+
+      const gridLeadSoloBtn = document.createElement('button');
+      gridLeadSoloBtn.type = 'button';
+      gridLeadSoloBtn.className = 'grid-lead-chip-solo' + (leadLayer.solo ? ' active' : '');
+      gridLeadSoloBtn.textContent = 'S';
+      gridLeadSoloBtn.title = 'Solo this lead';
+      gridLeadSoloBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        updateLeadLayerField(idx, leadLayer.id, 'solo', !leadLayer.solo);
+      });
+      gridLeadChip.appendChild(gridLeadSoloBtn);
+
+      const gridLeadVolumeKnob = createVolumeKnob(leadLayer.volume, (newVolume) => {
+        const updated = progression.map((en, i) => {
+          if (i !== idx) return en;
+          const newGrids = getEntryLeadGrids(en).map(g => g.id === leadLayer.id ? { ...g, volume: newVolume } : g);
+          return { ...en, leadGrids: newGrids, leadGrid: undefined };
+        });
+        setProgression(updated, { skipRender: true, skipHistory: true });
+      });
+      gridLeadChip.appendChild(gridLeadVolumeKnob);
+
+      const gridLeadRemoveBtn = document.createElement('button');
+      gridLeadRemoveBtn.type = 'button';
+      gridLeadRemoveBtn.className = 'grid-lead-chip-remove';
+      gridLeadRemoveBtn.textContent = '\u00d7';
+      gridLeadRemoveBtn.title = 'Remove just this lead from the stack';
+      gridLeadRemoveBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const updated = progression.map((en, i) => {
+          if (i !== idx) return en;
+          const newGrids = getEntryLeadGrids(en).filter(g => g.id !== leadLayer.id);
+          return { ...en, leadGrids: newGrids, leadGrid: undefined };
+        });
+        setProgression(updated);
+      });
+      gridLeadChip.appendChild(gridLeadRemoveBtn);
+
+      chipStack.appendChild(gridLeadChip);
+    });
+
+    if (entry.drumPattern) {
+      const drumChip = document.createElement('div');
+      drumChip.className = 'drum-chip';
+
+      const drumSelectBox = document.createElement('input');
+      drumSelectBox.type = 'checkbox';
+      drumSelectBox.className = 'drum-chip-select';
+      drumSelectBox.title = 'Select this drum pattern to duplicate or copy it to another chord';
+      drumSelectBox.checked = !!(selectedLeadForCopy && selectedLeadForCopy.type === 'drum' && selectedLeadForCopy.entryIdx === idx);
+      drumSelectBox.addEventListener('click', (e) => e.stopPropagation());
+      drumSelectBox.addEventListener('change', () => {
+        selectedLeadForCopy = drumSelectBox.checked ? { type: 'drum', entryIdx: idx, chordName: entry.chordName } : null;
+        updateLeadCopyToolbar();
+        renderProgression();
+      });
+      drumChip.appendChild(drumSelectBox);
+
+      const drumOpenBtn = document.createElement('button');
+      drumOpenBtn.type = 'button';
+      drumOpenBtn.className = 'drum-chip-open';
+      const hitCount = entry.drumPattern.slots.reduce((sum, row) => sum + row.filter(Boolean).length, 0);
+      drumOpenBtn.textContent = '\u25a4 Drums: ' + DRUM_KIT_LABELS[entry.drumPattern.kit] + ' (' + hitCount + ')';
+      drumOpenBtn.title = 'Click to open and edit this pattern in the Drums tab';
+      drumOpenBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        loadDrumPatternFromEntry(idx);
+        showDrumsMode();
+      });
+      drumChip.appendChild(drumOpenBtn);
+
+      const drumMuteBtn = document.createElement('button');
+      drumMuteBtn.type = 'button';
+      drumMuteBtn.className = 'drum-chip-mute' + (entry.drumPattern.muted ? ' active' : '');
+      drumMuteBtn.textContent = 'M';
+      drumMuteBtn.title = 'Mute this drum pattern';
+      drumMuteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const updated = progression.map((en, i) => i === idx ? { ...en, drumPattern: { ...en.drumPattern, muted: !en.drumPattern.muted } } : en);
+        setProgression(updated);
+      });
+      drumChip.appendChild(drumMuteBtn);
+
+      const drumSoloBtn = document.createElement('button');
+      drumSoloBtn.type = 'button';
+      drumSoloBtn.className = 'drum-chip-solo' + (entry.drumPattern.solo ? ' active' : '');
+      drumSoloBtn.textContent = 'S';
+      drumSoloBtn.title = 'Solo this drum pattern';
+      drumSoloBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const updated = progression.map((en, i) => i === idx ? { ...en, drumPattern: { ...en.drumPattern, solo: !en.drumPattern.solo } } : en);
+        setProgression(updated);
+      });
+      drumChip.appendChild(drumSoloBtn);
+
+      const drumVolumeKnob = createVolumeKnob(entry.drumPattern.volume, (newVolume) => {
+        const updated = progression.map((en, i) => i === idx ? { ...en, drumPattern: { ...en.drumPattern, volume: newVolume } } : en);
+        setProgression(updated, { skipRender: true, skipHistory: true });
+      });
+      drumChip.appendChild(drumVolumeKnob);
+
+      const drumRemoveBtn = document.createElement('button');
+      drumRemoveBtn.type = 'button';
+      drumRemoveBtn.className = 'drum-chip-remove';
+      drumRemoveBtn.textContent = '\u00d7';
+      drumRemoveBtn.title = 'Remove this drum pattern';
+      drumRemoveBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const updated = progression.map((en, i) => i === idx ? { ...en, drumPattern: undefined } : en);
+        setProgression(updated);
+      });
+      drumChip.appendChild(drumRemoveBtn);
+
+      chipStack.appendChild(drumChip);
+    }
+
     ensureRowFor(entry.section, idx).appendChild(chipStack);
     renderedChipElements[idx] = chip;
   });
@@ -4703,7 +5694,7 @@ function renderTimeline(){
 
 let activeSectionName = ''; // '' = no section assigned; whatever chords are added while this is set get tagged with it
 function addToProgression(entry){
-  setProgression([...progression, { ...entry, beats: 4, strumPattern: entry.strumPattern || 'block', section: activeSectionName || null }]);
+  setProgression([...progression, { ...entry, beats: beatsPerBar, strumPattern: entry.strumPattern || 'block', section: activeSectionName || null }]);
 }
 
 const surpriseMeBtn = document.getElementById('surpriseMeBtn');
@@ -5130,12 +6121,17 @@ const progressionPlayBtn = document.getElementById('progressionPlayBtn');
 const progressionStopBtn = document.getElementById('progressionStopBtn');
 const progressionTimeline = document.getElementById('progressionTimeline');
 const tempoInput = document.getElementById('tempoInput');
+tempoInput.addEventListener('input', () => {
+  const leadTempoInputEl = document.getElementById('leadTempoInput');
+  if (leadTempoInputEl) leadTempoInputEl.value = tempoInput.value;
+  const drumTempoInputEl = document.getElementById('drumTempoInput');
+  if (drumTempoInputEl) drumTempoInputEl.value = tempoInput.value;
+});
 const metronomeToggle = document.getElementById('metronomeToggle');
 const loopToggle = document.getElementById('loopToggle');
 
 let isPlaying = false;
 let activeTimeoutIds = [];
-let metronomeIntervalId = null;
 let currentPlayIndex = -1;
 
 function beatMs(){
@@ -5146,6 +6142,9 @@ function beatMs(){
 function updateTimelineHighlight(){
   Array.from(progressionTimeline.children).forEach((block, i) => {
     block.classList.toggle('playing', i === currentPlayIndex);
+  });
+  renderedChipElements.forEach((chip, i) => {
+    if (chip) chip.classList.toggle('now-playing', i === currentPlayIndex);
   });
 }
 
@@ -5177,6 +6176,7 @@ clearLeadBtn.addEventListener('click', () => {
   setProgression(updated);
   const shape = lookupEntryShape(entry);
   if (shape) updateFretboardPanel(shape, entry.chordName, entry.rootIndex, fretboardActiveEntryIndex);
+  if (shape) updateChartPianoPanel(shape, entry.chordName, entry.rootIndex);
 });
 fretboardToggleBtn.addEventListener('click', () => {
   const show = fretboardPanel.style.display === 'none';
@@ -5236,11 +6236,463 @@ fretboardPanelDiagram.addEventListener('click', (e) => {
   setProgression(updated, { skipRender: true }); // don't rebuild the whole tray for this -- just re-render the fretboard panel itself
   const shape = lookupEntryShape(entry);
   if (shape) updateFretboardPanel(shape, entry.chordName, entry.rootIndex, fretboardActiveEntryIndex);
+  if (shape) updateChartPianoPanel(shape, entry.chordName, entry.rootIndex);
 });
 
-function playMetronomeTick(accented){
+// ---- Drum synthesis engine ----
+// Every sound here is pure Web Audio synthesis, consistent with how
+// every other tone in this app works (only Piano uses real samples).
+// Data-driven: DRUM_KIT_PARAMS holds per-kit, per-sound parameters, and
+// a small set of generic synthesis functions consume them -- adding a
+// new kit later means adding a parameter row, not new synthesis code.
+
+// ---- Real drum samples (CC0-licensed TR-808, tidalcycles/sounds-tr808-fischer) ----
+// Backs the "drummachine" kit specifically with real recordings of an
+// actual Roland TR-808 -- the other three kits (rock/hiphop/jazz) keep
+// using synthesis, since no equally appropriate free/CC0 real samples
+// exist for those styles from this same source. Follows the exact same
+// fetch -> arrayBuffer -> decodeAudioData -> cache pattern already used
+// for piano samples, so this isn't a new loading architecture, just the
+// same one applied to a second instrument.
+const DRUM_SAMPLE_FILES = {
+  kick: 'kick.wav', snare: 'snare.wav', closedHat: 'closedHat.wav', openHat: 'openHat.wav',
+  crash: 'crash.wav', tomHigh: 'tomHigh.wav', tomLow: 'tomLow.wav', clap: 'clap.wav',
+  rim: 'rim.wav', cowbell: 'cowbell.wav',
+};
+let drumSampleBuffers = {};
+let drumSampleLoadPromise = null;
+function ensureDrumSamplesLoaded(ctx){
+  if (drumSampleLoadPromise) return drumSampleLoadPromise;
+  drumSampleLoadPromise = Promise.all(Object.keys(DRUM_SAMPLE_FILES).map(sound => {
+    return fetch('./audio/drums/tr808/' + DRUM_SAMPLE_FILES[sound])
+      .then(r => r.arrayBuffer())
+      .then(buf => ctx.decodeAudioData(buf))
+      .then(audioBuffer => { drumSampleBuffers[sound] = audioBuffer; })
+      .catch(err => console.error('Failed to load drum sample', sound, err));
+  }));
+  return drumSampleLoadPromise;
+}
+function playRealDrumSample(ctx, soundName, startAt, gainMult){
+  const buffer = drumSampleBuffers[soundName];
+  if (!buffer) return false; // not loaded yet -- caller falls back to synthesis rather than staying silent
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  const gain = ctx.createGain();
+  gain.gain.value = 0.7 * gainMult; // real recordings are already at a sensible relative level; this just brings a single hit in line with the synthesized kits' overall loudness
+  src.connect(gain); gain.connect(window.__getMasterBus(ctx));
+  src.start(startAt);
+  return true;
+}
+
+let sharedNoiseBuffer = null;
+function getNoiseBuffer(ctx){
+  if (sharedNoiseBuffer && sharedNoiseBuffer.sampleRate === ctx.sampleRate) return sharedNoiseBuffer;
+  const bufferSize = ctx.sampleRate * 2; // 2 seconds of noise, long enough for the longest crash/open-hat decay, looped/trimmed via playback duration rather than regenerated per hit
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+  sharedNoiseBuffer = buffer;
+  return buffer;
+}
+
+const DRUM_SOUNDS = ['kick', 'snare', 'closedHat', 'openHat', 'crash', 'tomHigh', 'tomLow', 'clap', 'rim', 'cowbell'];
+const DRUM_SOUND_LABELS = {
+  kick: 'Kick', snare: 'Snare', closedHat: 'Closed Hi-Hat', openHat: 'Open Hi-Hat', crash: 'Crash/Ride',
+  tomHigh: 'Tom (High)', tomLow: 'Tom (Low)', clap: 'Clap', rim: 'Rimshot', cowbell: 'Cowbell',
+};
+const DRUM_KITS = ['rock', 'hiphop', 'jazz', 'drummachine'];
+const DRUM_KIT_LABELS = { rock: 'Rock', hiphop: 'Hip-Hop', jazz: 'Jazz', drummachine: 'Drum Machine' };
+
+const DRUM_KIT_PARAMS = {
+  rock: {
+    kick: { startFreq: 150, endFreq: 55, pitchDropTime: 0.08, ampDecay: 0.25 },
+    snare: { noiseDecay: 0.18, toneFreq: 180, toneDecay: 0.10, noiseFilterFreq: 2000, mix: 0.6 },
+    closedHat: { decay: 0.05, filterFreq: 7000 },
+    openHat: { decay: 0.30, filterFreq: 7000 },
+    crash: { decay: 1.2, filterFreq: 5000 },
+    tomHigh: { startFreq: 220, endFreq: 160, pitchDropTime: 0.05, ampDecay: 0.22 },
+    tomLow: { startFreq: 130, endFreq: 90, pitchDropTime: 0.06, ampDecay: 0.28 },
+    clap: { burstCount: 3, burstGap: 0.012, decay: 0.15, filterFreq: 1800 },
+    rim: { freq: 900, decay: 0.05 },
+    cowbell: { freqA: 800, freqB: 540, decay: 0.3 },
+  },
+  hiphop: {
+    kick: { startFreq: 120, endFreq: 40, pitchDropTime: 0.15, ampDecay: 0.45 },
+    snare: { noiseDecay: 0.22, toneFreq: 150, toneDecay: 0.12, noiseFilterFreq: 1500, mix: 0.55 },
+    closedHat: { decay: 0.04, filterFreq: 6000 },
+    openHat: { decay: 0.25, filterFreq: 6000 },
+    crash: { decay: 1.0, filterFreq: 4500 },
+    tomHigh: { startFreq: 200, endFreq: 140, pitchDropTime: 0.07, ampDecay: 0.3 },
+    tomLow: { startFreq: 110, endFreq: 70, pitchDropTime: 0.09, ampDecay: 0.38 },
+    clap: { burstCount: 4, burstGap: 0.014, decay: 0.2, filterFreq: 1500 },
+    rim: { freq: 800, decay: 0.06 },
+    cowbell: { freqA: 780, freqB: 520, decay: 0.35 },
+  },
+  jazz: {
+    kick: { startFreq: 130, endFreq: 60, pitchDropTime: 0.06, ampDecay: 0.20 },
+    snare: { noiseDecay: 0.15, toneFreq: 200, toneDecay: 0.08, noiseFilterFreq: 3000, mix: 0.75 }, // more noise-dominant -- reads as brushy rather than a sharp backbeat hit
+    closedHat: { decay: 0.06, filterFreq: 8000 },
+    openHat: { decay: 0.35, filterFreq: 8000 },
+    crash: { decay: 1.5, filterFreq: 6000 }, // longer wash, closer to a ride cymbal's sustain
+    tomHigh: { startFreq: 210, endFreq: 165, pitchDropTime: 0.04, ampDecay: 0.2 },
+    tomLow: { startFreq: 125, endFreq: 95, pitchDropTime: 0.05, ampDecay: 0.25 },
+    clap: { burstCount: 3, burstGap: 0.010, decay: 0.12, filterFreq: 2200 },
+    rim: { freq: 950, decay: 0.04 },
+    cowbell: { freqA: 820, freqB: 560, decay: 0.25 },
+  },
+  drummachine: {
+    kick: { startFreq: 100, endFreq: 45, pitchDropTime: 0.25, ampDecay: 0.6 }, // classic 808-style boom, long pitched tail
+    snare: { noiseDecay: 0.20, toneFreq: 180, toneDecay: 0.10, noiseFilterFreq: 1800, mix: 0.5 },
+    closedHat: { decay: 0.03, filterFreq: 9000 },
+    openHat: { decay: 0.20, filterFreq: 9000 },
+    crash: { decay: 0.8, filterFreq: 5500 },
+    tomHigh: { startFreq: 230, endFreq: 175, pitchDropTime: 0.08, ampDecay: 0.35 },
+    tomLow: { startFreq: 100, endFreq: 60, pitchDropTime: 0.12, ampDecay: 0.45 },
+    clap: { burstCount: 4, burstGap: 0.016, decay: 0.22, filterFreq: 1600 },
+    rim: { freq: 1000, decay: 0.04 },
+    cowbell: { freqA: 800, freqB: 540, decay: 0.4 }, // the "classic" 808 cowbell ratio, kept consistent across kits' pitch since it's such a recognizable sound
+  },
+};
+
+function synthKickOrTom(ctx, params, startAt, gainMult){
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(params.startFreq, startAt);
+  osc.frequency.exponentialRampToValueAtTime(Math.max(1, params.endFreq), startAt + params.pitchDropTime);
+  gain.gain.setValueAtTime(0.9 * gainMult, startAt);
+  gain.gain.exponentialRampToValueAtTime(0.001, startAt + params.ampDecay);
+  osc.connect(gain); gain.connect(window.__getMasterBus(ctx));
+  osc.start(startAt); osc.stop(startAt + params.ampDecay + 0.05);
+
+  // Short click transient layered on the attack -- a real kick/tom's
+  // beater strike, missing entirely from a bare sine tone. Without this,
+  // the sine's pitch-drop alone reads as a soft, indistinct "boop" rather
+  // than a percussive hit with real definition.
+  const clickDecay = 0.02;
+  const clickSrc = ctx.createBufferSource();
+  clickSrc.buffer = getNoiseBuffer(ctx);
+  const clickFilter = ctx.createBiquadFilter();
+  clickFilter.type = 'highpass';
+  clickFilter.frequency.value = 1000;
+  const clickGain = ctx.createGain();
+  clickGain.gain.setValueAtTime(0.25 * gainMult, startAt);
+  clickGain.gain.exponentialRampToValueAtTime(0.001, startAt + clickDecay);
+  clickSrc.connect(clickFilter); clickFilter.connect(clickGain); clickGain.connect(window.__getMasterBus(ctx));
+  clickSrc.start(startAt); clickSrc.stop(startAt + clickDecay + 0.02);
+}
+
+function synthNoiseHit(ctx, params, startAt, gainMult, decayOverride){
+  const src = ctx.createBufferSource();
+  src.buffer = getNoiseBuffer(ctx);
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'highpass';
+  filter.frequency.value = params.filterFreq;
+  const gain = ctx.createGain();
+  const decay = decayOverride !== undefined ? decayOverride : params.decay;
+  gain.gain.setValueAtTime(0.5 * gainMult, startAt);
+  gain.gain.exponentialRampToValueAtTime(0.001, startAt + decay);
+  src.connect(filter); filter.connect(gain); gain.connect(window.__getMasterBus(ctx));
+  src.start(startAt); src.stop(startAt + decay + 0.05);
+}
+
+// Hi-hats and crash use this, not synthNoiseHit -- plain filtered white
+// noise reads as generic hiss, not a recognizable cymbal. This uses the
+// standard technique real 808/909-style hi-hats are built from: several
+// square-wave oscillators at inharmonic frequency ratios (not integer
+// multiples -- that's what gives a bell/cymbal its characteristic
+// clangy, non-musical-pitch quality) summed together, then high-pass
+// filtered to keep only the metallic upper content.
+const METALLIC_RATIOS = [1, 1.342, 1.732, 2.253, 2.855, 3.414];
+function synthMetallicHit(ctx, params, startAt, gainMult){
+  const sumGain = ctx.createGain(); // sums all the oscillators before filtering, so the filter shapes the combined metallic content as one voice
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'highpass';
+  filter.frequency.value = params.filterFreq;
+  const outGain = ctx.createGain();
+  outGain.gain.setValueAtTime(0.4 * gainMult, startAt);
+  outGain.gain.exponentialRampToValueAtTime(0.001, startAt + params.decay);
+  sumGain.connect(filter); filter.connect(outGain); outGain.connect(window.__getMasterBus(ctx));
+  const baseFreq = 220; // fixed base -- the inharmonic ratios, not the absolute pitch, are what create the metallic character; filterFreq (which varies by kit) does the actual brightness shaping
+  METALLIC_RATIOS.forEach(ratio => {
+    const osc = ctx.createOscillator();
+    osc.type = 'square';
+    osc.frequency.value = baseFreq * ratio;
+    osc.connect(sumGain);
+    osc.start(startAt); osc.stop(startAt + params.decay + 0.05);
+  });
+}
+
+function synthSnare(ctx, params, startAt, gainMult){
+  // Noise component (the "snap")
+  const src = ctx.createBufferSource();
+  src.buffer = getNoiseBuffer(ctx);
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'highpass';
+  filter.frequency.value = params.noiseFilterFreq;
+  const noiseGain = ctx.createGain();
+  noiseGain.gain.setValueAtTime(0.6 * params.mix * gainMult, startAt);
+  noiseGain.gain.exponentialRampToValueAtTime(0.001, startAt + params.noiseDecay);
+  src.connect(filter); filter.connect(noiseGain); noiseGain.connect(window.__getMasterBus(ctx));
+  src.start(startAt); src.stop(startAt + params.noiseDecay + 0.05);
+  // Tone component (the "body")
+  const osc = ctx.createOscillator();
+  osc.type = 'triangle';
+  osc.frequency.value = params.toneFreq;
+  const toneGain = ctx.createGain();
+  toneGain.gain.setValueAtTime(0.5 * (1 - params.mix) * gainMult, startAt);
+  toneGain.gain.exponentialRampToValueAtTime(0.001, startAt + params.toneDecay);
+  osc.connect(toneGain); toneGain.connect(window.__getMasterBus(ctx));
+  osc.start(startAt); osc.stop(startAt + params.toneDecay + 0.05);
+}
+
+function synthClap(ctx, params, startAt, gainMult){
+  // Several quick, slightly-staggered noise bursts -- the classic clap
+  // synthesis technique, distinguishing it from a single snare-like hit.
+  for (let b = 0; b < params.burstCount; b++) {
+    synthNoiseHit(ctx, params, startAt + b * params.burstGap, gainMult * (b === params.burstCount - 1 ? 1 : 0.7), params.decay);
+  }
+}
+
+function synthRim(ctx, params, startAt, gainMult){
+  const osc = ctx.createOscillator();
+  osc.type = 'square';
+  osc.frequency.value = params.freq;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.35 * gainMult, startAt);
+  gain.gain.exponentialRampToValueAtTime(0.001, startAt + params.decay);
+  osc.connect(gain); gain.connect(window.__getMasterBus(ctx));
+  osc.start(startAt); osc.stop(startAt + params.decay + 0.02);
+}
+
+function synthCowbell(ctx, params, startAt, gainMult){
+  // Two square oscillators at a fixed ratio -- the standard, recognizable
+  // cowbell synthesis technique (popularized by the 808).
+  [params.freqA, params.freqB].forEach(freq => {
+    const osc = ctx.createOscillator();
+    osc.type = 'square';
+    osc.frequency.value = freq;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.25 * gainMult, startAt);
+    gain.gain.exponentialRampToValueAtTime(0.001, startAt + params.decay);
+    osc.connect(gain); gain.connect(window.__getMasterBus(ctx));
+    osc.start(startAt); osc.stop(startAt + params.decay + 0.02);
+  });
+}
+
+// Single entry point -- given a kit name, a sound name, and a start time,
+// plays that hit. gainMult supports velocity/accent later without
+// changing this function's shape.
+function playDrumSound(ctx, kitName, soundName, startAt, gainMult){
+  const kit = DRUM_KIT_PARAMS[kitName] || DRUM_KIT_PARAMS.rock;
+  const params = kit[soundName];
+  if (!params) return;
+  const mult = gainMult !== undefined ? gainMult : 1.0;
+  if (kitName === 'drummachine' && playRealDrumSample(ctx, soundName, startAt, mult)) return; // real TR-808 recording played successfully -- done
+  if (soundName === 'kick' || soundName === 'tomHigh' || soundName === 'tomLow') synthKickOrTom(ctx, params, startAt, mult);
+  else if (soundName === 'snare') synthSnare(ctx, params, startAt, mult);
+  else if (soundName === 'closedHat' || soundName === 'openHat' || soundName === 'crash') synthMetallicHit(ctx, params, startAt, mult);
+  else if (soundName === 'clap') synthClap(ctx, params, startAt, mult);
+  else if (soundName === 'rim') synthRim(ctx, params, startAt, mult);
+  else if (soundName === 'cowbell') synthCowbell(ctx, params, startAt, mult);
+}
+
+// ---- Drums tab ----
+// Grid dimensions mirror the Lead tab's own approach: always 2 bars,
+// beat count derived from the shared time signature, recomputed whenever
+// it changes. Unlike the lead grid (one note per slot), a drum slot is a
+// row of booleans -- any number of the 10 sounds can hit simultaneously.
+let DRUM_GRID_SLOTS_PER_BEAT = 4;
+let DRUM_GRID_BEATS = 8;
+let DRUM_GRID_TOTAL_SLOTS = DRUM_GRID_BEATS * DRUM_GRID_SLOTS_PER_BEAT;
+let drumGridSlots = Array(DRUM_GRID_TOTAL_SLOTS).fill(null).map(() => Array(DRUM_SOUNDS.length).fill(false));
+let drumKit = 'rock';
+let drumEditingEntryIndex = null;
+
+function recomputeDrumGridDimensions(){
+  DRUM_GRID_BEATS = beatsPerBar * 2;
+  DRUM_GRID_TOTAL_SLOTS = DRUM_GRID_BEATS * DRUM_GRID_SLOTS_PER_BEAT;
+  drumGridSlots = Array(DRUM_GRID_TOTAL_SLOTS).fill(null).map(() => Array(DRUM_SOUNDS.length).fill(false));
+  drumEditingEntryIndex = null;
+  renderDrumEditor();
+}
+
+const drumKitSelect = document.getElementById('drumKitSelect');
+DRUM_KITS.forEach(k => {
+  const o = document.createElement('option');
+  o.value = k;
+  o.textContent = DRUM_KIT_LABELS[k];
+  drumKitSelect.appendChild(o);
+});
+drumKitSelect.addEventListener('change', () => { drumKit = drumKitSelect.value; });
+
+const drumTempoInput = document.getElementById('drumTempoInput');
+drumTempoInput.value = tempoInput.value; // start in sync with the shared tempo, same reasoning as leadTempoInput
+drumTempoInput.addEventListener('input', () => {
+  tempoInput.value = drumTempoInput.value;
+  leadTempoInput.value = drumTempoInput.value;
+});
+
+function drumBeatMs(){
+  return 60000 / (parseInt(drumTempoInput.value, 10) || 90);
+}
+
+const drumGridWrap = document.getElementById('drumGridWrap');
+function renderDrumEditor(){
+  drumGridWrap.innerHTML = '';
+  DRUM_SOUNDS.forEach((sound, rowIdx) => {
+    const row = document.createElement('div');
+    row.className = 'drum-grid-row';
+    const label = document.createElement('div');
+    label.className = 'drum-grid-row-label';
+    label.textContent = DRUM_SOUND_LABELS[sound];
+    row.appendChild(label);
+    for (let slotIdx = 0; slotIdx < DRUM_GRID_TOTAL_SLOTS; slotIdx++) {
+      const cell = document.createElement('button');
+      cell.type = 'button';
+      const isActive = drumGridSlots[slotIdx][rowIdx];
+      cell.className = 'drum-grid-cell'
+        + (isActive ? ' active' : '')
+        + (slotIdx % DRUM_GRID_SLOTS_PER_BEAT === 0 ? ' beat-start' : '');
+      cell.setAttribute('aria-label', DRUM_SOUND_LABELS[sound] + ', slot ' + (slotIdx + 1) + (isActive ? ', active' : ', empty'));
+      cell.addEventListener('click', () => {
+        drumGridSlots[slotIdx][rowIdx] = !drumGridSlots[slotIdx][rowIdx];
+        if (drumGridSlots[slotIdx][rowIdx]) {
+          const ctx = getChartToneCtx();
+          playDrumSound(ctx, drumKit, sound, ctx.currentTime); // always audition on activation, same established pattern as the lead grid
+        }
+        renderDrumEditor();
+      });
+      row.appendChild(cell);
+    }
+    drumGridWrap.appendChild(row);
+  });
+}
+
+let drumActiveTimeoutIds = [];
+let drumIsPlaying = false;
+const drumPlayBtn = document.getElementById('drumPlayBtn');
+const drumStopBtn = document.getElementById('drumStopBtn');
+const drumLoopToggle = document.getElementById('drumLoopToggle');
+
+function stopDrumPlayback(){
+  drumIsPlaying = false;
+  drumActiveTimeoutIds.forEach(id => clearTimeout(id));
+  drumActiveTimeoutIds = [];
+  drumPlayBtn.disabled = false;
+  drumStopBtn.disabled = true;
+  window.__hardStopAllAudio(getChartToneCtx());
+}
+
+function playDrumGrid(){
+  stopDrumPlayback();
+  drumIsPlaying = true;
+  drumPlayBtn.disabled = true;
+  drumStopBtn.disabled = false;
+  function runOnce(){
+    const ctx = getChartToneCtx();
+    const startTime = ctx.currentTime; // single fixed reference for this run, same discipline as Chart's own playback
+    const slotMs = drumBeatMs() / DRUM_GRID_SLOTS_PER_BEAT;
+    for (let slotIdx = 0; slotIdx < DRUM_GRID_TOTAL_SLOTS; slotIdx++) {
+      const elapsed = slotIdx * slotMs;
+      const hitStartTime = startTime + elapsed / 1000;
+      const id = setTimeout(() => {
+        DRUM_SOUNDS.forEach((sound, rowIdx) => {
+          if (drumGridSlots[slotIdx][rowIdx]) playDrumSound(ctx, drumKit, sound, hitStartTime);
+        });
+      }, elapsed);
+      drumActiveTimeoutIds.push(id);
+    }
+    const totalMs = DRUM_GRID_TOTAL_SLOTS * slotMs;
+    const endId = setTimeout(() => {
+      if (drumLoopToggle.checked && drumIsPlaying) runOnce();
+      else stopDrumPlayback();
+    }, totalMs);
+    drumActiveTimeoutIds.push(endId);
+  }
+  runOnce();
+}
+drumPlayBtn.addEventListener('click', playDrumGrid);
+drumStopBtn.addEventListener('click', stopDrumPlayback);
+
+document.getElementById('drumClearGridBtn').addEventListener('click', () => {
+  drumGridSlots = Array(DRUM_GRID_TOTAL_SLOTS).fill(null).map(() => Array(DRUM_SOUNDS.length).fill(false));
+  drumEditingEntryIndex = null;
+  renderDrumEditor();
+});
+
+function buildDrumPatternPayload(){
+  return {
+    id: Date.now() + '-' + Math.random().toString(36).slice(2),
+    slots: drumGridSlots.map(row => [...row]),
+    kit: drumKit,
+    savedAt: Date.now(),
+  };
+}
+
+function saveDrumPatternToEntry(entryIndex){
+  const entry = progression[entryIndex];
+  const existing = entry ? entry.drumPattern : null;
+  const newPattern = { ...buildDrumPatternPayload(), id: existing ? existing.id : undefined, muted: existing ? existing.muted : undefined, solo: existing ? existing.solo : undefined };
+  if (!newPattern.id) newPattern.id = Date.now() + '-' + Math.random().toString(36).slice(2);
+  const updated = progression.map((en, i) => i === entryIndex ? { ...en, drumPattern: newPattern } : en);
+  setProgression(updated);
+  drumEditingEntryIndex = entryIndex;
+}
+
+function loadDrumPatternFromEntry(entryIndex){
+  const entry = progression[entryIndex];
+  if (!entry || !entry.drumPattern) return;
+  drumGridSlots = entry.drumPattern.slots.map(row => [...row]);
+  drumKit = entry.drumPattern.kit;
+  drumKitSelect.value = drumKit;
+  drumEditingEntryIndex = entryIndex;
+  renderDrumEditor();
+}
+
+document.getElementById('drumSaveBtn').addEventListener('click', () => {
+  const hasAnyHit = drumGridSlots.some(row => row.some(Boolean));
+  if (!hasAnyHit) {
+    window.alert('Add at least one hit to the grid first.');
+    return;
+  }
+  if (drumEditingEntryIndex !== null && progression[drumEditingEntryIndex]) {
+    saveDrumPatternToEntry(drumEditingEntryIndex); // already linked to a chord -- update it in place, no need to re-pick a target
+  } else {
+    showDrumTargetPicker();
+  }
+});
+
+function showDrumTargetPicker(){
+  if (progression.length === 0) {
+    window.alert('Your progression is empty -- add some chords on the Chart tab first, then come back to save this pattern to one of them.');
+    return;
+  }
+  leadTargetTitle.textContent = 'Save Drum Pattern To...'; // reuses the same overlay as the Lead tab's target pickers
+  leadTargetBody.innerHTML = '';
+  const list = document.createElement('div');
+  list.className = 'modulation-list';
+  progression.forEach((entry, i) => {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'modulation-row';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'modulation-row-name';
+    nameSpan.textContent = entry.chordName + (entry.drumPattern ? ' (has a pattern -- will replace it)' : '');
+    row.appendChild(nameSpan);
+    row.addEventListener('click', () => {
+      saveDrumPatternToEntry(i);
+      closeLeadTargetPicker();
+    });
+    list.appendChild(row);
+  });
+  leadTargetBody.appendChild(list);
+  leadTargetOverlay.style.display = 'flex';
+}
+
+function playMetronomeTick(accented, startTimeOverride){
   const ctx = getChartToneCtx();
-  const now = ctx.currentTime;
+  const now = (startTimeOverride !== undefined && startTimeOverride !== null) ? startTimeOverride : ctx.currentTime;
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = 'square';
@@ -5255,11 +6707,11 @@ function stopPlayback(){
   isPlaying = false;
   activeTimeoutIds.forEach(id => clearTimeout(id));
   activeTimeoutIds = [];
-  if (metronomeIntervalId) { clearInterval(metronomeIntervalId); metronomeIntervalId = null; }
   currentPlayIndex = -1;
   updateTimelineHighlight();
   progressionPlayBtn.disabled = false;
   progressionStopBtn.disabled = true;
+  window.__hardStopAllAudio(getChartToneCtx());
 }
 
 function playProgressionThrough(){
@@ -5277,34 +6729,120 @@ function playProgressionThrough(){
 
   function runOnce(){
     const ctx = getChartToneCtx();
+    const playbackStartTime = ctx.currentTime; // single fixed reference for this whole run -- every audio event below is computed from THIS, not from ctx.currentTime read again later inside a possibly-late callback
+    // Every tone function's envelope fades to silence over its final ~150ms
+    // (needed to avoid a click when a note/oscillator stops) -- if a
+    // chord's audio duration exactly matches its nominal slot, that fade
+    // lands right at the boundary with the next chord, which is itself
+    // just starting its own attack ramp from silence. The combination
+    // reads as an audible dip/gap even though the SCHEDULING is precise.
+    // Extending the actual audio slightly past the nominal boundary means
+    // the fade instead overlaps into the next chord, which is already at
+    // full volume by then -- masking the transition instead of exposing it.
+    const CHORD_AUDIO_OVERLAP_SECONDS = 0.15;
     let elapsed = 0;
+    let globalBeatIndex = 0; // continuous beat counter across all chords, for the metronome's every-4th-beat accent
+    // Mute/Solo -- two independent groups (chord audio vs lead layers),
+    // evaluated only across what's actually being played this pass (so a
+    // solo in a different section doesn't silence the section you're
+    // actually looping). Standard mixer convention: if anything in a
+    // group is soloed, only soloed items in that group play; otherwise
+    // each item plays unless it's individually muted.
+    const anyChordSoloed = entriesToPlay.some(x => x.entry.solo);
+    const anyLeadSoloed = entriesToPlay.some(x => getEntryLeadGrids(x.entry).some(g => g.solo) || x.entry.leadPatternSolo);
+    const anyDrumSoloed = entriesToPlay.some(x => x.entry.drumPattern && x.entry.drumPattern.solo);
     entriesToPlay.forEach(({ entry, i }) => {
+      const chordAudible = (!anyChordSoloed || entry.solo) && !entry.muted;
+      const chordVolumeMult = (entry.volume !== undefined && entry.volume !== null) ? entry.volume / 100 : 1.0;
       const durMs = (entry.beats || 4) * beatMs();
+      const chordStartTime = playbackStartTime + elapsed / 1000; // this chord's exact intended start, computed up front
+      const audioDur = durMs / 1000 + CHORD_AUDIO_OVERLAP_SECONDS;
       const id = setTimeout(() => {
         currentPlayIndex = i;
         updateTimelineHighlight();
         const shape = lookupEntryShape(entry);
         updateFretboardPanel(shape, entry.chordName, entry.rootIndex, i);
-        if (shape) playChordShape(shape, renderedChipElements[i], entry.strumPattern, durMs / 1000, octaveDoubleToggle.checked);
-        if (shape && bassNotesToggle.checked) {
+        updateChartPianoPanel(shape, entry.chordName, entry.rootIndex);
+        if (shape && chordAudible) playChordShape(shape, renderedChipElements[i], entry.strumPattern, audioDur, octaveDoubleToggle.checked, chordStartTime, chordVolumeMult);
+        if (shape && chordAudible && bassNotesToggle.checked) {
           const bassPitchClass = getBassPitchClass(shape);
-          if (bassPitchClass !== null) playBassTone(ctx, bassPitchClass, ctx.currentTime, durMs / 1000);
+          if (bassPitchClass !== null) playBassTone(ctx, bassPitchClass, chordStartTime, audioDur, chordVolumeMult);
         }
-        if (shape && topNoteToggle.checked) {
+        if (shape && chordAudible && topNoteToggle.checked) {
           const topPitchClass = getTopPitchClass(shape);
-          if (topPitchClass !== null) playTopNoteTone(ctx, topPitchClass, ctx.currentTime, durMs / 1000);
+          if (topPitchClass !== null) playTopNoteTone(ctx, topPitchClass, chordStartTime, audioDur, chordVolumeMult);
         }
-        if (entry.leadPattern && entry.leadPattern.length > 0) {
+        if (entry.leadPattern && entry.leadPattern.length > 0 && (!anyLeadSoloed || entry.leadPatternSolo) && !entry.leadPatternMuted) {
           const orderedLeadNotes = applyPatternToLeadNotes(entry.leadPattern, entry.leadPatternType || 'asPlayed');
           const leadStagger = (STRUM_PATTERN_CONFIG[entry.leadPatternType || 'asPlayed'] || STRUM_PATTERN_CONFIG.asPlayed).getStagger;
+          const leadPatternVolumeMult = (entry.leadPatternVolume !== undefined && entry.leadPatternVolume !== null) ? entry.leadPatternVolume / 100 : 1.0;
           orderedLeadNotes.forEach((note, noteIdx) => {
-            const startAt = ctx.currentTime + leadStagger(noteIdx);
-            const remaining = Math.max(0.3, (durMs / 1000) - leadStagger(noteIdx));
-            playMelodyNoteTone(ctx, note, startAt, remaining);
+            const startAt = chordStartTime + leadStagger(noteIdx);
+            const remaining = Math.max(0.3, audioDur - leadStagger(noteIdx));
+            playMelodyNoteTone(ctx, note, startAt, remaining, undefined, leadPatternVolumeMult);
+          });
+        }
+        getEntryLeadGrids(entry).forEach(leadLayer => {
+          if ((anyLeadSoloed && !leadLayer.solo) || leadLayer.muted) return;
+          const gridSlotMs = beatMs() / LEAD_GRID_SLOTS_PER_BEAT; // the chord's own live tempo, not a frozen value from when the lead was saved -- guarantees every layer and its chord can never run on different clocks
+          const leadVolumeMult = (leadLayer.volume !== undefined && leadLayer.volume !== null) ? leadLayer.volume / 100 : 1.0;
+          // The LAST note in a lead, if nothing else is filled after it,
+          // always gets a fixed 2-beat duration with a 50% hold-then-fade
+          // envelope (full volume for the first half, fading out over the
+          // second half) -- rather than the old "ring to the end of the
+          // grid" default, or an earlier attempt at a flat one-bar cap.
+          const lastNoteSlots = 2 * LEAD_GRID_SLOTS_PER_BEAT; // fixed 2-beat "count", independent of chord duration or tempo-derived bar length
+          leadLayer.slots.forEach((note, slotIdx) => {
+            if (!note) return;
+            let nextFilledIdx = null;
+            for (let j = slotIdx + 1; j < leadLayer.slots.length; j++) {
+              if (leadLayer.slots[j]) { nextFilledIdx = j; break; }
+            }
+            const startAt = chordStartTime + (slotIdx * gridSlotMs) / 1000;
+            if (nextFilledIdx === null) {
+              // Last note in the pattern -- fixed 2-beat duration (still
+              // bounded by the grid's actual remaining length), custom
+              // fade envelope instead of each instrument's own short,
+              // fixed release.
+              const cappedEndSlot = Math.min(leadLayer.slots.length, slotIdx + lastNoteSlots);
+              const lastNoteDurationSeconds = Math.max(0.15, ((cappedEndSlot - slotIdx) * gridSlotMs) / 1000);
+              playNoteWithCustomFade(ctx, note, startAt, lastNoteDurationSeconds, leadLayer.toneType, 0.5, leadVolumeMult);
+              return;
+            }
+            const noteDurationSeconds = Math.max(0.15, ((nextFilledIdx - slotIdx) * gridSlotMs) / 1000);
+            playMelodyNoteTone(ctx, note, startAt, noteDurationSeconds, leadLayer.toneType, leadVolumeMult);
+          });
+        });
+        if (entry.drumPattern && (!anyDrumSoloed || entry.drumPattern.solo) && !entry.drumPattern.muted) {
+          const drumGridSlotMs = beatMs() / DRUM_GRID_SLOTS_PER_BEAT; // the chord's own live tempo, same discipline as grid-leads -- a drum pattern can never drift from its chord regardless of what tempo it was built at
+          const drumVolumeMult = (entry.drumPattern.volume !== undefined && entry.drumPattern.volume !== null) ? entry.drumPattern.volume / 100 : 1.0;
+          entry.drumPattern.slots.forEach((slotRow, slotIdx) => {
+            DRUM_SOUNDS.forEach((sound, rowIdx) => {
+              if (slotRow[rowIdx]) playDrumSound(ctx, entry.drumPattern.kit, sound, chordStartTime + (slotIdx * drumGridSlotMs) / 1000, drumVolumeMult);
+            });
           });
         }
       }, elapsed);
       activeTimeoutIds.push(id);
+
+      // Metronome ticks for this chord's beats -- scheduled against the
+      // SAME fixed playbackStartTime reference as the chord audio above,
+      // so metronome and chords can never drift relative to each other
+      // no matter how late any individual setTimeout callback fires.
+      // Tracked in the same activeTimeoutIds array as everything else,
+      // so Stop cancels pending ticks too without a separate mechanism.
+      if (metronomeToggle.checked) {
+        const beatMsValue = beatMs();
+        for (let b = 0; b < (entry.beats || 4); b++) {
+          const beatElapsed = elapsed + b * beatMsValue;
+          const tickTime = playbackStartTime + beatElapsed / 1000;
+          const accented = globalBeatIndex % beatsPerBar === 0;
+          const tickId = setTimeout(() => playMetronomeTick(accented, tickTime), beatElapsed);
+          activeTimeoutIds.push(tickId);
+          globalBeatIndex++;
+        }
+      }
+
       elapsed += durMs;
     });
     const endId = setTimeout(() => {
@@ -5317,15 +6855,6 @@ function playProgressionThrough(){
     activeTimeoutIds.push(endId);
   }
   runOnce();
-
-  if (metronomeToggle.checked) {
-    let beatCount = 0;
-    playMetronomeTick(true);
-    metronomeIntervalId = setInterval(() => {
-      beatCount++;
-      playMetronomeTick(beatCount % 4 === 0);
-    }, beatMs());
-  }
 }
 
 progressionPlayBtn.addEventListener('click', playProgressionThrough);
@@ -5963,7 +7492,6 @@ if (window.matchMedia('(min-width: 760px)').matches) {
 // ============================================================
 const SHORTCUTS = [
   { section: 'Global', items: [
-    { keys: 'Alt+1 / Alt+2 / Alt+3', desc: 'Switch to Tune / Chord ID / Chart' },
     { keys: '?', desc: 'Toggle this help' },
     { keys: 'Cmd/Ctrl+Z', desc: 'Undo last progression change' },
     { keys: 'Cmd/Ctrl+Shift+Z or Ctrl+Y', desc: 'Redo' },
@@ -6141,11 +7669,6 @@ document.addEventListener('keydown', (e) => {
   }
   if (e.key === '?') { toggleShortcutsOverlay(true); return; }
 
-  // Global tab-switching (Alt+1/2/3) works even while a form control has focus
-  if (e.altKey && e.key === '1') { e.preventDefault(); showTuneMode(); return; }
-  if (e.altKey && e.key === '2') { e.preventDefault(); showChordMode(); return; }
-  if (e.altKey && e.key === '3') { e.preventDefault(); showChartMode(); return; }
-
   // Everything below is mode-scoped and intentionally skipped while typing in
   // a form control, so it never hijacks normal text/number entry -- per-card
   // and per-chip keydown handlers (Enter/Space/arrows/etc.) are unaffected
@@ -6216,6 +7739,1175 @@ document.addEventListener('keydown', (e) => {
       return;
     }
   }
+});
+
+// ---- Lead tab: melody grid editor ----
+// Grid size is deliberately NOT hardcoded as "32" anywhere below -- it's
+// always beats * slotsPerBeat, so a future "change grid size" control
+// wouldn't need touching this logic, just these two numbers. These are
+// mutable (not const) because recomputeLeadGridDimensions (defined once
+// beatsPerBar exists further down) resizes them whenever the time
+// signature changes -- always 2 bars' worth of beats, whatever the
+// current time signature says a bar contains.
+let LEAD_GRID_BEATS = 8;
+let LEAD_GRID_SLOTS_PER_BEAT = 4;
+let LEAD_GRID_TOTAL_SLOTS = LEAD_GRID_BEATS * LEAD_GRID_SLOTS_PER_BEAT;
+let LEAD_GRID_FIRST_SECTION_SLOTS = (LEAD_GRID_BEATS / 2) * LEAD_GRID_SLOTS_PER_BEAT; // first half of the grid, active by default
+
+// Resizes the grid to 2 bars' worth of beats at whatever the current time
+// signature is. Called once at startup isn't needed (the let defaults
+// above already assume 4/4), only when the time signature actually
+// changes -- which is also the only time the grid's content gets reset,
+// since resizing mid-composition has no unambiguous "keep the old notes"
+// behavior worth building.
+function recomputeLeadGridDimensions(){
+  LEAD_GRID_BEATS = beatsPerBar * 2; // 2 bars, whatever a bar means at the current time signature
+  LEAD_GRID_TOTAL_SLOTS = LEAD_GRID_BEATS * LEAD_GRID_SLOTS_PER_BEAT;
+  LEAD_GRID_FIRST_SECTION_SLOTS = (LEAD_GRID_BEATS / 2) * LEAD_GRID_SLOTS_PER_BEAT;
+  leadGridSlots = new Array(LEAD_GRID_TOTAL_SLOTS).fill(null);
+  leadGridSelectedSlot = null;
+  leadGridSelectionRange = null;
+  leadSecondHalfOpen = false;
+  leadUndoStack = [];
+  leadRedoStack = [];
+  updateLeadUndoRedoButtons();
+  renderLeadEditor();
+}
+
+const leadKeySelect = document.getElementById('leadKeySelect');
+const leadModeSelect = document.getElementById('leadModeSelect');
+const leadFretboardWrap = document.getElementById('leadFretboardWrap');
+const leadGridWrap = document.getElementById('leadGridWrap');
+const leadPlayBtn = document.getElementById('leadPlayBtn');
+const leadStopBtn = document.getElementById('leadStopBtn');
+const leadLoopToggle = document.getElementById('leadLoopToggle');
+const leadTempoInput = document.getElementById('leadTempoInput');
+leadTempoInput.value = tempoInput.value; // start in sync with whatever Chart's tempo already is, not a separate default
+leadTempoInput.addEventListener('input', () => {
+  tempoInput.value = leadTempoInput.value;
+  const drumTempoInputEl = document.getElementById('drumTempoInput');
+  if (drumTempoInputEl) drumTempoInputEl.value = leadTempoInput.value;
+});
+
+// Shared time signature -- one value, both tabs, always in sync (same
+// reasoning as tempo: two independent values here is exactly the kind of
+// mismatch that caused the earlier tempo bug). beatsPerBar is treated as
+// a plain integer beat count per bar for grid/duration purposes, even for
+// compound meters like 6/8 -- a deliberate simplification rather than
+// modeling the traditional "2 dotted-quarter feel" distinction.
+let beatsPerBar = 4;
+const timeSigSelect = document.getElementById('timeSigSelect');
+const leadTimeSigSelect = document.getElementById('leadTimeSigSelect');
+function setBeatsPerBar(newValue){
+  if (newValue === beatsPerBar) return;
+  const hasContent = (typeof leadGridSlots !== 'undefined' && leadGridSlots.some(Boolean))
+    || (typeof drumGridSlots !== 'undefined' && drumGridSlots.some(row => row.some(Boolean)));
+  if (hasContent && !window.confirm('Changing the time signature resizes the grid and clears its current notes. Continue?')) {
+    timeSigSelect.value = beatsPerBar;
+    leadTimeSigSelect.value = beatsPerBar;
+    return;
+  }
+  beatsPerBar = newValue;
+  timeSigSelect.value = newValue;
+  leadTimeSigSelect.value = newValue;
+  recomputeLeadGridDimensions();
+  recomputeDrumGridDimensions();
+}
+timeSigSelect.addEventListener('change', () => setBeatsPerBar(parseInt(timeSigSelect.value, 10)));
+leadTimeSigSelect.addEventListener('change', () => setBeatsPerBar(parseInt(leadTimeSigSelect.value, 10)));
+
+const leadClearGridBtn = document.getElementById('leadClearGridBtn');
+const leadSaveGridBtn = document.getElementById('leadSaveGridBtn');
+const leadUndoBtn = document.getElementById('leadUndoBtn');
+const leadRedoBtn = document.getElementById('leadRedoBtn');
+const leadDupBtn = document.getElementById('leadDupBtn');
+const leadDupBlockSize = document.getElementById('leadDupBlockSize');
+const leadMetronomeToggle = document.getElementById('leadMetronomeToggle');
+
+ROOT_TO_DB_KEY.forEach((_, i) => {
+  const opt = document.createElement('option');
+  opt.value = i;
+  opt.textContent = NOTE_NAMES[i];
+  leadKeySelect.appendChild(opt);
+});
+leadKeySelect.value = 9; // default to A, matching Chart's own default
+
+MODE_NAMES.forEach(modeName => {
+  const opt = document.createElement('option');
+  opt.value = modeName;
+  opt.textContent = modeName;
+  leadModeSelect.appendChild(opt);
+});
+leadModeSelect.value = 'Ionian';
+
+const leadToneSelect = document.getElementById('leadToneSelect');
+Array.from(document.getElementById('toneTypeSelect').options).forEach(opt => {
+  const clone = document.createElement('option');
+  clone.value = opt.value;
+  clone.textContent = opt.textContent;
+  leadToneSelect.appendChild(clone);
+});
+leadToneSelect.value = window.__toneType || 'piano';
+leadToneSelect.addEventListener('change', () => {
+  window.__toneType = leadToneSelect.value;
+  document.getElementById('toneTypeSelect').value = leadToneSelect.value; // keep the main Chart-tab dropdown in sync, same shared global state
+  if (leadToneSelect.value === 'piano' || leadToneSelect.value === 'brightpiano') {
+    window.__toneEngine.ensurePianoLoaded(getChartToneCtx());
+  }
+});
+
+// ---- Arp Generator: suggests a starting note selection from a real
+// chord+inversion+pattern, which the user can hand-tweak before it maps
+// into the grid. "Suggest, don't force": picking a chord sets a sensible
+// key/mode ONLY until the user manually touches either dropdown --
+// after that, switching chords stops overriding their choice. This
+// matters because two real workflows both need to work: one key across
+// a whole chorus (manual choice should stick), vs. each chord as its own
+// momentary key (fresh suggestion every time, right up until overridden).
+const MINOR_TYPE_SUFFIXES = new Set(['m', 'm7', 'm6', 'm9', 'm11', 'm69', 'madd9', 'mmaj7']);
+const DIMINISHED_TYPE_SUFFIXES = new Set(['dim', 'dim7', 'm7b5']);
+const DOMINANT_TYPE_SUFFIXES = new Set(['7', '9', '11', '13', '7b9', '7#9', '7b5', 'alt', '7sus4', '69']);
+function suggestModeForSuffix(suffix){
+  if (DIMINISHED_TYPE_SUFFIXES.has(suffix)) return 'Locrian';
+  if (MINOR_TYPE_SUFFIXES.has(suffix)) return 'Aeolian';
+  if (DOMINANT_TYPE_SUFFIXES.has(suffix)) return 'Mixolydian';
+  return 'Ionian'; // '', maj7, 6, add9, maj9, maj11, maj13, sus2, sus4, aug, 5
+}
+
+let arpKeyManuallySet = false; // flips true the moment the user touches Key or Mode themselves
+leadKeySelect.addEventListener('change', () => { arpKeyManuallySet = true; });
+leadModeSelect.addEventListener('change', () => { arpKeyManuallySet = true; });
+
+const arpPatternSelect = document.getElementById('arpPatternSelect');
+STRUM_PATTERNS.forEach(opt => {
+  const o = document.createElement('option');
+  o.value = opt.value;
+  o.textContent = opt.label;
+  arpPatternSelect.appendChild(o);
+});
+
+const arpChordSelect = document.getElementById('arpChordSelect');
+const arpInversionSelect = document.getElementById('arpInversionSelect');
+const arpOctaveRangeSelect = document.getElementById('arpOctaveRangeSelect');
+const arpChordDiagram = document.getElementById('arpChordDiagram');
+const arpGenerateBtn = document.getElementById('arpGenerateBtn');
+
+let arpSelectedNotes = new Set(); // string indices currently selected for the arp -- hand-tweakable on top of the default (all of the voicing's notes)
+let arpCurrentShape = null; // the voicing currently shown in the diagram
+
+function populateArpChordSelect(){
+  const prevValue = arpChordSelect.value;
+  arpChordSelect.innerHTML = '<option value="">-- pick a chord from your progression --</option>';
+  progression.forEach((entry, idx) => {
+    const o = document.createElement('option');
+    o.value = idx;
+    o.textContent = entry.chordName;
+    arpChordSelect.appendChild(o);
+  });
+  // keep the previous selection if that chord still exists at the same index and still matches
+  if (prevValue !== '' && progression[prevValue]) arpChordSelect.value = prevValue;
+}
+
+function renderArpInversionOptions(rootIndex, suffix){
+  const count = getVoicingCount(rootIndex, suffix);
+  arpInversionSelect.innerHTML = '';
+  for (let i = 0; i < Math.max(1, count); i++) {
+    const o = document.createElement('option');
+    o.value = i;
+    o.textContent = 'Voicing ' + (i + 1) + (count <= 1 ? ' (only one available)' : '');
+    arpInversionSelect.appendChild(o);
+  }
+}
+
+function renderArpDiagram(){
+  if (!arpCurrentShape) { arpChordDiagram.innerHTML = ''; return; }
+  const rootIndex = parseInt(leadKeySelect.value, 10);
+  arpChordDiagram.innerHTML = renderArpChordSelectorSVG(arpCurrentShape, rootIndex, arpSelectedNotes);
+}
+
+function refreshArpForSelectedChord(){
+  const idx = arpChordSelect.value;
+  if (idx === '') { arpCurrentShape = null; arpChordDiagram.innerHTML = ''; arpInversionSelect.innerHTML = ''; return; }
+  const entry = progression[idx];
+  if (!entry) return;
+
+  if (!arpKeyManuallySet) {
+    leadKeySelect.value = entry.rootIndex;
+    leadModeSelect.value = suggestModeForSuffix(entry.suffix);
+  }
+
+  renderArpInversionOptions(entry.rootIndex, entry.suffix);
+  arpInversionSelect.value = 0;
+  const shape = lookupChordShape(entry.rootIndex, entry.suffix, 0);
+  arpCurrentShape = shape;
+  // default selection: every note the voicing actually plays (all non-muted strings)
+  arpSelectedNotes = new Set();
+  if (shape) shape.frets.forEach((f, i) => { if (f !== -1) arpSelectedNotes.add(i); });
+  renderArpDiagram();
+}
+arpChordSelect.addEventListener('change', refreshArpForSelectedChord);
+
+arpInversionSelect.addEventListener('change', () => {
+  const idx = arpChordSelect.value;
+  if (idx === '') return;
+  const entry = progression[idx];
+  const shape = lookupChordShape(entry.rootIndex, entry.suffix, parseInt(arpInversionSelect.value, 10));
+  arpCurrentShape = shape;
+  arpSelectedNotes = new Set();
+  if (shape) shape.frets.forEach((f, i) => { if (f !== -1) arpSelectedNotes.add(i); });
+  renderArpDiagram();
+});
+
+// Shared by preview and Generate Into Grid -- orders the currently
+// selected notes per the chosen pattern, reusing STRUM_PATTERN_CONFIG's
+// real sort+reorder logic rather than a separate system.
+function getOrderedArpNotes(){
+  if (!arpCurrentShape) return [];
+  const notes = [];
+  arpCurrentShape.frets.forEach((f, i) => {
+    if (f === -1 || !arpSelectedNotes.has(i)) return;
+    const absoluteFret = f > 0 ? arpCurrentShape.baseFret + f - 1 : 0;
+    notes.push({ stringIdx: i, fret: absoluteFret, freq: OPEN_STRING_FREQS[i] * Math.pow(2, absoluteFret / 12) });
+  });
+  const patternConfig = STRUM_PATTERN_CONFIG[arpPatternSelect.value] || STRUM_PATTERN_CONFIG.block;
+  let ordered = [...notes];
+  if (patternConfig.sortDir === 1) ordered.sort((a, b) => a.freq - b.freq);
+  else if (patternConfig.sortDir === -1) ordered.sort((a, b) => b.freq - a.freq);
+  if (patternConfig.reorder) ordered = patternConfig.reorder(ordered);
+
+  // Octave Range: repeats the whole pattern-ordered sequence again one
+  // octave higher for each additional range level, same convention as
+  // real hardware/software arps (play the full pattern at the base
+  // octave, then the full pattern again an octave up, and so on) --
+  // capped at a realistic guitar's practical range so it can't wander
+  // into unplayable territory, reusing the same ceiling already
+  // verified for octave-doubling chords.
+  const octaveRange = parseInt(arpOctaveRangeSelect.value, 10) || 1;
+  if (octaveRange > 1) {
+    const expanded = [];
+    for (let octave = 0; octave < octaveRange; octave++) {
+      ordered.forEach(note => {
+        const newFreq = note.freq * Math.pow(2, octave);
+        if (newFreq > MAX_REALISTIC_GUITAR_FREQ) return;
+        expanded.push({ stringIdx: note.stringIdx, fret: note.fret + octave * 12, freq: newFreq });
+      });
+    }
+    if (expanded.length > 0) ordered = expanded; // never return an empty sequence if every higher octave got filtered out
+  }
+  return ordered;
+}
+
+// Previews the whole selection played in the current pattern's real
+// order and timing -- lets the user hear how a Pattern+Inversion
+// combination will actually sound before committing it to the grid.
+function previewArpPattern(){
+  if (!arpCurrentShape || arpSelectedNotes.size === 0) return;
+  const ordered = getOrderedArpNotes();
+  const patternConfig = STRUM_PATTERN_CONFIG[arpPatternSelect.value] || STRUM_PATTERN_CONFIG.block;
+  const ctx = getChartToneCtx();
+  ordered.forEach((note, idx) => {
+    const startAt = ctx.currentTime + patternConfig.getStagger(idx, ordered.length);
+    playMelodyNoteTone(ctx, note, startAt, 0.6);
+  });
+}
+
+arpChordDiagram.addEventListener('click', (e) => {
+  const dot = e.target.closest('.arp-note-dot');
+  if (!dot) {
+    previewArpPattern(); // clicking the background (not a specific note dot) previews the whole pattern
+    return;
+  }
+  if (!arpCurrentShape) return;
+  const stringIdx = parseInt(dot.getAttribute('data-string'), 10);
+  const f = arpCurrentShape.frets[stringIdx];
+  if (f !== -1) {
+    const absoluteFret = f > 0 ? arpCurrentShape.baseFret + f - 1 : 0; // frets[] is relative to baseFret, per our established convention -- must convert before computing pitch
+    const ctx = getChartToneCtx();
+    playMelodyNoteTone(ctx, { stringIdx, fret: absoluteFret }, ctx.currentTime, 0.6); // always audition, same pattern as the main fretboard
+  }
+  if (arpSelectedNotes.has(stringIdx)) arpSelectedNotes.delete(stringIdx);
+  else arpSelectedNotes.add(stringIdx);
+  renderArpDiagram();
+});
+
+const arpPreviewBtn = document.getElementById('arpPreviewBtn');
+arpPreviewBtn.addEventListener('click', previewArpPattern);
+
+// Generate Into Grid -- orders the selected notes per the chosen pattern,
+// then walks through that order one note per grid slot at the grid's
+// native rate, wrapping back to the start whenever the sequence is
+// shorter than the space available. This matches the real, established
+// hardware-arp convention confirmed by research: classic arps don't try
+// to stretch N notes evenly across a bar, they just cycle at a fixed
+// rate and repeat/wrap -- verified against a synth forum discussion
+// before adopting this as our own rule, not assumed.
+arpGenerateBtn.addEventListener('click', () => {
+  if (!arpCurrentShape || arpSelectedNotes.size === 0) {
+    window.alert('Pick a chord and at least one note first.');
+    return;
+  }
+  const ordered = getOrderedArpNotes();
+  const updated = [...leadGridSlots];
+  for (let slotIdx = 0; slotIdx < LEAD_GRID_FIRST_SECTION_SLOTS; slotIdx++) {
+    const note = ordered[slotIdx % ordered.length]; // wrap/repeat, the real arp convention -- not stretched to fit
+    updated[slotIdx] = { stringIdx: note.stringIdx, fret: note.fret };
+  }
+  setLeadGridSlots(updated);
+});
+
+let leadGridSlots = new Array(LEAD_GRID_TOTAL_SLOTS).fill(null); // each: {stringIdx, fret} | null
+let leadGridSelectedSlot = null;
+let leadIsPlaying = false;
+let leadActiveTimeoutIds = [];
+let leadMetronomeIntervalId = null;
+let leadSecondHalfOpen = false; // second 4 beats stay locked/greyed until engaged, keeping a fresh grid simple by default
+let leadDragSourceSlot = null; // tracks the slot being dragged, for drag-to-move
+let leadGridSelectionRange = null; // {start, end} | null -- freeform shift-click range, used by Duplicate instead of the fixed block size when active
+
+// Centralized mutation -- every change to leadGridSlots goes through this,
+// same discipline as setProgression for the main progression system
+// (which caught a real bug earlier when one code path bypassed it
+// directly). Powers undo/redo below.
+let leadUndoStack = [];
+let leadRedoStack = [];
+const LEAD_MAX_UNDO_STEPS = 20;
+function setLeadGridSlots(newSlots, options){
+  options = options || {};
+  if (!options.skipHistory) {
+    leadUndoStack.push(JSON.stringify(leadGridSlots));
+    if (leadUndoStack.length > LEAD_MAX_UNDO_STEPS) leadUndoStack.shift();
+    leadRedoStack = [];
+  }
+  leadGridSlots = newSlots;
+  updateLeadUndoRedoButtons();
+  if (!options.skipRender) renderLeadGrid();
+}
+function undoLeadGrid(){
+  if (leadUndoStack.length === 0) return;
+  leadRedoStack.push(JSON.stringify(leadGridSlots));
+  leadGridSlots = JSON.parse(leadUndoStack.pop());
+  updateLeadUndoRedoButtons();
+  renderLeadGrid();
+}
+function redoLeadGrid(){
+  if (leadRedoStack.length === 0) return;
+  leadUndoStack.push(JSON.stringify(leadGridSlots));
+  leadGridSlots = JSON.parse(leadRedoStack.pop());
+  updateLeadUndoRedoButtons();
+  renderLeadGrid();
+}
+function updateLeadUndoRedoButtons(){
+  leadUndoBtn.disabled = leadUndoStack.length === 0;
+  leadRedoBtn.disabled = leadRedoStack.length === 0;
+}
+
+function getLeadScalePitchClasses(){
+  const tonicIndex = parseInt(leadKeySelect.value, 10);
+  const modeData = MODES_TABLE[leadModeSelect.value];
+  return new Set(modeData.intervals.map(iv => (tonicIndex + iv) % 12));
+}
+
+// Pentatonic reduction + blues "blue note" -- verified against real music
+// theory: removing scale-degree positions 4&7 (major-3rd modes) or 2&6
+// (minor-3rd modes) reduces every mode to one of exactly two well-known,
+// mode-invariant shapes (major pentatonic 1-2-3-5-6, or minor pentatonic
+// 1-b3-4-5-b7) -- checked this against all 7 modes' actual intervals
+// before trusting it, not just the two textbook cases. The blue note is
+// the one extra note that turns pentatonic into blues: b3 for major-type,
+// b5 for minor-type. Locrian is a genuine edge case -- its own b5 already
+// survives the pentatonic filter (since Locrian's natural 5th degree is
+// itself flat), so the blue note there would just duplicate a note
+// that's already present, and is skipped rather than added twice.
+function getPentatonicInfo(modeName){
+  const modeData = MODES_TABLE[modeName];
+  const isMajorType = modeData.intervals[2] === 4; // scale degree 3 is always index 2
+  const excludeIndices = isMajorType ? [3, 6] : [1, 5];
+  const pentatonicIntervals = modeData.intervals.filter((_, i) => !excludeIndices.includes(i));
+  const blueNoteInterval = isMajorType ? 3 : 6;
+  const blueNoteAlreadyPresent = pentatonicIntervals.includes(blueNoteInterval);
+  return { pentatonicIntervals, blueNoteInterval: blueNoteAlreadyPresent ? null : blueNoteInterval };
+}
+
+let leadFretboardZoom = 1.4; // new default -- noticeably larger than the old baseline (which is now the zoom-out minimum), so the neck starts more readable without needing to zoom in first
+const LEAD_FRETBOARD_ZOOM_MIN = 1; // matches the old default exactly -- zooming all the way out returns to "where it was before, full and large"
+const LEAD_FRETBOARD_ZOOM_MAX = 2.2; // genuinely closer than before, for focusing on a small section of the neck
+let leadPentatonicMode = false; // when on, the fretboard filters to just the 5 pentatonic notes, always showing the blue note too (in its own distinct color) rather than needing a separate toggle for it
+
+// Melody-first, not chord-first: shows the WHOLE current scale across the
+// full neck, not one chord's tones -- reuses the exact same full-neck
+// renderer already built for the Chart tab's "safe notes" panel, just fed
+// a scale's pitch classes instead of a chord's, and requesting the full
+// 24 frets (the wrapper's overflow-x:auto handles the scrolling this
+// creates automatically -- no extra scroll logic needed). No "recorded
+// note" highlighting here (passed an empty array) -- with up to 32 grid
+// slots, highlighting every used fretboard position at once would be
+// visual noise; the grid itself is what shows the melody's actual shape.
+function renderLeadFretboard(){
+  const tonicIndex = parseInt(leadKeySelect.value, 10);
+  let pitchClasses = getLeadScalePitchClasses();
+  let blueNotePitchClass = null;
+  if (leadPentatonicMode) {
+    const info = getPentatonicInfo(leadModeSelect.value);
+    pitchClasses = new Set(info.pentatonicIntervals.map(iv => (tonicIndex + iv) % 12));
+    if (info.blueNoteInterval !== null) {
+      blueNotePitchClass = (tonicIndex + info.blueNoteInterval) % 12;
+      pitchClasses.add(blueNotePitchClass); // the blue note is always shown alongside the pentatonic notes, just colored distinctly -- not a separate toggle
+    }
+  }
+  // preserve scroll position proportionally across a zoom change, rather
+  // than snapping back to the start every time the SVG is replaced
+  const prevScrollWidth = leadFretboardWrap.scrollWidth || 1;
+  const scrollFraction = leadFretboardWrap.scrollLeft / prevScrollWidth;
+  leadFretboardWrap.innerHTML = renderChordToneMapSVG(pitchClasses, tonicIndex, [], 24, leadFretboardZoom, blueNotePitchClass);
+  leadFretboardWrap.scrollLeft = scrollFraction * leadFretboardWrap.scrollWidth;
+}
+
+const leadPentatonicBtn = document.getElementById('leadPentatonicBtn');
+leadPentatonicBtn.addEventListener('click', () => {
+  leadPentatonicMode = !leadPentatonicMode;
+  leadPentatonicBtn.classList.toggle('active', leadPentatonicMode);
+  renderLeadFretboard();
+});
+
+const leadLegend = document.getElementById('leadLegend');
+const leadLegendToggleBtn = document.getElementById('leadLegendToggleBtn');
+function renderLeadLegend(){
+  const entries = [
+    { color: 'var(--amber)', label: 'Root' },
+    { color: '#7fd88f', label: '3rd (major or minor)' },
+    { color: '#7fb3d5', label: '5th (or b5/#5)' },
+    { color: '#c58fd8', label: '6th / 7th' },
+    { color: '#e88fa8', label: '9th / 11th' },
+    { color: BLUE_NOTE_COLOR, label: 'Blue Note (Pentatonic mode)' },
+  ];
+  leadLegend.innerHTML = entries.map(e =>
+    `<div class="lead-legend-row"><span class="lead-legend-swatch" style="background:${e.color};"></span><span>${e.label}</span></div>`
+  ).join('');
+}
+leadLegendToggleBtn.addEventListener('click', () => {
+  const show = leadLegend.style.display === 'none';
+  leadLegend.style.display = show ? 'flex' : 'none';
+  leadLegendToggleBtn.classList.toggle('active', show);
+  if (show) renderLeadLegend();
+});
+
+const leadFretZoomInBtn = document.getElementById('leadFretZoomInBtn');
+const leadFretZoomOutBtn = document.getElementById('leadFretZoomOutBtn');
+const leadFretPanLeftBtn = document.getElementById('leadFretPanLeftBtn');
+const leadFretPanRightBtn = document.getElementById('leadFretPanRightBtn');
+leadFretZoomInBtn.addEventListener('click', () => {
+  leadFretboardZoom = Math.min(LEAD_FRETBOARD_ZOOM_MAX, leadFretboardZoom + 0.15);
+  renderLeadFretboard();
+});
+leadFretZoomOutBtn.addEventListener('click', () => {
+  leadFretboardZoom = Math.max(LEAD_FRETBOARD_ZOOM_MIN, leadFretboardZoom - 0.15);
+  renderLeadFretboard();
+});
+leadFretPanLeftBtn.addEventListener('click', () => {
+  leadFretboardWrap.scrollBy({ left: -150, behavior: 'smooth' });
+});
+leadFretPanRightBtn.addEventListener('click', () => {
+  leadFretboardWrap.scrollBy({ left: 150, behavior: 'smooth' });
+});
+
+function renderLeadGrid(){
+  leadGridWrap.innerHTML = '';
+  for (let beat = 0; beat < LEAD_GRID_BEATS; beat++) {
+    const beatGroup = document.createElement('div');
+    beatGroup.className = 'lead-grid-beat-group';
+    // Visual boundary between the two 4-beat halves, and the "open" label
+    // when the second half is still locked -- clicking any slot past this
+    // point activates the whole second half in one action, but this
+    // label makes the boundary and its meaning visible up front too.
+    if (beat === LEAD_GRID_BEATS / 2 && !leadSecondHalfOpen) {
+      const openLabel = document.createElement('div');
+      openLabel.className = 'lead-grid-open-label';
+      openLabel.textContent = '\u2192 click to extend to 8 beats';
+      leadGridWrap.appendChild(openLabel);
+    }
+    for (let sub = 0; sub < LEAD_GRID_SLOTS_PER_BEAT; sub++) {
+      const slotIdx = beat * LEAD_GRID_SLOTS_PER_BEAT + sub;
+      const note = leadGridSlots[slotIdx];
+      const isLocked = slotIdx >= LEAD_GRID_FIRST_SECTION_SLOTS && !leadSecondHalfOpen;
+      const inRange = leadGridSelectionRange && slotIdx >= leadGridSelectionRange.start && slotIdx <= leadGridSelectionRange.end;
+      const velocity = note ? (note.velocity || 'normal') : null;
+      const slotEl = document.createElement('button');
+      slotEl.type = 'button';
+      slotEl.className = 'lead-grid-slot'
+        + (slotIdx === leadGridSelectedSlot ? ' selected' : '')
+        + (note ? ' filled' : '')
+        + (isLocked ? ' locked' : '')
+        + (inRange ? ' in-range' : '')
+        + (velocity ? ' velocity-' + velocity : '');
+      slotEl.textContent = note ? NOTE_NAMES[(STRING_PITCH_CLASS[note.stringIdx] + note.fret) % 12] : '';
+      slotEl.setAttribute('aria-label', 'Beat ' + (beat + 1) + ', slot ' + (sub + 1) + (note ? ', ' + slotEl.textContent + ', velocity ' + velocity : ', empty') + (isLocked ? ', locked -- click to extend the grid' : ''));
+      slotEl.addEventListener('click', (e) => {
+        if (isLocked) { leadSecondHalfOpen = true; leadGridSelectedSlot = slotIdx; leadGridSelectionRange = null; renderLeadGrid(); return; }
+        if (e.altKey && note) {
+          // Alt+click on a filled slot cycles its velocity -- kept on a
+          // separate modifier from Shift (range selection) so the two
+          // interactions never collide.
+          const order = ['soft', 'normal', 'accent'];
+          const current = order.indexOf(note.velocity || 'normal');
+          const next = order[(current + 1) % order.length];
+          const updated = [...leadGridSlots];
+          updated[slotIdx] = { ...note, velocity: next };
+          setLeadGridSlots(updated);
+          return;
+        }
+        if (e.shiftKey && leadGridSelectedSlot !== null) {
+          // Shift-click extends a freeform range from the current selected
+          // slot to this one -- used by Duplicate instead of the fixed
+          // block-size dropdown when a range is active.
+          leadGridSelectionRange = { start: Math.min(leadGridSelectedSlot, slotIdx), end: Math.max(leadGridSelectedSlot, slotIdx) };
+        } else {
+          leadGridSelectedSlot = (leadGridSelectedSlot === slotIdx) ? null : slotIdx;
+          leadGridSelectionRange = null; // a plain click always clears any active range, back to normal single-slot note placement
+        }
+        renderLeadGrid();
+      });
+      // Drag-to-move: single filled slots swap with whatever's at the
+      // destination (never silently losing a note that was already
+      // there). When a freeform range is selected, dragging ANY slot
+      // within it (filled or empty) moves the WHOLE range together --
+      // the shift amount is computed from wherever inside the range the
+      // drag started, not just the range's start, so grabbing any note
+      // in the middle of a selected phrase still moves the whole thing
+      // correctly, verified with a direct simulation before wiring in.
+      const inActiveRange = leadGridSelectionRange && slotIdx >= leadGridSelectionRange.start && slotIdx <= leadGridSelectionRange.end;
+      slotEl.draggable = (!!note || inActiveRange) && !isLocked;
+      slotEl.addEventListener('dragstart', () => { leadDragSourceSlot = slotIdx; });
+      slotEl.addEventListener('dragend', () => { leadDragSourceSlot = null; });
+      slotEl.addEventListener('dragover', (e) => { e.preventDefault(); });
+      slotEl.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (leadDragSourceSlot === null || leadDragSourceSlot === slotIdx || isLocked) return;
+        const sourceInRange = leadGridSelectionRange && leadDragSourceSlot >= leadGridSelectionRange.start && leadDragSourceSlot <= leadGridSelectionRange.end;
+        if (sourceInRange) {
+          const range = leadGridSelectionRange;
+          const shift = slotIdx - leadDragSourceSlot;
+          const newStart = range.start + shift;
+          const newEnd = range.end + shift;
+          if (newStart < 0 || newEnd >= LEAD_GRID_TOTAL_SLOTS) {
+            window.alert('Not enough room to move this selection there.');
+            leadDragSourceSlot = null;
+            return;
+          }
+          const rangeContent = leadGridSlots.slice(range.start, range.end + 1);
+          const updated = [...leadGridSlots];
+          for (let i = range.start; i <= range.end; i++) updated[i] = null;
+          rangeContent.forEach((n, i) => { updated[newStart + i] = n; });
+          leadGridSelectionRange = { start: newStart, end: newEnd }; // selection follows the move, so it can be moved again immediately
+          leadGridSelectedSlot = null;
+          leadDragSourceSlot = null;
+          setLeadGridSlots(updated);
+        } else {
+          const updated = [...leadGridSlots];
+          const temp = updated[slotIdx];
+          updated[slotIdx] = updated[leadDragSourceSlot];
+          updated[leadDragSourceSlot] = temp;
+          leadDragSourceSlot = null;
+          setLeadGridSlots(updated);
+        }
+      });
+      beatGroup.appendChild(slotEl);
+    }
+    leadGridWrap.appendChild(beatGroup);
+  }
+}
+
+leadFretboardWrap.addEventListener('click', (e) => {
+  const dot = e.target.closest('.fretboard-tone-dot');
+  if (!dot) return;
+  const stringIdx = parseInt(dot.getAttribute('data-string'), 10);
+  const fret = parseInt(dot.getAttribute('data-fret'), 10);
+  const ctx = getChartToneCtx();
+  playMelodyNoteTone(ctx, { stringIdx, fret }, ctx.currentTime, 0.6); // always audition, same as the Chart tab's fretboard
+
+  if (leadGridSelectedSlot === null) return; // no slot selected -- this click was just an audition
+  const updated = [...leadGridSlots];
+  updated[leadGridSelectedSlot] = { stringIdx, fret };
+  const placedSlot = leadGridSelectedSlot;
+  // auto-advance to the next slot for faster entry -- stops at the end rather than wrapping around
+  leadGridSelectedSlot = (placedSlot + 1 < LEAD_GRID_TOTAL_SLOTS) ? placedSlot + 1 : null;
+  setLeadGridSlots(updated);
+});
+
+// Delete/Backspace clears whichever slot is currently selected -- only
+// active while the Lead tab itself is focused/active, so it doesn't
+// interfere with deleting text in an input field elsewhere, or with the
+// main progression's own Delete-to-remove-chip behavior on other tabs.
+document.addEventListener('keydown', (e) => {
+  if (currentActiveMode !== 'lead') return;
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return; // don't hijack typing in the tempo/key/mode fields
+  if ((e.key === 'Delete' || e.key === 'Backspace') && leadGridSelectedSlot !== null) {
+    e.preventDefault();
+    if (leadGridSlots[leadGridSelectedSlot] === null) return; // nothing to clear
+    const updated = [...leadGridSlots];
+    updated[leadGridSelectedSlot] = null;
+    setLeadGridSlots(updated);
+  } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+    e.preventDefault();
+    if (e.shiftKey) redoLeadGrid(); else undoLeadGrid();
+  } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') {
+    e.preventDefault();
+    redoLeadGrid();
+  } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd') {
+    e.preventDefault();
+    performLeadDuplicate();
+  } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'c') {
+    e.preventDefault();
+    performLeadCopy();
+  } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'v') {
+    e.preventDefault();
+    performLeadPaste();
+  }
+});
+
+leadUndoBtn.addEventListener('click', undoLeadGrid);
+leadRedoBtn.addEventListener('click', redoLeadGrid);
+
+// Duplicate: takes the block CONTAINING the currently selected slot
+// (rounded down to the nearest block boundary of the chosen size) and
+// copies it into the immediately following block of the same size,
+// overwriting whatever was there. Clamped at the end of the grid.
+function performLeadDuplicate(){
+  let sourceStart, blockSize;
+  if (leadGridSelectionRange) {
+    sourceStart = leadGridSelectionRange.start;
+    blockSize = leadGridSelectionRange.end - leadGridSelectionRange.start + 1;
+  } else {
+    blockSize = parseInt(leadDupBlockSize.value, 10);
+    const anchorSlot = leadGridSelectedSlot !== null ? leadGridSelectedSlot : 0;
+    sourceStart = Math.floor(anchorSlot / blockSize) * blockSize;
+  }
+  const targetStart = sourceStart + blockSize;
+  if (targetStart >= LEAD_GRID_TOTAL_SLOTS) {
+    window.alert('No room left in the grid to duplicate this into.');
+    return;
+  }
+  if (targetStart + blockSize > LEAD_GRID_FIRST_SECTION_SLOTS && !leadSecondHalfOpen) {
+    leadSecondHalfOpen = true; // duplicating into the second half is itself a genuine "engage" action
+  }
+  const updated = [...leadGridSlots];
+  for (let i = 0; i < blockSize && targetStart + i < LEAD_GRID_TOTAL_SLOTS; i++) {
+    updated[targetStart + i] = leadGridSlots[sourceStart + i];
+  }
+  setLeadGridSlots(updated);
+}
+leadDupBtn.addEventListener('click', performLeadDuplicate);
+
+// Clipboard for copy/paste -- separate from Duplicate, since paste can
+// target anywhere (not just immediately after the source), and the
+// clipboard persists across multiple pastes until something new is copied.
+let leadClipboard = null; // array of {stringIdx,fret}|null, or null if nothing copied yet
+function performLeadCopy(){
+  let start, length;
+  if (leadGridSelectionRange) {
+    start = leadGridSelectionRange.start;
+    length = leadGridSelectionRange.end - leadGridSelectionRange.start + 1;
+  } else if (leadGridSelectedSlot !== null) {
+    start = leadGridSelectedSlot;
+    length = 1;
+  } else {
+    return; // nothing selected to copy
+  }
+  leadClipboard = leadGridSlots.slice(start, start + length).map(n => n ? { ...n } : null);
+}
+function performLeadPaste(){
+  if (!leadClipboard) return;
+  const pasteStart = leadGridSelectedSlot !== null ? leadGridSelectedSlot : (leadGridSelectionRange ? leadGridSelectionRange.start : 0);
+  const pasteEnd = pasteStart + leadClipboard.length - 1;
+  if (pasteEnd >= LEAD_GRID_TOTAL_SLOTS) {
+    window.alert('Not enough room in the grid to paste here.');
+    return;
+  }
+  if (pasteEnd >= LEAD_GRID_FIRST_SECTION_SLOTS && !leadSecondHalfOpen) {
+    leadSecondHalfOpen = true; // pasting into the second half is itself a genuine "engage" action
+  }
+  const updated = [...leadGridSlots];
+  leadClipboard.forEach((n, i) => { updated[pasteStart + i] = n ? { ...n } : null; });
+  setLeadGridSlots(updated);
+}
+
+leadClearGridBtn.addEventListener('click', () => {
+  setLeadGridSlots(new Array(LEAD_GRID_TOTAL_SLOTS).fill(null));
+  leadGridSelectedSlot = null;
+  leadSecondHalfOpen = false;
+  arpKeyManuallySet = false;
+  renderLeadGrid();
+});
+
+leadKeySelect.addEventListener('change', renderLeadFretboard);
+leadModeSelect.addEventListener('change', renderLeadFretboard);
+
+const leadListWrap = document.getElementById('leadListWrap');
+function renderLeadList(){
+  const allLayers = [];
+  progression.forEach((entry, idx) => {
+    getEntryLeadGrids(entry).forEach((layer, layerIdx, arr) => {
+      allLayers.push({ entry, idx, layer, stackLabel: arr.length > 1 ? ' #' + (layerIdx + 1) : '' });
+    });
+  });
+  allLayers.sort((a, b) => (b.layer.savedAt || 0) - (a.layer.savedAt || 0)); // most recent first
+  leadListWrap.innerHTML = '';
+  if (allLayers.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'lead-list-empty';
+    empty.textContent = 'No saved leads yet -- save one from the grid above to see it here.';
+    leadListWrap.appendChild(empty);
+    return;
+  }
+  allLayers.forEach(({ entry, idx, layer, stackLabel }) => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'lead-list-item' + (idx === leadEditingEntryIndex && layer.id === leadEditingLayerId ? ' active-editing' : '');
+    item.textContent = entry.chordName + stackLabel;
+    item.title = 'Click to edit this lead';
+    item.addEventListener('click', () => {
+      loadLeadGridFromEntry(idx, layer.id);
+    });
+    leadListWrap.appendChild(item);
+  });
+}
+
+function renderLeadEditor(){
+  renderLeadFretboard();
+  renderLeadGrid();
+  renderLeadList();
+  populateArpChordSelect();
+}
+
+function leadBeatMs(){
+  return 60000 / (parseInt(leadTempoInput.value, 10) || 90);
+}
+function stopLeadPlayback(){
+  leadActiveTimeoutIds.forEach(id => clearTimeout(id));
+  leadActiveTimeoutIds = [];
+  leadIsPlaying = false;
+  leadPlayBtn.disabled = false;
+  leadStopBtn.disabled = true;
+  window.__hardStopAllAudio(getChartToneCtx());
+}
+// Each note sustains until the NEXT filled slot, not a fixed short blip --
+// that's what gives this a connected, melodic feel instead of choppy
+// staccato. A run of empty slots after a note just extends how long that
+// note rings, rather than needing an explicit "hold" marker.
+function playLeadGrid(){
+  stopLeadPlayback();
+  leadIsPlaying = true;
+  leadPlayBtn.disabled = true;
+  leadStopBtn.disabled = false;
+  const slotMs = leadBeatMs() / LEAD_GRID_SLOTS_PER_BEAT;
+  const activeSlotCount = leadSecondHalfOpen ? LEAD_GRID_TOTAL_SLOTS : LEAD_GRID_FIRST_SECTION_SLOTS;
+
+  function runOnce(){
+    const ctx = getChartToneCtx();
+    let elapsed = 0;
+    for (let slotIdx = 0; slotIdx < activeSlotCount; slotIdx++) {
+      const note = leadGridSlots[slotIdx];
+      if (leadMetronomeToggle.checked && slotIdx % LEAD_GRID_SLOTS_PER_BEAT === 0) {
+        const beatNum = slotIdx / LEAD_GRID_SLOTS_PER_BEAT;
+        const tickId = setTimeout(() => playMetronomeTick(beatNum % beatsPerBar === 0), elapsed);
+        leadActiveTimeoutIds.push(tickId);
+      }
+      if (note) {
+        let nextFilledIdx = activeSlotCount; // search stops at the active boundary, not the whole array
+        for (let j = slotIdx + 1; j < activeSlotCount; j++) {
+          if (leadGridSlots[j]) { nextFilledIdx = j; break; }
+        }
+        const durationSeconds = Math.max(0.15, ((nextFilledIdx - slotIdx) * slotMs) / 1000);
+        const id = setTimeout(() => {
+          playMelodyNoteTone(ctx, note, ctx.currentTime, durationSeconds);
+        }, elapsed);
+        leadActiveTimeoutIds.push(id);
+      }
+      elapsed += slotMs;
+    }
+    const endId = setTimeout(() => {
+      if (leadLoopToggle.checked && leadIsPlaying) runOnce();
+      else stopLeadPlayback();
+    }, elapsed);
+    leadActiveTimeoutIds.push(endId);
+  }
+  runOnce();
+}
+leadPlayBtn.addEventListener('click', playLeadGrid);
+leadStopBtn.addEventListener('click', stopLeadPlayback);
+
+// Tracks which progression entry (if any) the current working grid is
+// attached to for editing -- null means "fresh, unattached melody".
+let leadEditingEntryIndex = null;
+let leadEditingLayerId = null; // which specific layer within that entry's stack is being edited, if any
+
+function buildLeadGridPayload(){
+  return {
+    id: Date.now() + '-' + Math.random().toString(36).slice(2),
+    slots: leadGridSlots.map(n => n ? { stringIdx: n.stringIdx, fret: n.fret } : null),
+    tempo: parseInt(leadTempoInput.value, 10) || 90,
+    keyIndex: parseInt(leadKeySelect.value, 10),
+    modeName: leadModeSelect.value,
+    toneType: window.__toneType || 'piano',
+    savedAt: Date.now(),
+  };
+}
+
+// Reads a chord entry's leads uniformly, whether it's an old single-lead
+// entry saved before stacking existed (entry.leadGrid, singular) or a
+// current stacked entry (entry.leadGrids, an array) -- never mutates the
+// entry itself, so old saved progressions keep working without needing
+// an explicit migration step.
+function getEntryLeadGrids(entry){
+  if (entry.leadGrids) return entry.leadGrids;
+  if (entry.leadGrid) return [entry.leadGrid];
+  return [];
+}
+
+// Creates a small, reusable, drag-to-adjust volume knob for a chip
+// (chord, lead, or drum). Vertical drag changes the value -- up
+// increases, down decreases, the standard convention in audio software
+// -- clamped 0-100. onChange fires continuously during the drag so
+// playback gain can be previewed live, not just after release.
+function createVolumeKnob(initialValue, onChange){
+  const value = (initialValue !== undefined && initialValue !== null) ? initialValue : 100;
+  const wrap = document.createElement('div');
+  wrap.className = 'volume-knob';
+  wrap.title = 'Volume: ' + value + '% -- drag up/down to adjust';
+  wrap.tabIndex = 0;
+  wrap.setAttribute('role', 'slider');
+  wrap.setAttribute('aria-valuemin', '0');
+  wrap.setAttribute('aria-valuemax', '100');
+  wrap.setAttribute('aria-valuenow', String(value));
+
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('viewBox', '0 0 20 20');
+  svg.setAttribute('width', '16');
+  svg.setAttribute('height', '16');
+
+  const bg = document.createElementNS(svgNS, 'circle');
+  bg.setAttribute('cx', '10'); bg.setAttribute('cy', '10'); bg.setAttribute('r', '9');
+  bg.setAttribute('fill', 'rgba(0,0,0,0.35)');
+  bg.setAttribute('stroke', 'rgba(0,0,0,0.5)');
+  svg.appendChild(bg);
+
+  const indicator = document.createElementNS(svgNS, 'line');
+  indicator.setAttribute('x1', '10'); indicator.setAttribute('y1', '10');
+  indicator.setAttribute('stroke', 'var(--amber)');
+  indicator.setAttribute('stroke-width', '2');
+  indicator.setAttribute('stroke-linecap', 'round');
+  svg.appendChild(indicator);
+
+  // Maps 0-100 to a -135deg..+135deg sweep (standard knob range, 0deg
+  // pointing straight up), then converts to SVG's coordinate convention
+  // (0deg = right, angle increases clockwise since y grows downward) --
+  // verified numerically before wiring in: 0% lands down-left, 50%
+  // straight up, 100% down-right.
+  function updateIndicator(v){
+    const angleDeg = -135 + (v / 100) * 270;
+    const angleRad = (angleDeg - 90) * Math.PI / 180;
+    const x2 = 10 + 7 * Math.cos(angleRad);
+    const y2 = 10 + 7 * Math.sin(angleRad);
+    indicator.setAttribute('x2', x2.toFixed(2));
+    indicator.setAttribute('y2', y2.toFixed(2));
+  }
+  updateIndicator(value);
+  wrap.appendChild(svg);
+
+  let currentValue = value;
+  let dragging = false;
+  let dragStartY = 0;
+  let dragStartValue = 0;
+  const DRAG_RANGE_PX = 100; // pixels of vertical drag spanning the full 0-100 range
+
+  function onPointerMove(e){
+    if (!dragging) return;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const deltaY = dragStartY - clientY; // up = positive = increase
+    let newValue = Math.round(dragStartValue + (deltaY / DRAG_RANGE_PX) * 100);
+    newValue = Math.max(0, Math.min(100, newValue));
+    if (newValue !== currentValue) {
+      currentValue = newValue;
+      updateIndicator(currentValue);
+      wrap.title = 'Volume: ' + currentValue + '% -- drag up/down to adjust';
+      wrap.setAttribute('aria-valuenow', String(currentValue));
+      onChange(currentValue);
+    }
+  }
+  function onPointerUp(){
+    dragging = false;
+    document.removeEventListener('mousemove', onPointerMove);
+    document.removeEventListener('mouseup', onPointerUp);
+    document.removeEventListener('touchmove', onPointerMove);
+    document.removeEventListener('touchend', onPointerUp);
+  }
+  function startDrag(e){
+    e.preventDefault();
+    e.stopPropagation();
+    dragging = true;
+    dragStartY = e.touches ? e.touches[0].clientY : e.clientY;
+    dragStartValue = currentValue;
+    document.addEventListener('mousemove', onPointerMove);
+    document.addEventListener('mouseup', onPointerUp);
+    document.addEventListener('touchmove', onPointerMove, { passive: false });
+    document.addEventListener('touchend', onPointerUp);
+  }
+  wrap.addEventListener('mousedown', startDrag);
+  wrap.addEventListener('touchstart', startDrag, { passive: false });
+  wrap.addEventListener('click', (e) => e.stopPropagation()); // don't let the click-release also trigger the parent chip's own click handler
+
+  return wrap;
+}
+
+function updateLeadLayerField(entryIdx, layerId, field, value){
+  const updated = progression.map((en, i) => {
+    if (i !== entryIdx) return en;
+    const newGrids = getEntryLeadGrids(en).map(g => g.id === layerId ? { ...g, [field]: value } : g);
+    return { ...en, leadGrids: newGrids, leadGrid: undefined };
+  });
+  setProgression(updated);
+}
+
+function loadLeadGridFromEntry(entryIndex, layerId){
+  const entry = progression[entryIndex];
+  if (!entry) return;
+  const grids = getEntryLeadGrids(entry);
+  const layer = layerId !== undefined ? grids.find(g => g.id === layerId) : grids[0];
+  if (!layer) return;
+  leadKeySelect.value = layer.keyIndex;
+  leadModeSelect.value = layer.modeName;
+  leadGridSlots = layer.slots.map(n => n ? { ...n } : null);
+  leadGridSelectedSlot = null;
+  leadEditingEntryIndex = entryIndex;
+  leadEditingLayerId = layer.id;
+  if (layer.toneType) {
+    window.__toneType = layer.toneType;
+    leadToneSelect.value = layer.toneType;
+    document.getElementById('toneTypeSelect').value = layer.toneType;
+  }
+  // saved data in the second half should never be hidden behind a locked
+  // state -- only a genuinely fresh/empty second half stays closed
+  leadSecondHalfOpen = leadGridSlots.slice(LEAD_GRID_FIRST_SECTION_SLOTS).some(Boolean);
+  // fresh melody, fresh history -- the old undo/redo stack belongs to
+  // whatever was being edited before, and undoing into that would be
+  // confusing now that a different saved lead is loaded
+  leadUndoStack = [];
+  leadRedoStack = [];
+  updateLeadUndoRedoButtons();
+  renderLeadEditor();
+}
+
+// Save Lead (in place): updates the exact layer currently being edited,
+// leaving any other layers on that same chord untouched. Only valid when
+// already linked to a specific existing layer.
+function updateLeadInPlace(){
+  const entry = progression[leadEditingEntryIndex];
+  if (!entry) return;
+  const grids = getEntryLeadGrids(entry);
+  const existingLayer = grids.find(g => g.id === leadEditingLayerId);
+  const newPayload = { ...buildLeadGridPayload(), id: leadEditingLayerId, muted: existingLayer ? existingLayer.muted : undefined, solo: existingLayer ? existingLayer.solo : undefined }; // keep the same identity AND mute/solo state, just refresh the musical content
+  const newGrids = grids.map(g => g.id === leadEditingLayerId ? newPayload : g);
+  const updated = progression.map((en, i) => i === leadEditingEntryIndex ? { ...en, leadGrids: newGrids, leadGrid: undefined } : en);
+  setProgression(updated);
+  renderLeadList();
+}
+
+// Save As New: replaces the ENTIRE stack on the target chord with just
+// this one lead -- a clean slate on that chord, matching the "New" name.
+function saveLeadAsNewOnEntry(entryIndex){
+  const newPayload = buildLeadGridPayload();
+  const updated = progression.map((en, i) => i === entryIndex ? { ...en, leadGrids: [newPayload], leadGrid: undefined } : en);
+  setProgression(updated);
+  leadEditingEntryIndex = entryIndex;
+  leadEditingLayerId = newPayload.id;
+  renderLeadList();
+}
+
+// Save as Stacked Lead: adds this as an ADDITIONAL layer to the target
+// chord's existing stack, preserving whatever's already there -- the
+// bass line + guitar lead + keyboard part scenario.
+function saveLeadStackedOnEntry(entryIndex){
+  const entry = progression[entryIndex];
+  const existingGrids = entry ? getEntryLeadGrids(entry) : [];
+  const newPayload = buildLeadGridPayload();
+  const updated = progression.map((en, i) => i === entryIndex ? { ...en, leadGrids: [...existingGrids, newPayload], leadGrid: undefined } : en);
+  setProgression(updated);
+  leadEditingEntryIndex = entryIndex;
+  leadEditingLayerId = newPayload.id;
+  renderLeadList();
+}
+
+const leadTargetOverlay = document.getElementById('leadTargetOverlay');
+const leadTargetTitle = document.getElementById('leadTargetTitle');
+const leadTargetBody = document.getElementById('leadTargetBody');
+const leadTargetCloseBtn = document.getElementById('leadTargetCloseBtn');
+function closeLeadTargetPicker(){
+  leadTargetOverlay.style.display = 'none';
+}
+leadTargetCloseBtn.addEventListener('click', closeLeadTargetPicker);
+leadTargetOverlay.addEventListener('click', (e) => {
+  if (e.target === leadTargetOverlay) closeLeadTargetPicker();
+});
+function showLeadTargetPicker(mode){
+  if (progression.length === 0) {
+    window.alert('Your progression is empty -- add some chords on the Chart tab first, then come back to send this lead to one of them.');
+    return;
+  }
+  leadTargetTitle.textContent = mode === 'stack' ? 'Add Stacked Lead To...' : 'Send Lead To...';
+  leadTargetBody.innerHTML = '';
+  const list = document.createElement('div');
+  list.className = 'modulation-list'; // reuse the same list styling as the modulation finder
+  progression.forEach((entry, i) => {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'modulation-row';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'modulation-row-name';
+    const existingCount = getEntryLeadGrids(entry).length;
+    let note = '';
+    if (existingCount > 0) {
+      note = mode === 'stack'
+        ? ' (has ' + existingCount + ' lead' + (existingCount > 1 ? 's' : '') + ' -- will add another)'
+        : ' (has ' + existingCount + ' lead' + (existingCount > 1 ? 's' : '') + ' -- will replace all of them)';
+    }
+    nameSpan.textContent = entry.chordName + note;
+    row.appendChild(nameSpan);
+    row.addEventListener('click', () => {
+      if (mode === 'stack') saveLeadStackedOnEntry(i);
+      else saveLeadAsNewOnEntry(i);
+      closeLeadTargetPicker();
+    });
+    list.appendChild(row);
+  });
+  leadTargetBody.appendChild(list);
+  leadTargetOverlay.style.display = 'flex';
+}
+
+// Chart-tab-native copy: takes whatever lead is currently checked via its
+// select box and copies it (as a new stacked layer, source untouched) to
+// a chosen chord -- reuses the same overlay as showLeadTargetPicker
+// rather than building a second one, just with its own list logic since
+// the source chord is excluded (copying a lead onto itself is a no-op)
+// and this never touches the Lead tab's own editing state.
+function showLeadCopyTargetPicker(){
+  if (!selectedLeadForCopy) return;
+  const sourceEntry = progression[selectedLeadForCopy.entryIdx];
+  if (!sourceEntry) return;
+  const isDrum = selectedLeadForCopy.type === 'drum';
+  const sourceLayer = isDrum ? sourceEntry.drumPattern : getEntryLeadGrids(sourceEntry).find(g => g.id === selectedLeadForCopy.layerId);
+  if (!sourceLayer) return;
+  leadTargetTitle.textContent = isDrum ? 'Copy Drum Pattern To...' : 'Copy Lead To...';
+  leadTargetBody.innerHTML = '';
+  const list = document.createElement('div');
+  list.className = 'modulation-list';
+  progression.forEach((entry, i) => {
+    if (i === selectedLeadForCopy.entryIdx) return; // skip the source chord itself
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'modulation-row';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'modulation-row-name';
+    if (isDrum) {
+      nameSpan.textContent = entry.chordName + (entry.drumPattern ? ' (has a pattern -- will replace it)' : '');
+    } else {
+      const existingCount = getEntryLeadGrids(entry).length;
+      nameSpan.textContent = entry.chordName + (existingCount > 0 ? ' (has ' + existingCount + ' lead' + (existingCount > 1 ? 's' : '') + ' -- will add another)' : '');
+    }
+    row.appendChild(nameSpan);
+    row.addEventListener('click', () => {
+      if (isDrum) {
+        saveDrumPatternInto(i, sourceLayer);
+      } else {
+        const copiedLayer = { ...sourceLayer, id: Date.now() + '-' + Math.random().toString(36).slice(2), savedAt: Date.now(), solo: false };
+        const updated = progression.map((en, j) => j === i ? { ...en, leadGrids: [...getEntryLeadGrids(en), copiedLayer], leadGrid: undefined } : en);
+        setProgression(updated);
+      }
+      closeLeadTargetPicker();
+    });
+    list.appendChild(row);
+  });
+  leadTargetBody.appendChild(list);
+  leadTargetOverlay.style.display = 'flex';
+}
+
+// Copies a drum pattern's content onto a target chord, replacing
+// whatever pattern (if any) was already there -- matching the
+// single-pattern-per-chord model, unlike leads which stack.
+function saveDrumPatternInto(targetIdx, sourcePattern){
+  const copiedPattern = { ...sourcePattern, slots: sourcePattern.slots.map(row => [...row]), id: Date.now() + '-' + Math.random().toString(36).slice(2), savedAt: Date.now(), solo: false };
+  const updated = progression.map((en, i) => i === targetIdx ? { ...en, drumPattern: copiedPattern } : en);
+  setProgression(updated);
+}
+
+function updateLeadCopyToolbar(){
+  const leadCopyStatus = document.getElementById('leadCopyStatus');
+  const leadDupRightBtn = document.getElementById('leadDupRightBtn');
+  const leadCopyToBtn = document.getElementById('leadCopyToBtn');
+  if (!selectedLeadForCopy) {
+    leadCopyStatus.textContent = 'Check a lead\u2019s or drum pattern\u2019s box to select it, then duplicate or copy it to another chord';
+    leadDupRightBtn.disabled = true;
+    leadCopyToBtn.disabled = true;
+    return;
+  }
+  const kindLabel = selectedLeadForCopy.type === 'drum' ? '\u2019s drum pattern' : '\u2019s lead';
+  leadCopyStatus.textContent = 'Selected: ' + selectedLeadForCopy.chordName + kindLabel;
+  const hasNextChord = selectedLeadForCopy.entryIdx + 1 < progression.length;
+  leadDupRightBtn.disabled = !hasNextChord;
+  leadCopyToBtn.disabled = false;
+}
+
+document.getElementById('leadDupRightBtn').addEventListener('click', () => {
+  if (!selectedLeadForCopy) return;
+  const sourceEntry = progression[selectedLeadForCopy.entryIdx];
+  const targetIdx = selectedLeadForCopy.entryIdx + 1;
+  if (!sourceEntry || targetIdx >= progression.length) return;
+  if (selectedLeadForCopy.type === 'drum') {
+    if (!sourceEntry.drumPattern) return;
+    saveDrumPatternInto(targetIdx, sourceEntry.drumPattern);
+    return;
+  }
+  const sourceLayer = getEntryLeadGrids(sourceEntry).find(g => g.id === selectedLeadForCopy.layerId);
+  if (!sourceLayer) return;
+  const copiedLayer = { ...sourceLayer, id: Date.now() + '-' + Math.random().toString(36).slice(2), savedAt: Date.now(), solo: false };
+  const updated = progression.map((en, i) => i === targetIdx ? { ...en, leadGrids: [...getEntryLeadGrids(en), copiedLayer], leadGrid: undefined } : en);
+  setProgression(updated);
+});
+
+document.getElementById('leadCopyToBtn').addEventListener('click', () => {
+  showLeadCopyTargetPicker();
+});
+
+leadSaveGridBtn.addEventListener('click', () => {
+  const filledCount = leadGridSlots.filter(Boolean).length;
+  if (filledCount === 0) {
+    window.alert('Place at least one note in the grid first.');
+    return;
+  }
+  if (leadEditingEntryIndex !== null && leadEditingLayerId !== null && progression[leadEditingEntryIndex]) {
+    updateLeadInPlace(); // already linked to a specific layer -- just refresh it, no need to re-pick a target
+  } else {
+    showLeadTargetPicker('replace');
+  }
+});
+
+const leadSaveAsNewBtn = document.getElementById('leadSaveAsNewBtn');
+leadSaveAsNewBtn.addEventListener('click', () => {
+  const filledCount = leadGridSlots.filter(Boolean).length;
+  if (filledCount === 0) {
+    window.alert('Place at least one note in the grid first.');
+    return;
+  }
+  showLeadTargetPicker('replace'); // always opens the picker -- sends this lead to a chosen chord, replacing that chord's entire stack with just this one
+});
+
+const leadSaveStackedBtn = document.getElementById('leadSaveStackedBtn');
+leadSaveStackedBtn.addEventListener('click', () => {
+  const filledCount = leadGridSlots.filter(Boolean).length;
+  if (filledCount === 0) {
+    window.alert('Place at least one note in the grid first.');
+    return;
+  }
+  showLeadTargetPicker('stack'); // adds this lead as an additional layer on the chosen chord, preserving whatever's already there -- bass line + guitar lead + keys, all on the same chord
 });
 </script>
 </body>
