@@ -1095,6 +1095,29 @@ function forEachLoopedSlot(pattern, chordDurationSlots, fallbackHalfLength, getS
   }
 }
 
+// Wraps a note's own scheduling call with whichever of Tremolo/Delay
+// this specific layer has enabled, chaining both when both are active
+// (tremolo applied first/innermost, delay outermost -- modulation
+// before time-based effects). Shared between the grid-lead loop's two
+// branches below so the chaining logic exists in exactly one place.
+function applyChipEffects(ctx, layer, startAt, duration, scheduleFn){
+  let wrapped = scheduleFn;
+  if (layer.envelopeFilter) {
+    const inner = wrapped;
+    wrapped = () => window.__playWithEnvelopeFilter(ctx, startAt, duration, inner);
+  }
+  if (layer.tremolo) {
+    const inner = wrapped;
+    wrapped = () => window.__playWithTremolo(ctx, startAt, duration, inner);
+  }
+  const delaySeconds = delayPresetToSeconds(layer.delayPreset);
+  if (delaySeconds) {
+    const inner = wrapped;
+    wrapped = () => window.__playWithDelay(ctx, startAt, duration, delaySeconds, inner);
+  }
+  wrapped();
+}
+
 // Whether ANY part of this one chord's own stack -- the chord itself,
 // any lead/bass layer on it, or its drum pattern -- is currently
 // soloed. Solo is scoped to a single chord's stack, not the whole
@@ -1118,7 +1141,7 @@ function isAnyPartOfStackSoloed(entry){
 // never schedule something different from each other.
 function scheduleChordAudio(entry, i, ctx, chordStartTime, audioDur, chordAudible, chordVolumeMult, anyStackSoloed){
   const shape = lookupEntryShape(entry);
-  if (shape && chordAudible) playChordShape(shape, renderedChipElements[i], entry.strumPattern, audioDur, octaveDoubleToggle.checked, chordStartTime, chordVolumeMult);
+  if (shape && chordAudible) playChordShape(shape, renderedChipElements[i], entry.strumPattern, audioDur, octaveDoubleToggle.checked, chordStartTime, chordVolumeMult, entry.tremolo, entry.delayPreset, entry.envelopeFilter);
   if (shape && chordAudible && topNoteToggle.checked) {
     const topPitchClass = getTopPitchClass(shape);
     if (topPitchClass !== null) playTopNoteTone(ctx, topPitchClass, chordStartTime, audioDur, chordVolumeMult);
@@ -1172,11 +1195,11 @@ function scheduleChordAudio(entry, i, ctx, chordStartTime, audioDur, chordAudibl
       if (nextFilledIdx === null) {
         const cappedEndSlot = Math.min(loopedSlots.length, slotIdx + lastNoteSlots);
         const lastNoteDurationSeconds = Math.max(0.15, ((cappedEndSlot - slotIdx) * gridSlotMs) / 1000);
-        playNoteWithCustomFade(ctx, note, startAt, lastNoteDurationSeconds, leadLayer.toneType, 0.5, leadVolumeMult);
+        applyChipEffects(ctx, leadLayer, startAt, lastNoteDurationSeconds, () => playNoteWithCustomFade(ctx, note, startAt, lastNoteDurationSeconds, leadLayer.toneType, 0.5, leadVolumeMult));
         return;
       }
       const noteDurationSeconds = Math.max(0.15, ((nextFilledIdx - slotIdx) * gridSlotMs) / 1000);
-      playMelodyNoteTone(ctx, note, startAt, noteDurationSeconds, leadLayer.toneType, leadVolumeMult);
+      applyChipEffects(ctx, leadLayer, startAt, noteDurationSeconds, () => playMelodyNoteTone(ctx, note, startAt, noteDurationSeconds, leadLayer.toneType, leadVolumeMult));
     });
   });
   if (entry.drumPattern && (!anyStackSoloed || entry.drumPattern.solo) && !entry.drumPattern.muted) {
@@ -1634,6 +1657,7 @@ function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degre
     explanationEl.className = 'chart-card-explanation';
     explanationEl.textContent = resolvedExplanation;
     explanationEl.style.display = 'none';
+    explanationEl.addEventListener('click', (e) => e.stopPropagation());
     infoBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const showing = explanationEl.style.display !== 'none';
@@ -1663,6 +1687,7 @@ function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degre
   // "here's every way to play this, including which ones are inversions."
   const voicingRow = document.createElement('div');
   voicingRow.className = 'chart-card-voicing-row';
+  voicingRow.addEventListener('click', (e) => e.stopPropagation()); // seals the row itself, not just its individual children -- a click landing on the row's own padding/gap was previously bleeding through to the card's play handler
   const voicingPrevBtn = document.createElement('button');
   voicingPrevBtn.type = 'button';
   voicingPrevBtn.className = 'chart-card-voicing-nav';
@@ -1704,6 +1729,7 @@ function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degre
   // a special pattern is active, without needing a separate on/off step.
   const patternRow = document.createElement('div');
   patternRow.className = 'chart-card-voicing-row';
+  patternRow.addEventListener('click', (e) => e.stopPropagation());
   const patternPrevBtn = document.createElement('button');
   patternPrevBtn.type = 'button';
   patternPrevBtn.className = 'chart-card-voicing-nav';
@@ -1760,6 +1786,7 @@ function createChartCard({ rootIndex, suffix: baseSuffix, label, modeName, degre
   // inversion you've cycled to carries through automatically.
   const octaveRow = document.createElement('div');
   octaveRow.className = 'chart-card-voicing-row';
+  octaveRow.addEventListener('click', (e) => e.stopPropagation());
   const octavePrevBtn = document.createElement('button');
   octavePrevBtn.type = 'button';
   octavePrevBtn.className = 'chart-card-voicing-nav';

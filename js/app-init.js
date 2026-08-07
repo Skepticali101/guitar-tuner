@@ -205,6 +205,11 @@ modulationOverlay.addEventListener('click', (e) => {
   if (e.target === modulationOverlay) closeModulationFinder();
 });
 
+window.__shiftHeld = false;
+window.addEventListener('keydown', (e) => { if (e.key === 'Shift') window.__shiftHeld = true; });
+window.addEventListener('keyup', (e) => { if (e.key === 'Shift') window.__shiftHeld = false; });
+window.addEventListener('blur', () => { window.__shiftHeld = false; });
+
 document.addEventListener('keydown', (e) => {
   // help overlay: Escape always closes it first, regardless of anything else
   if (shortcutsOverlay.style.display !== 'none') {

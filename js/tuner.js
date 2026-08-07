@@ -79,6 +79,94 @@
     return hpf;
   };
 
+  // Wraps a synchronous block of note-scheduling calls (scheduleFn) so
+  // every voice it creates passes through a tremolo (LFO-modulated
+  // amplitude) stage before reaching the real master bus. Same
+  // technique playNoteWithCustomFade already uses for its own per-note
+  // fade envelope: every existing instrument function connects to
+  // whatever window.__getMasterBus(ctx) returns at the exact moment
+  // it's called, with no async gap before that connection is made -- so
+  // temporarily redirecting the cached reference, calling scheduleFn,
+  // then immediately restoring it, applies the effect without any of
+  // those functions needing to know or change.
+  window.__playWithTremolo = function(ctx, startAt, duration, scheduleFn){
+    var trueMasterBus = window.__getMasterBus(ctx);
+    var tremoloBus = ctx.createGain();
+    var lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 6; // moderate, musical tremolo rate
+    var depth = ctx.createGain();
+    depth.gain.value = 0.4;
+    tremoloBus.gain.value = 0.7; // base level the LFO swings around -- stays clearly audible even at the trough, rather than pulsing to silence
+    lfo.connect(depth);
+    depth.connect(tremoloBus.gain);
+    tremoloBus.connect(trueMasterBus);
+    lfo.start(startAt);
+    lfo.stop(startAt + duration + 0.1);
+
+    ctx.__masterBusInput = tremoloBus; // temporary redirect -- safe only because scheduleFn is fully synchronous
+    scheduleFn();
+    ctx.__masterBusInput = trueMasterBus; // restored immediately, before any other voice could be affected
+  };
+
+  // Same architecture as Tremolo above (temporary master-bus redirect,
+  // safe because scheduleFn is fully synchronous), but for a simple
+  // tempo-synced echo instead of amplitude modulation. The input splits
+  // into two paths that both land on the real master bus: dry (straight
+  // through, unchanged) and wet (through a DelayNode with a feedback
+  // loop feeding back into itself for a few audibly decaying repeats,
+  // not one single echo and not an endless one).
+  window.__playWithDelay = function(ctx, startAt, duration, delayTimeSeconds, scheduleFn){
+    var trueMasterBus = window.__getMasterBus(ctx);
+    var inputBus = ctx.createGain(); // what scheduleFn's notes actually connect to
+    inputBus.connect(trueMasterBus); // dry path -- unchanged, straight through
+
+    var delay = ctx.createDelay(3); // generous ceiling, real delayTime set below is always well under this
+    delay.delayTime.value = delayTimeSeconds;
+    var feedback = ctx.createGain();
+    feedback.gain.value = 0.32; // moderate feedback -- a handful of clearly decaying repeats, not a runaway loop
+    var wetGain = ctx.createGain();
+    wetGain.gain.value = 0.45; // repeats sit under the dry signal, not competing with it
+
+    inputBus.connect(delay);
+    delay.connect(feedback);
+    feedback.connect(delay); // the loop itself -- each repeat feeds the next, quieter each time
+    delay.connect(wetGain);
+    wetGain.connect(trueMasterBus);
+
+    ctx.__masterBusInput = inputBus;
+    scheduleFn();
+    ctx.__masterBusInput = trueMasterBus;
+  };
+
+  // Same architecture as Tremolo/Delay above, but a resonant filter
+  // whose cutoff sweeps open then closed to mirror the classic auto-wah
+  // "envelope filter" pedal response -- genuinely how those pedals
+  // actually behave (keyed to the note's own attack-then-decay
+  // contour), not a simulation of something else. Reading the real,
+  // live signal amplitude to drive this would need per-frame JS
+  // polling; shaping the sweep directly against the note's own known
+  // startAt/duration achieves the same musical result without it.
+  window.__playWithEnvelopeFilter = function(ctx, startAt, duration, scheduleFn){
+    var trueMasterBus = window.__getMasterBus(ctx);
+    var inputBus = ctx.createGain();
+    var filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass'; // the focused, vocal "wah" character, not a broad lowpass
+    filter.Q.value = 4; // present resonance without whistling
+    var closedFreq = 350, openFreq = 2400;
+    var attackTime = Math.max(0.01, Math.min(0.05, duration * 0.15));
+    filter.frequency.setValueAtTime(closedFreq, startAt);
+    filter.frequency.linearRampToValueAtTime(openFreq, startAt + attackTime); // opens fast with the attack transient
+    filter.frequency.exponentialRampToValueAtTime(closedFreq, startAt + duration); // closes back down as the note decays
+
+    inputBus.connect(filter);
+    filter.connect(trueMasterBus);
+
+    ctx.__masterBusInput = inputBus;
+    scheduleFn();
+    ctx.__masterBusInput = trueMasterBus;
+  };
+
   // Instantly silences everything currently playing through the master
   // bus, regardless of which function started it (chord, bass, top note,
   // lead pattern, grid lead, drum pattern, metronome -- all of them route
@@ -514,6 +602,155 @@
       carrier.start(startAt); carrier.stop(startAt + duration + 0.05);
     }
 
+    // Electric Guitar (clean) -- a plucked string's high-frequency content
+    // decays noticeably faster than its fundamental, which is most of
+    // what actually reads as "guitar" rather than a generic plucked tone.
+    // A sawtooth (rich harmonics) through a lowpass filter that starts
+    // bright and closes quickly gives exactly that shape, with a quick
+    // pluck attack and a moderate, natural-feeling decay.
+    function playElectricGuitarNote(ctx, freq, startAt, gain, duration){
+      var osc = ctx.createOscillator();
+      osc.type = 'sawtooth'; osc.frequency.value = freq;
+      var filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.Q.value = 1.2; // a little pickup-like resonance without ringing
+      filter.frequency.setValueAtTime(Math.min(9000, freq * 8), startAt);
+      filter.frequency.exponentialRampToValueAtTime(Math.max(400, freq * 1.8), startAt + Math.min(0.25, duration * 0.5));
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0, startAt);
+      g.gain.linearRampToValueAtTime(gain, startAt + 0.004); // fast pluck attack
+      g.gain.exponentialRampToValueAtTime(Math.max(0.0001, gain * 0.35), startAt + Math.max(0.08, duration * 0.35));
+      g.gain.setValueAtTime(Math.max(0.0001, gain * 0.35), startAt + Math.max(0.09, duration - 0.08));
+      g.gain.linearRampToValueAtTime(0, startAt + duration);
+      osc.connect(filter); filter.connect(g); g.connect(window.__getMasterBus(ctx));
+      osc.start(startAt); osc.stop(startAt + duration + 0.05);
+    }
+
+    // Acoustic Guitar -- warmer and more harmonically complex than the
+    // electric (body resonance rather than a magnetic pickup), a faster
+    // initial decay into a longer quiet tail, and a brief noise-burst at
+    // the very start for the pick/finger attack transient real acoustic
+    // recordings always have and pure-tone synthesis otherwise lacks.
+    function playAcousticGuitarNote(ctx, freq, startAt, gain, duration){
+      var osc = ctx.createOscillator();
+      osc.type = 'sawtooth'; osc.frequency.value = freq;
+      var osc2 = ctx.createOscillator();
+      osc2.type = 'triangle'; osc2.frequency.value = freq * 2.003; // very slightly detuned octave -- body/string complexity, not a clean harmonic
+      var filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(Math.min(7000, freq * 6), startAt);
+      filter.frequency.exponentialRampToValueAtTime(Math.max(300, freq * 1.4), startAt + Math.min(0.18, duration * 0.4));
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0, startAt);
+      g.gain.linearRampToValueAtTime(gain, startAt + 0.003);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.0001, gain * 0.28), startAt + Math.max(0.1, duration * 0.4));
+      g.gain.setValueAtTime(Math.max(0.0001, gain * 0.28), startAt + Math.max(0.11, duration - 0.09));
+      g.gain.linearRampToValueAtTime(0, startAt + duration);
+      var g2 = ctx.createGain(); g2.gain.value = 0.25; // the detuned octave stays well under the fundamental
+      osc.connect(filter); filter.connect(g); g.connect(window.__getMasterBus(ctx));
+      osc2.connect(g2); g2.connect(g);
+      osc.start(startAt); osc.stop(startAt + duration + 0.05);
+      osc2.start(startAt); osc2.stop(startAt + duration + 0.05);
+      // Pick/finger attack transient -- filtered noise, gone within ~15ms
+      var noiseSrc = ctx.createBufferSource();
+      noiseSrc.buffer = getNoiseBuffer(ctx);
+      var noiseFilter = ctx.createBiquadFilter();
+      noiseFilter.type = 'bandpass';
+      noiseFilter.frequency.value = Math.max(1200, freq * 3);
+      noiseFilter.Q.value = 0.8;
+      var noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(gain * 0.5, startAt);
+      noiseGain.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.015);
+      noiseSrc.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(window.__getMasterBus(ctx));
+      noiseSrc.start(startAt); noiseSrc.stop(startAt + 0.03);
+    }
+
+    // Nylon (Classical) Guitar -- mellower still: fewer high harmonics
+    // (triangle-led rather than sawtooth-led), a rounder, softer attack,
+    // and a lower filter ceiling than either steel-string guitar above.
+    function playNylonGuitarNote(ctx, freq, startAt, gain, duration){
+      var osc = ctx.createOscillator();
+      osc.type = 'triangle'; osc.frequency.value = freq;
+      var osc2 = ctx.createOscillator();
+      osc2.type = 'sine'; osc2.frequency.value = freq * 2; // clean octave, adds body without extra brightness
+      var filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(Math.min(4000, freq * 4), startAt);
+      filter.frequency.exponentialRampToValueAtTime(Math.max(250, freq * 1.2), startAt + Math.min(0.22, duration * 0.45));
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0, startAt);
+      g.gain.linearRampToValueAtTime(gain, startAt + 0.012); // softer, rounder attack than steel string
+      g.gain.exponentialRampToValueAtTime(Math.max(0.0001, gain * 0.3), startAt + Math.max(0.1, duration * 0.4));
+      g.gain.setValueAtTime(Math.max(0.0001, gain * 0.3), startAt + Math.max(0.11, duration - 0.09));
+      g.gain.linearRampToValueAtTime(0, startAt + duration);
+      var g2 = ctx.createGain(); g2.gain.value = 0.3;
+      osc.connect(filter); filter.connect(g); g.connect(window.__getMasterBus(ctx));
+      osc2.connect(g2); g2.connect(g);
+      osc.start(startAt); osc.stop(startAt + duration + 0.05);
+      osc2.start(startAt); osc2.stop(startAt + duration + 0.05);
+    }
+
+    // Jazz Organ -- the same drawbar-harmonic-stack technique as Organ
+    // and Rock Organ, but a different registration (heavier sub-octave
+    // weight, typical of jazz comping) and a slow pitch vibrato (the
+    // Hammond's "scanner vibrato") instead of Rock Organ's amplitude
+    // tremolo + distortion -- a clean, distinct third organ character.
+    function playJazzOrganNote(ctx, freq, startAt, gain, duration){
+      var vibratoLfo = ctx.createOscillator();
+      vibratoLfo.type = 'sine'; vibratoLfo.frequency.value = 5.5;
+      var vibratoDepth = ctx.createGain();
+      vibratoDepth.gain.value = freq * 0.006; // subtle pitch wobble, not a wide warble
+      vibratoLfo.connect(vibratoDepth);
+      vibratoLfo.start(startAt); vibratoLfo.stop(startAt + duration + 0.05);
+
+      var harmonics = [ {mult:0.5, amp:0.3}, {mult:1, amp:0.42}, {mult:2, amp:0.2}, {mult:3, amp:0.1} ];
+      harmonics.forEach(function(h){
+        var osc = ctx.createOscillator();
+        osc.type = 'sine'; osc.frequency.value = freq * h.mult;
+        vibratoDepth.connect(osc.detune); // shared LFO, same vibrato phase across every drawbar
+        var g = ctx.createGain();
+        var amp = gain * h.amp;
+        g.gain.setValueAtTime(0, startAt);
+        g.gain.linearRampToValueAtTime(amp, startAt + 0.015);
+        g.gain.setValueAtTime(amp, startAt + Math.max(0.05, duration - 0.08));
+        g.gain.linearRampToValueAtTime(0, startAt + duration);
+        osc.connect(g); g.connect(window.__getMasterBus(ctx));
+        osc.start(startAt); osc.stop(startAt + duration + 0.05);
+      });
+    }
+
+    // Vibraphone -- bell-like sine core with one slightly inharmonic
+    // partial (same idea as Rhodes, simpler), a long slow decay, and a
+    // deep, slow natural amplitude tremolo -- the motor-driven resonator
+    // fans that are the instrument's own signature, distinct from and
+    // unrelated to the separate, user-toggleable Tremolo effect.
+    function playVibraphoneNote(ctx, freq, startAt, gain, duration){
+      var tremoloLfo = ctx.createOscillator();
+      tremoloLfo.type = 'sine'; tremoloLfo.frequency.value = 4.5;
+      var tremoloDepth = ctx.createGain();
+      tremoloDepth.gain.value = gain * 0.35;
+      var tremoloGain = ctx.createGain();
+      tremoloGain.gain.value = gain * 0.65; // base level the LFO swings around
+      tremoloLfo.connect(tremoloDepth); tremoloDepth.connect(tremoloGain.gain);
+      tremoloLfo.start(startAt); tremoloLfo.stop(startAt + duration + 0.05);
+      tremoloGain.connect(window.__getMasterBus(ctx));
+
+      var fundamental = ctx.createOscillator();
+      fundamental.type = 'sine'; fundamental.frequency.value = freq;
+      var partial = ctx.createOscillator();
+      partial.type = 'sine'; partial.frequency.value = freq * 4.05; // faint, slightly-sharp high partial -- the metallic edge
+      var envelope = ctx.createGain();
+      envelope.gain.setValueAtTime(0, startAt);
+      envelope.gain.linearRampToValueAtTime(gain, startAt + 0.006);
+      envelope.gain.exponentialRampToValueAtTime(Math.max(0.0001, gain * 0.15), startAt + Math.min(duration * 0.7, 1.2));
+      envelope.gain.linearRampToValueAtTime(0, startAt + duration);
+      var partialGain = ctx.createGain(); partialGain.gain.value = 0.12;
+      fundamental.connect(envelope); envelope.connect(tremoloGain);
+      partial.connect(partialGain); partialGain.connect(envelope);
+      fundamental.start(startAt); fundamental.stop(startAt + duration + 0.05);
+      partial.start(startAt); partial.stop(startAt + duration + 0.05);
+    }
+
     function playSynthBassNote(ctx, freq, startAt, gain, duration){
       var osc = ctx.createOscillator();
       osc.type = 'triangle'; osc.frequency.value = freq;
@@ -541,7 +778,9 @@
         return type === 'piano' || type === 'rhodes' || type === 'organ' ||
                type === 'wurly' || type === 'dxep' || type === 'brightpiano' ||
                type === 'toypiano' || type === 'rockorgan' || type === 'synthpad' || type === 'synthbass' ||
-               type === 'subbass' || type === 'fmbass' || type === 'electricbass' || type === 'doublebass';
+               type === 'subbass' || type === 'fmbass' || type === 'electricbass' || type === 'doublebass' ||
+               type === 'electricguitar' || type === 'acousticguitar' || type === 'nylonguitar' ||
+               type === 'jazzorgan' || type === 'vibraphone';
       },
       ensurePianoLoaded: ensurePianoLoaded,
       ensureBassSampleLoaded: ensureBassSampleLoaded,
@@ -569,6 +808,11 @@
         else if(type === 'subbass') playSubBassNote(ctx, freq, startAt, gain, duration);
         else if(type === 'fmbass') playFmBassNote(ctx, freq, startAt, gain, duration);
         else if(type === 'electricbass' || type === 'doublebass') playAcousticBassNote(ctx, type, freq, startAt, gain, duration);
+        else if(type === 'electricguitar') playElectricGuitarNote(ctx, freq, startAt, gain, duration);
+        else if(type === 'acousticguitar') playAcousticGuitarNote(ctx, freq, startAt, gain, duration);
+        else if(type === 'nylonguitar') playNylonGuitarNote(ctx, freq, startAt, gain, duration);
+        else if(type === 'jazzorgan') playJazzOrganNote(ctx, freq, startAt, gain, duration);
+        else if(type === 'vibraphone') playVibraphoneNote(ctx, freq, startAt, gain, duration);
       }
     };
   })();

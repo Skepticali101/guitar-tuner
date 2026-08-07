@@ -757,7 +757,7 @@ function applyPatternToLeadNotes(leadPattern, patternType){
 // context and wouldn't carry over.
 const MAX_REALISTIC_GUITAR_FREQ = OPEN_STRING_FREQS[5] * Math.pow(2, 24 / 12);
 
-function playChordShape(shape, cardEl, pattern, durationOverrideSeconds, octaveDouble, startTimeOverride, volumeMultOverride){
+function playChordShape(shape, cardEl, pattern, durationOverrideSeconds, octaveDouble, startTimeOverride, volumeMultOverride, tremolo, delayPreset, envelopeFilter){
   const ctx = getChartToneCtx();
   const toneType = window.__toneType || 'triangle';
   const resolvedPattern = pattern || window.__strumPattern || 'block';
@@ -847,13 +847,30 @@ function playChordShape(shape, cardEl, pattern, durationOverrideSeconds, octaveD
     });
   }
 
-  if (toneType === 'piano' || toneType === 'brightpiano') {
-    window.__toneEngine.ensurePianoLoaded(ctx).then(scheduleNotes);
-  } else {
-    scheduleNotes();
+  const lastStagger = notes.length > 1 ? patternConfig.getStagger(notes.length - 1, notes.length) : 0;
+  const effectStartAt = (startTimeOverride !== undefined && startTimeOverride !== null) ? startTimeOverride : ctx.currentTime;
+  const effectDuration = dur + lastStagger;
+  let scheduleWithEffects = scheduleNotes;
+  if (envelopeFilter) {
+    const inner = scheduleWithEffects;
+    scheduleWithEffects = () => window.__playWithEnvelopeFilter(ctx, effectStartAt, effectDuration, inner);
+  }
+  if (tremolo) {
+    const inner = scheduleWithEffects;
+    scheduleWithEffects = () => window.__playWithTremolo(ctx, effectStartAt, effectDuration, inner);
+  }
+  const delaySeconds = delayPresetToSeconds(delayPreset);
+  if (delaySeconds) {
+    const inner = scheduleWithEffects;
+    scheduleWithEffects = () => window.__playWithDelay(ctx, effectStartAt, effectDuration, delaySeconds, inner);
   }
 
-  const lastStagger = notes.length > 1 ? patternConfig.getStagger(notes.length - 1, notes.length) : 0;
+  if (toneType === 'piano' || toneType === 'brightpiano') {
+    window.__toneEngine.ensurePianoLoaded(ctx).then(scheduleWithEffects);
+  } else {
+    scheduleWithEffects();
+  }
+
   const totalDurMs = (dur + lastStagger) * 1000;
   if (cardEl) {
     cardEl.classList.add('playing');

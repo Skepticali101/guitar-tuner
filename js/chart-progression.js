@@ -164,6 +164,24 @@ function setProgression(newProgression, options){
   updateUndoBtnState();
 }
 
+// Applies one field change to every chip of the same KIND across the
+// whole progression, not just the one the user directly interacted
+// with -- the Shift-held "sync all like chips" gesture. kind is
+// 'chord' (the chip itself) or 'lead' (every lead layer on every
+// chord). Goes through the normal setProgression path, so this is a
+// single undo-able action, not one per chip touched.
+function applyToAllLikeChips(kind, field, value){
+  if (kind === 'chord') {
+    setProgression(progression.map(en => ({ ...en, [field]: value })));
+  } else if (kind === 'lead') {
+    setProgression(progression.map(en => {
+      const grids = getEntryLeadGrids(en);
+      if (grids.length === 0) return en;
+      return { ...en, leadGrids: grids.map(g => ({ ...g, [field]: value })), leadGrid: undefined };
+    }));
+  }
+}
+
 function undoProgression(){
   if (progressionUndoStack.length === 0) return;
   progressionRedoStack.push(JSON.stringify(progression)); // save current state so redo can restore it
@@ -569,7 +587,7 @@ function renderProgression(){
       // at the current tempo -- not a fixed length -- so clicking a chip
       // actually previews how it will sound in context, not a generic blip.
       const dur = (progression[idx].beats || 4) * beatMs() / 1000;
-      if (shape) playChordShape(shape, chip, progression[idx].strumPattern, dur, previewOctaveDoubleToggle.checked);
+      if (shape) playChordShape(shape, chip, progression[idx].strumPattern, dur, previewOctaveDoubleToggle.checked, undefined, undefined, progression[idx].tremolo, progression[idx].delayPreset, progression[idx].envelopeFilter);
       maybePlayPreviewBassNote(shape, dur);
       maybePlayPreviewTopNote(shape, dur);
       updateFretboardPanel(shape, entry.chordName, entry.rootIndex, idx);
@@ -581,7 +599,7 @@ function renderProgression(){
         e.preventDefault();
         const shape = lookupEntryShape(entry);
         const dur = (progression[idx].beats || 4) * beatMs() / 1000;
-        if (shape) playChordShape(shape, chip, progression[idx].strumPattern, dur, previewOctaveDoubleToggle.checked);
+        if (shape) playChordShape(shape, chip, progression[idx].strumPattern, dur, previewOctaveDoubleToggle.checked, undefined, undefined, progression[idx].tremolo, progression[idx].delayPreset, progression[idx].envelopeFilter);
         maybePlayPreviewBassNote(shape, dur);
         maybePlayPreviewTopNote(shape, dur);
         updateFretboardPanel(shape, entry.chordName, entry.rootIndex, idx);
@@ -701,7 +719,7 @@ function renderProgression(){
 
     const chipPatternSelect = document.createElement('select');
     chipPatternSelect.className = 'progression-chip-pattern-select';
-    chipPatternSelect.title = 'Strum pattern for this chord';
+    chipPatternSelect.title = 'Strum pattern for this chord (hold Shift while changing: apply to every chord)';
     STRUM_PATTERNS.forEach(opt => {
       const o = document.createElement('option');
       o.value = opt.value;
@@ -711,6 +729,7 @@ function renderProgression(){
     });
     chipPatternSelect.addEventListener('click', (e) => e.stopPropagation());
     chipPatternSelect.addEventListener('change', () => {
+      if (window.__shiftHeld) { applyToAllLikeChips('chord', 'strumPattern', chipPatternSelect.value); return; }
       const updated = progression.map((en, i) => i === idx ? { ...en, strumPattern: chipPatternSelect.value } : en);
       setProgression(updated, { skipRender: true });
     });
@@ -750,10 +769,12 @@ function renderProgression(){
     muteEl.type = 'button';
     muteEl.className = 'progression-chip-mute' + (entry.muted ? ' active' : '');
     muteEl.textContent = 'M';
-    muteEl.title = 'Mute this chord';
+    muteEl.title = 'Mute this chord (Shift+click: mute/unmute every chord)';
     muteEl.addEventListener('click', (e) => {
       e.stopPropagation();
-      const updated = progression.map((en, i) => i === idx ? { ...en, muted: !en.muted } : en);
+      const newValue = !entry.muted;
+      if (e.shiftKey) { applyToAllLikeChips('chord', 'muted', newValue); return; }
+      const updated = progression.map((en, i) => i === idx ? { ...en, muted: newValue } : en);
       setProgression(updated);
     });
     chip.appendChild(muteEl);
@@ -762,17 +783,67 @@ function renderProgression(){
     soloEl.type = 'button';
     soloEl.className = 'progression-chip-solo' + (entry.solo ? ' active' : '');
     soloEl.textContent = 'S';
-    soloEl.title = 'Solo this chord';
+    soloEl.title = 'Solo this chord (Shift+click: solo/unsolo every chord)';
     soloEl.addEventListener('click', (e) => {
       e.stopPropagation();
-      const updated = progression.map((en, i) => i === idx ? { ...en, solo: !en.solo } : en);
+      const newValue = !entry.solo;
+      if (e.shiftKey) { applyToAllLikeChips('chord', 'solo', newValue); return; }
+      const updated = progression.map((en, i) => i === idx ? { ...en, solo: newValue } : en);
       setProgression(updated);
     });
     chip.appendChild(soloEl);
 
+    const tremoloEl = document.createElement('button');
+    tremoloEl.type = 'button';
+    tremoloEl.className = 'progression-chip-tremolo' + (entry.tremolo ? ' active' : '');
+    tremoloEl.textContent = 'Trem';
+    tremoloEl.title = 'Tremolo effect on this chord (Shift+click: apply to every chord)';
+    tremoloEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const newValue = !entry.tremolo;
+      if (e.shiftKey) { applyToAllLikeChips('chord', 'tremolo', newValue); return; }
+      const updated = progression.map((en, i) => i === idx ? { ...en, tremolo: newValue } : en);
+      setProgression(updated);
+    });
+    chip.appendChild(tremoloEl);
+
+    const envelopeFilterEl = document.createElement('button');
+    envelopeFilterEl.type = 'button';
+    envelopeFilterEl.className = 'progression-chip-envfilter' + (entry.envelopeFilter ? ' active' : '');
+    envelopeFilterEl.textContent = 'Env';
+    envelopeFilterEl.title = 'Envelope filter (auto-wah) effect on this chord (Shift+click: apply to every chord)';
+    envelopeFilterEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const newValue = !entry.envelopeFilter;
+      if (e.shiftKey) { applyToAllLikeChips('chord', 'envelopeFilter', newValue); return; }
+      const updated = progression.map((en, i) => i === idx ? { ...en, envelopeFilter: newValue } : en);
+      setProgression(updated);
+    });
+    chip.appendChild(envelopeFilterEl);
+
+    const delaySelect = document.createElement('select');
+    delaySelect.className = 'progression-chip-delay' + ((entry.delayPreset && entry.delayPreset !== 'off') ? ' active' : '');
+    delaySelect.title = 'Delay effect on this chord, synced to the current tempo (hold Shift while changing: apply to every chord)';
+    Object.keys(DELAY_PRESET_LABELS).forEach(key => {
+      const o = document.createElement('option');
+      o.value = key;
+      o.textContent = DELAY_PRESET_LABELS[key];
+      if ((entry.delayPreset || 'off') === key) o.selected = true;
+      delaySelect.appendChild(o);
+    });
+    delaySelect.addEventListener('click', (e) => e.stopPropagation());
+    delaySelect.addEventListener('change', () => {
+      if (window.__shiftHeld) { applyToAllLikeChips('chord', 'delayPreset', delaySelect.value); return; }
+      const updated = progression.map((en, i) => i === idx ? { ...en, delayPreset: delaySelect.value } : en);
+      setProgression(updated);
+    });
+    chip.appendChild(delaySelect);
+
     const volumeKnob = createVolumeKnob(entry.volume, (newVolume) => {
       const updated = progression.map((en, i) => i === idx ? { ...en, volume: newVolume } : en);
       setProgression(updated, { skipRender: true, skipHistory: true }); // avoid rebuilding the whole chip DOM mid-drag (which would kill the active drag), and avoid flooding undo with every intermediate drag-tick
+    }, (finalVolume, shiftHeld) => {
+      if (shiftHeld) applyToAllLikeChips('chord', 'volume', finalVolume);
     });
     chip.appendChild(volumeKnob);
 
@@ -913,8 +984,10 @@ function renderProgression(){
         gridLeadToneSelect.appendChild(clone);
       });
       gridLeadToneSelect.addEventListener('click', (e) => e.stopPropagation());
+      gridLeadToneSelect.title = (gridLeadToneSelect.title || '') + ' (hold Shift while changing: apply to every lead)';
       gridLeadToneSelect.addEventListener('change', () => {
         window.__toneEngine.ensureInstrumentPreloaded(getChartToneCtx(), gridLeadToneSelect.value);
+        if (window.__shiftHeld) { applyToAllLikeChips('lead', 'toneType', gridLeadToneSelect.value); return; }
         const updated = progression.map((en, i) => {
           if (i !== idx) return en;
           const newGrids = getEntryLeadGrids(en).map(g => g.id === leadLayer.id ? { ...g, toneType: gridLeadToneSelect.value } : g);
@@ -928,10 +1001,12 @@ function renderProgression(){
       gridLeadMuteBtn.type = 'button';
       gridLeadMuteBtn.className = 'grid-lead-chip-mute' + (leadLayer.muted ? ' active' : '');
       gridLeadMuteBtn.textContent = 'M';
-      gridLeadMuteBtn.title = 'Mute this lead';
+      gridLeadMuteBtn.title = 'Mute this lead (Shift+click: mute/unmute every lead)';
       gridLeadMuteBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        updateLeadLayerField(idx, leadLayer.id, 'muted', !leadLayer.muted);
+        const newValue = !leadLayer.muted;
+        if (e.shiftKey) { applyToAllLikeChips('lead', 'muted', newValue); return; }
+        updateLeadLayerField(idx, leadLayer.id, 'muted', newValue);
       });
       gridLeadChip.appendChild(gridLeadMuteBtn);
 
@@ -939,12 +1014,57 @@ function renderProgression(){
       gridLeadSoloBtn.type = 'button';
       gridLeadSoloBtn.className = 'grid-lead-chip-solo' + (leadLayer.solo ? ' active' : '');
       gridLeadSoloBtn.textContent = 'S';
-      gridLeadSoloBtn.title = 'Solo this lead';
+      gridLeadSoloBtn.title = 'Solo this lead (Shift+click: solo/unsolo every lead)';
       gridLeadSoloBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        updateLeadLayerField(idx, leadLayer.id, 'solo', !leadLayer.solo);
+        const newValue = !leadLayer.solo;
+        if (e.shiftKey) { applyToAllLikeChips('lead', 'solo', newValue); return; }
+        updateLeadLayerField(idx, leadLayer.id, 'solo', newValue);
       });
       gridLeadChip.appendChild(gridLeadSoloBtn);
+
+      const gridLeadTremoloBtn = document.createElement('button');
+      gridLeadTremoloBtn.type = 'button';
+      gridLeadTremoloBtn.className = 'grid-lead-chip-tremolo' + (leadLayer.tremolo ? ' active' : '');
+      gridLeadTremoloBtn.textContent = 'Trem';
+      gridLeadTremoloBtn.title = 'Tremolo effect on this lead (Shift+click: apply to every lead)';
+      gridLeadTremoloBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const newValue = !leadLayer.tremolo;
+        if (e.shiftKey) { applyToAllLikeChips('lead', 'tremolo', newValue); return; }
+        updateLeadLayerField(idx, leadLayer.id, 'tremolo', newValue);
+      });
+      gridLeadChip.appendChild(gridLeadTremoloBtn);
+
+      const gridLeadEnvFilterBtn = document.createElement('button');
+      gridLeadEnvFilterBtn.type = 'button';
+      gridLeadEnvFilterBtn.className = 'grid-lead-chip-envfilter' + (leadLayer.envelopeFilter ? ' active' : '');
+      gridLeadEnvFilterBtn.textContent = 'Env';
+      gridLeadEnvFilterBtn.title = 'Envelope filter (auto-wah) effect on this lead (Shift+click: apply to every lead)';
+      gridLeadEnvFilterBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const newValue = !leadLayer.envelopeFilter;
+        if (e.shiftKey) { applyToAllLikeChips('lead', 'envelopeFilter', newValue); return; }
+        updateLeadLayerField(idx, leadLayer.id, 'envelopeFilter', newValue);
+      });
+      gridLeadChip.appendChild(gridLeadEnvFilterBtn);
+
+      const gridLeadDelaySelect = document.createElement('select');
+      gridLeadDelaySelect.className = 'grid-lead-chip-delay' + ((leadLayer.delayPreset && leadLayer.delayPreset !== 'off') ? ' active' : '');
+      gridLeadDelaySelect.title = 'Delay effect on this lead, synced to the current tempo (hold Shift while changing: apply to every lead)';
+      Object.keys(DELAY_PRESET_LABELS).forEach(key => {
+        const o = document.createElement('option');
+        o.value = key;
+        o.textContent = DELAY_PRESET_LABELS[key];
+        if ((leadLayer.delayPreset || 'off') === key) o.selected = true;
+        gridLeadDelaySelect.appendChild(o);
+      });
+      gridLeadDelaySelect.addEventListener('click', (e) => e.stopPropagation());
+      gridLeadDelaySelect.addEventListener('change', () => {
+        if (window.__shiftHeld) { applyToAllLikeChips('lead', 'delayPreset', gridLeadDelaySelect.value); return; }
+        updateLeadLayerField(idx, leadLayer.id, 'delayPreset', gridLeadDelaySelect.value);
+      });
+      gridLeadChip.appendChild(gridLeadDelaySelect);
 
       const gridLeadVolumeKnob = createVolumeKnob(leadLayer.volume, (newVolume) => {
         const updated = progression.map((en, i) => {
@@ -953,6 +1073,8 @@ function renderProgression(){
           return { ...en, leadGrids: newGrids, leadGrid: undefined };
         });
         setProgression(updated, { skipRender: true, skipHistory: true });
+      }, (finalVolume, shiftHeld) => {
+        if (shiftHeld) applyToAllLikeChips('lead', 'volume', finalVolume);
       });
       gridLeadChip.appendChild(gridLeadVolumeKnob);
 
@@ -1336,6 +1458,28 @@ syncFromDefinitionBtn.addEventListener('click', () => {
 // ---- Canvas-rendered chord diagram, for the exported image (Canvas can't
 // read CSS variables like the inline SVG diagrams do, so colors are literal
 // hex values here, matching the app's amber/dark palette). ----
+// Fits a line of text within maxWidth: first shrinks the font size down
+// to minFontSize, then truncates with an ellipsis as a last resort if
+// it still doesn't fit even at the smallest allowed size. Returns the
+// font size actually used, so the caller can position text consistently
+// (e.g. vertically centering based on the final size).
+function fitTextToWidth(ctx, text, maxWidth, fontWeight, maxFontSize, minFontSize, fontFamily){
+  let fontSize = maxFontSize;
+  ctx.font = fontWeight + ' ' + fontSize + 'px ' + fontFamily;
+  while (fontSize > minFontSize && ctx.measureText(text).width > maxWidth) {
+    fontSize -= 1;
+    ctx.font = fontWeight + ' ' + fontSize + 'px ' + fontFamily;
+  }
+  if (ctx.measureText(text).width > maxWidth) {
+    let truncated = text;
+    while (truncated.length > 1 && ctx.measureText(truncated + '\u2026').width > maxWidth) {
+      truncated = truncated.slice(0, -1);
+    }
+    text = truncated + '\u2026';
+  }
+  return { fontSize, text };
+}
+
 function drawChordDiagramOnCanvas(ctx, originX, originY, shape){
   const { frets, fingers, baseFret, barres } = shape;
   const numStrings = 6;
@@ -1350,9 +1494,9 @@ function drawChordDiagramOnCanvas(ctx, originX, originY, shape){
   const stringX = (i) => originX + leftPad + (gridWidth / (numStrings - 1)) * i;
   const fretY = (row) => originY + topPad + row * rowHeight;
 
-  const AMBER = '#e8952e', AMBER_DIM = '#8a5f28', CREAM = '#e8e2d0', OFF = '#c1372a';
+  const INK = '#1a1a1a', INK_DIM = '#6b6b6b', OFF = '#8a1f1a';
 
-  ctx.strokeStyle = AMBER_DIM;
+  ctx.strokeStyle = INK_DIM;
   for (let i = 0; i < numStrings; i++) {
     ctx.lineWidth = 1.2;
     ctx.beginPath();
@@ -1361,6 +1505,7 @@ function drawChordDiagramOnCanvas(ctx, originX, originY, shape){
     ctx.stroke();
   }
   for (let row = 0; row <= numFretRows; row++) {
+    ctx.strokeStyle = (row === 0 && baseFret === 1) ? INK : INK_DIM;
     ctx.lineWidth = (row === 0 && baseFret === 1) ? 2.5 : 1.2;
     ctx.beginPath();
     ctx.moveTo(originX + leftPad, fretY(row));
@@ -1368,7 +1513,7 @@ function drawChordDiagramOnCanvas(ctx, originX, originY, shape){
     ctx.stroke();
   }
   if (baseFret > 1) {
-    ctx.fillStyle = AMBER;
+    ctx.fillStyle = INK;
     ctx.font = '10px monospace';
     ctx.textAlign = 'right';
     ctx.fillText(baseFret + 'fr', originX + leftPad - 8, fretY(0) + rowHeight * 0.65);
@@ -1378,7 +1523,7 @@ function drawChordDiagramOnCanvas(ctx, originX, originY, shape){
     const stringsAt = [];
     frets.forEach((f, i) => { if (f === barreFret) stringsAt.push(i); });
     if (stringsAt.length >= 2) {
-      ctx.strokeStyle = AMBER;
+      ctx.strokeStyle = INK;
       ctx.lineWidth = 7;
       ctx.lineCap = 'round';
       ctx.beginPath();
@@ -1395,7 +1540,7 @@ function drawChordDiagramOnCanvas(ctx, originX, originY, shape){
       ctx.textAlign = 'center';
       ctx.fillText('x', x, originY + topPad - 8);
     } else if (f === 0) {
-      ctx.strokeStyle = CREAM;
+      ctx.strokeStyle = INK;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.arc(x, originY + topPad - 12, 4.5, 0, Math.PI * 2);
@@ -1403,13 +1548,13 @@ function drawChordDiagramOnCanvas(ctx, originX, originY, shape){
     } else {
       const row = f; // same fix -- f is already the relative row
       const y = fretY(row - 1) + rowHeight / 2;
-      ctx.fillStyle = AMBER;
+      ctx.fillStyle = INK;
       ctx.beginPath();
       ctx.arc(x, y, 7.5, 0, Math.PI * 2);
       ctx.fill();
       const fingerNum = fingers ? fingers[i] : 0;
       if (fingerNum > 0) {
-        ctx.fillStyle = '#2a1c08';
+        ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 9px monospace';
         ctx.textAlign = 'center';
         ctx.fillText(String(fingerNum), x, y + 3.5);
@@ -1434,20 +1579,23 @@ function generateProgressionCanvas(){
   const ctx = canvas.getContext('2d');
   ctx.scale(SCALE, SCALE);
 
-  ctx.fillStyle = '#141210';
+  const INK = '#1a1a1a', INK_DIM = '#5a5a5a', INK_FAINT = '#9a9a9a', BORDER = '#c9c9c9';
+
+  ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, logicalW, logicalH);
 
   const keyName = chartKeySelect.options[chartKeySelect.selectedIndex].textContent;
   const modesUsed = [...new Set(progression.map(p => p.modeName))].join(', ');
 
   ctx.textAlign = 'left';
-  ctx.fillStyle = '#e8952e';
+  ctx.fillStyle = INK;
   ctx.font = 'bold 20px sans-serif';
   ctx.fillText('Frequency Target Replicator', padding, padding + 22);
-  ctx.fillStyle = '#e8e2d0';
-  ctx.font = '13px monospace';
-  ctx.fillText('Key: ' + keyName + '   \u00b7   Modes: ' + modesUsed, padding, padding + 44);
-  ctx.strokeStyle = 'rgba(232,226,208,0.15)';
+  ctx.fillStyle = INK_DIM;
+  const subtitleFit = fitTextToWidth(ctx, 'Key: ' + keyName + '   \u00b7   Modes: ' + modesUsed, logicalW - padding * 2, '', 13, 10, 'monospace');
+  ctx.font = subtitleFit.fontSize + 'px monospace';
+  ctx.fillText(subtitleFit.text, padding, padding + 44);
+  ctx.strokeStyle = BORDER;
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(padding, padding + 58);
@@ -1458,23 +1606,31 @@ function generateProgressionCanvas(){
     const col = i % cols, row = Math.floor(i / cols);
     const cellX = padding + col * cellW;
     const cellY = padding + headerH + row * cellH;
+    const boxLeft = cellX + 4, boxWidth = cellW - 16, boxHeight = cellH - 16;
+    const textMaxWidth = boxWidth - 20; // matches the 12px left inset used below, plus a small right margin
 
-    ctx.fillStyle = 'rgba(232,149,46,0.05)';
-    ctx.fillRect(cellX + 4, cellY, cellW - 16, cellH - 16);
+    // A simple border instead of a filled background -- same footprint,
+    // far less ink, still clearly delineates each chord's own cell.
+    ctx.strokeStyle = BORDER;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(boxLeft, cellY, boxWidth, boxHeight);
 
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#e8952e';
-    ctx.font = 'bold 26px monospace';
-    ctx.fillText((i + 1) + '. ' + entry.chordName, cellX + 12, cellY + 30);
-    ctx.fillStyle = '#e8e2d0';
-    ctx.font = '11px monospace';
-    ctx.fillText(entry.label + ' \u00b7 ' + entry.modeName, cellX + 12, cellY + 48);
+    ctx.fillStyle = INK;
+    const titleFit = fitTextToWidth(ctx, (i + 1) + '. ' + entry.chordName, textMaxWidth, 'bold', 26, 14, 'monospace');
+    ctx.font = 'bold ' + titleFit.fontSize + 'px monospace';
+    ctx.fillText(titleFit.text, cellX + 12, cellY + 30);
+
+    ctx.fillStyle = INK_DIM;
+    const subFit = fitTextToWidth(ctx, entry.label + ' \u00b7 ' + entry.modeName, textMaxWidth, '', 11, 8, 'monospace');
+    ctx.font = subFit.fontSize + 'px monospace';
+    ctx.fillText(subFit.text, cellX + 12, cellY + 48);
 
     const shape = lookupEntryShape(entry);
     if (shape) drawChordDiagramOnCanvas(ctx, cellX + 12, cellY + 58, shape);
   });
 
-  ctx.fillStyle = 'rgba(232,226,208,0.35)';
+  ctx.fillStyle = INK_FAINT;
   ctx.font = '10px monospace';
   ctx.textAlign = 'center';
   ctx.fillText('Generated with Frequency Target Replicator', logicalW / 2, logicalH - 12);
@@ -1547,6 +1703,34 @@ function remapSlotIndex(oldIndex, oldSlotsPerBeat, newSlotsPerBeat){
 function beatMs(){
   const bpm = Math.max(40, Math.min(220, parseInt(tempoInput.value, 10) || 90));
   return 60000 / bpm;
+}
+
+// Delay presets, expressed as a fraction of one beat (one quarter note)
+// rather than a fixed millisecond value -- so the echo always lands in
+// time with the song regardless of tempo. Values match standard delay-
+// pedal/DAW note-division convention.
+const DELAY_PRESETS = {
+  off: null,
+  eighth: 0.5,             // 1/8 note = half a beat
+  dottedEighth: 0.75,      // dotted 1/8 = an eighth note plus half again -- the classic U2/Edge-style delay setting
+  quarter: 1.0,             // 1/4 note = one full beat
+  quarterTriplet: 2 / 3,    // quarter-note triplet = 3 evenly-spaced notes across 2 beats
+};
+const DELAY_PRESET_LABELS = {
+  off: 'Off',
+  eighth: '1/8 Note',
+  dottedEighth: 'Dotted 1/8',
+  quarter: '1/4 Note',
+  quarterTriplet: '1/4 Triplet',
+};
+// Converts a delay preset name to an actual delay time in seconds at the
+// CURRENT live tempo -- never a value frozen from whenever the preset
+// was chosen, matching the same "always follows the chord's own live
+// tempo" discipline used throughout playback scheduling elsewhere.
+function delayPresetToSeconds(presetName){
+  const fraction = DELAY_PRESETS[presetName];
+  if (!fraction) return null; // 'off', or an unrecognized/missing preset -- no delay
+  return (beatMs() / 1000) * fraction;
 }
 
 function updateTimelineHighlight(){

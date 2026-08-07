@@ -1039,7 +1039,7 @@ function getEntryLeadGrids(entry){
 // increases, down decreases, the standard convention in audio software
 // -- clamped 0-100. onChange fires continuously during the drag so
 // playback gain can be previewed live, not just after release.
-function createVolumeKnob(initialValue, onChange){
+function createVolumeKnob(initialValue, onChange, onCommit){
   const value = (initialValue !== undefined && initialValue !== null) ? initialValue : 100;
   const wrap = document.createElement('div');
   wrap.className = 'volume-knob';
@@ -1111,6 +1111,7 @@ function createVolumeKnob(initialValue, onChange){
     document.removeEventListener('mouseup', onPointerUp);
     document.removeEventListener('touchmove', onPointerMove);
     document.removeEventListener('touchend', onPointerUp);
+    if (onCommit) onCommit(currentValue, window.__shiftHeld);
   }
   function startDrag(e){
     e.preventDefault();
@@ -1190,7 +1191,7 @@ function updateLeadInPlace(){
   if (!entry) return;
   const grids = getEntryLeadGrids(entry);
   const existingLayer = grids.find(g => g.id === leadEditingLayerId);
-  const newPayload = { ...buildLeadGridPayload(), id: leadEditingLayerId, muted: existingLayer ? existingLayer.muted : undefined, solo: existingLayer ? existingLayer.solo : undefined }; // keep the same identity AND mute/solo state, just refresh the musical content
+  const newPayload = { ...buildLeadGridPayload(), id: leadEditingLayerId, muted: existingLayer ? existingLayer.muted : undefined, solo: existingLayer ? existingLayer.solo : undefined, tremolo: existingLayer ? existingLayer.tremolo : undefined, delayPreset: existingLayer ? existingLayer.delayPreset : undefined, envelopeFilter: existingLayer ? existingLayer.envelopeFilter : undefined }; // keep the same identity AND mute/solo/tremolo/delay/envelope-filter state, just refresh the musical content
   const newGrids = grids.map(g => g.id === leadEditingLayerId ? newPayload : g);
   const updated = progression.map((en, i) => i === leadEditingEntryIndex ? { ...en, leadGrids: newGrids, leadGrid: undefined } : en);
   setProgression(updated);
