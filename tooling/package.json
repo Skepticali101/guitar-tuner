@@ -1,0 +1,16 @@
+{
+  "name": "ftr-tooling",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Dev-only lint/type-check/test tooling for the Frequency Target Replicator codebase. Not shipped with the site.",
+  "scripts": {
+    "verify": "node verify.mjs",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.5",
+    "jsdom": "^30.0.1",
+    "typescript": "^7.0.2"
+  }
+}
